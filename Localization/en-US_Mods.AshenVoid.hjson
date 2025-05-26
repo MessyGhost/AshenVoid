@@ -1,2 +1,4 @@
-# This file will automatically update with entries for new content after a build and reload.
-
+NPCs: {
+	CorruptedLord.DisplayName: Corrupted Lord
+	CorruptedLordPhantom.DisplayName: Corrupted Lord Phantom
+}
