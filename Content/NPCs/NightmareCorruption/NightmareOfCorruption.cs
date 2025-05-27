@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using static Terraria.GameContent.Animations.On_Actions;
 using System.Net;
+using rail;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
@@ -22,6 +23,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         enum Phase1State
         {
+            Chasing,
             Aiming,
         }
 
@@ -101,7 +103,62 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private void Phase1AI()
         {
+            if(NPC.life <= NPC.lifeMax * 0.6)
+            {
+                // TODO: phase 2
+            }
+            else
+            {
+                NPCUtils.TargetIfRequired(this);
+                var target = NPCUtils.GetTargetPlayer(NPC.target);
 
+                var speed = NPC.velocity.Length();
+
+                // if no target, run away from the screen
+                if (target == null)
+                {
+                    speed = Math.Max(25.0f, speed + 1.0f);
+                    NPC.velocity = NPC.velocity.SafeNormalize(Vector2.UnitX) * speed;
+                    return;
+                }
+
+                var dist = (target.Center - NPC.Center).Length();
+                var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
+                // chase if too far
+                if (dist > 550 && phase1State != Phase1State.Chasing)
+                {
+                    phase1State = Phase1State.Chasing;
+                    if (Main.netMode != NetmodeID.MultiplayerClient)
+                    {
+                        for (int i = 0; i < 3; ++i)
+                        {
+                            var projtl = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
+                            projtl.velocity = direction.RotateRandom(0.09) * 14.0f;
+                            NPCUtils.ForceSyncNPC(projtl.whoAmI);
+                        }
+                    }
+                }
+                // stop chasing
+                else if (dist <= 300 && phase1State == Phase1State.Chasing)
+                {
+                    phase1State = Phase1State.Aiming;
+                }
+                
+                switch (phase1State)
+                {
+                    case Phase1State.Chasing:
+                        var d = target.Center - NPC.Center;
+                        d.Y -= 270;
+                        NPC.velocity = Vector2.Lerp(NPC.velocity, d.SafeNormalize(Vector2.Zero) * 25.0f, 0.037f);
+                        break;
+                    case Phase1State.Aiming:
+                        if(speed > 4.0f)
+                        {
+                            NPC.velocity = Vector2.Lerp(NPC.velocity, Vector2.Zero, 0.1f);
+                        }
+                        break;
+                }
+            }
         }
     }
 }
