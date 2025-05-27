@@ -160,7 +160,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 // stop chasing
                 else if (dist <= 300 && phase1State == Phase1State.Chasing)
                 {
-                    phase1State = Phase1State.AimingLeft;
+                    phase1State = Main.rand.NextBool() ? Phase1State.AimingLeft : Phase1State.AimingRight;
+                    NPCUtils.ForceSyncNPC(NPC.whoAmI);
                 }
                 
                 switch (phase1State)
@@ -191,7 +192,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                 timer = 0;
                             }
                         }
-                        else if(Math.Abs(direction.AngleFrom(Vector2.UnitY)) < 0.8722f && timer > 240)
+                        else if(Math.Abs(direction.AngleFrom(Vector2.UnitY)) < 0.8722f && timer > 150)
                         {
                             // shoot
                             if (Main.netMode != NetmodeID.MultiplayerClient)
@@ -227,7 +228,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         {
                             var angleTo = velocityDirection.AngleTo(direction);
                             
-                            if ((Math.Abs(angleTo) > 0.0175f || timer < 20) && timer < 100)
+                            if ((Math.Abs(angleTo) > 0.0175f || timer < 20) && timer < 60)
                             {
                                 var newVelocity = velocityDirection.RotatedBy(
                                     Math.Sign(angleTo) * Math.Min(Math.Abs(angleTo), 0.11f))
