@@ -7,7 +7,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
     public class NightmareCorruptionPhantom : ModNPC
     {
-        public override string Texture => "AshenVoid/Content/NPCs/NightmareCorruption/NightmareOfCorruption.png";
+        public override string Texture => "AshenVoid/Content/NPCs/NightmareCorruption/NightmareOfCorruption";
 
         public override void SetDefaults()
         {
