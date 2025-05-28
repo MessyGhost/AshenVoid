@@ -122,6 +122,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private void Phase1AI()
         {
             const float AimingSpeed = 6.0f;
+
             if(NPC.life <= NPC.lifeMax * 0.6)
             {
                 // TODO: phase 2
@@ -174,11 +175,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         break;
                     case Phase1State.AimingRight:
                     case Phase1State.AimingLeft:
-                        if(speed > 10.0f)
-                        {
-                            NPC.velocity = Vector2.Lerp(NPC.velocity, Vector2.Zero, 0.1f);
-                        }
-
                         if(damageTaken >= 300)
                         {
                             // aim before summon
@@ -208,7 +204,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             }
                             if (Main.rand.NextBool(2))
                             {
-                            phase1State = phase1State == Phase1State.AimingLeft ? Phase1State.AimingRight : Phase1State.AimingLeft;
+                                phase1State = phase1State == Phase1State.AimingLeft ? Phase1State.AimingRight : Phase1State.AimingLeft;
                             }
                             else
                             {
@@ -276,16 +272,20 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     case Phase1State.Marching:
                         {
                             var angle = velocityDirection.AngleFrom(direction);
-                            if(Math.Abs(angle) > 1.0f)
+                            var marchingDustVelocity = Main.rand.NextVector2Circular(0.5f, 0.5f);
+                            marchingDustVelocity += velocityDirection;
+                            for (int i = 0; i < 3; ++i) {
+                                Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, DustID.Corruption, marchingDustVelocity.X, marchingDustVelocity.Y);
+                            }
 
                             if (timer >= 90 && speed <= AimingSpeed)
                             {
                                 if (direction.X > 0)
-                            {
+                                {
                                     phase1State = Phase1State.AimingLeft;
-                            }
+                                }
                                 else
-                            {
+                                {
                                     phase1State = Phase1State.AimingRight;
                                 }
                                 timer = 0;
@@ -299,6 +299,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             break;
                         }
                 }
+                var dustVelocity = Main.rand.NextVector2Circular(0.5f, 0.5f);
+                Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, DustID.Corruption, dustVelocity.X, dustVelocity.Y);
             }
         }
 
