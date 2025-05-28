@@ -121,6 +121,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private void Phase1AI()
         {
+            const float AimingSpeed = 6.0f;
             if(NPC.life <= NPC.lifeMax * 0.6)
             {
                 // TODO: phase 2
@@ -144,7 +145,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
                 var velocityDirection = NPC.velocity.SafeNormalize(Vector2.UnitX);
                 // chase if too far
-                if (dist > 550 && (phase1State == Phase1State.AimingLeft || phase1State == Phase1State.AimingRight))
+                if (dist > 650 && (phase1State == Phase1State.AimingLeft || phase1State == Phase1State.AimingRight))
                 {
                     phase1State = Phase1State.Chasing;
                     if (Main.netMode != NetmodeID.MultiplayerClient)
@@ -158,7 +159,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     }
                 }
                 // stop chasing
-                else if (dist <= 300 && phase1State == Phase1State.Chasing)
+                else if (dist <= 250 && phase1State == Phase1State.Chasing)
                 {
                     phase1State = Main.rand.NextBool() ? Phase1State.AimingLeft : Phase1State.AimingRight;
                     NPCUtils.ForceSyncNPC(NPC.whoAmI);
@@ -169,7 +170,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     case Phase1State.Chasing:
                         var d = target.Center - NPC.Center;
                         d.Y -= 270;
-                        NPC.velocity = Vector2.Lerp(NPC.velocity, d.SafeNormalize(Vector2.Zero) * 25.0f, 0.037f);
+                        NPC.velocity = Vector2.Lerp(NPC.velocity, d.SafeNormalize(Vector2.Zero) * 17.0f, 0.037f);
                         break;
                     case Phase1State.AimingRight:
                     case Phase1State.AimingLeft:
@@ -181,7 +182,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         if(damageTaken >= 300)
                         {
                             // aim before summon
-                            if (dist < 450.0f)
+                            if (dist < 320.0f)
                             {
                                 NPC.velocity = Vector2.Lerp(NPC.velocity, -direction * 15.0f, 0.05f);
                             }
@@ -190,9 +191,10 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             {
                                 phase1State = Phase1State.Summoning;
                                 timer = 0;
+                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
                             }
                         }
-                        else if(Math.Abs(direction.AngleFrom(Vector2.UnitY)) < 0.8722f && timer > 150)
+                        else if(Math.Abs(direction.AngleFrom(Vector2.UnitY)) < 1.4f && timer > 150)
                         {
                             // shoot
                             if (Main.netMode != NetmodeID.MultiplayerClient)
@@ -200,39 +202,50 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                 for (int i = -1; i <= 1; ++i)
                                 {
                                     var projtl = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
-                                    projtl.velocity = direction.RotatedBy(i * 0.7f) * 8.0f;
+                                    projtl.velocity = direction.RotatedBy(i * 0.7f) * 7.0f;
                                     NPCUtils.ForceSyncNPC(projtl.whoAmI);
                                 }
                             }
-                            phase1State = phase1State == Phase1State.AimingLeft ? Phase1State.AimingRight : Phase1State.AimingLeft;
-                            timer = 0;
-                        }
-                        else
-                        {
-                            var acc = (target.Center - NPC.Center);
-                            acc.Y -= 300;
-                            if(phase1State == Phase1State.AimingLeft)
+                            if (Main.rand.NextBool(2))
                             {
-                                acc.X -= 100;
+                            phase1State = phase1State == Phase1State.AimingLeft ? Phase1State.AimingRight : Phase1State.AimingLeft;
                             }
                             else
                             {
-                                acc.X += 100;
+                                // force summoning
+                                damageTaken = 999;
                             }
-                            acc = acc.SafeNormalize(Vector2.Zero) * 0.7f;
+                            timer = 0;
+                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        }
+                        else
+                        {
+                            var toTarget = (target.Center - NPC.Center);
+                            toTarget.Y -= 300;
+                            if(phase1State == Phase1State.AimingLeft)
+                            {
+                                toTarget.X -= 400;
+                            }
+                            else
+                            {
+                                toTarget.X += 400;
+                            }
+
+                            var acc = toTarget.SafeNormalize(Vector2.Zero) * 0.55f;
+
                             NPC.velocity += acc;
-                            NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), 10.0f);
+                            NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), AimingSpeed) + 0.1f * new Vector2((float)Math.Sin(timer / 120.0), (float)Math.Sin(timer / 120.0 + 0.2));
                         }
                         break;
                     case Phase1State.Summoning:
                         {
                             var angleTo = velocityDirection.AngleTo(direction);
                             
-                            if ((Math.Abs(angleTo) > 0.0175f || timer < 20) && timer < 60)
+                            if ((Math.Abs(angleTo) > 0.0175f || timer < 20) && timer < 40)
                             {
                                 var newVelocity = velocityDirection.RotatedBy(
                                     Math.Sign(angleTo) * Math.Min(Math.Abs(angleTo), 0.11f))
-                                    * Math.Min(speed + 0.7f, 15.0f);
+                                    * Math.Min(speed + 0.5f, 10.0f);
                                 NPC.velocity = newVelocity;
                             }
                             // shoot
@@ -250,12 +263,13 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                         }
 
                                         var npc = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
-                                        npc.velocity = velocityDirection.RotatedBy(i * 1.0417f) * 10.0f;
+                                        npc.velocity = velocityDirection.RotatedBy(i * 1.0417f) * 7.0f;
                                         NPCUtils.ForceSyncNPC(npc.whoAmI);
                                     }
                                 }      
                                 phase1State = Phase1State.Marching;
                                 timer = 0;
+                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
                             }
                             break;
                         }
@@ -263,14 +277,24 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         {
                             var angle = velocityDirection.AngleFrom(direction);
                             if(Math.Abs(angle) > 1.0f)
+
+                            if (timer >= 90 && speed <= AimingSpeed)
                             {
-                                NPC.velocity = Vector2.Lerp(NPC.velocity, Vector2.Zero, 0.07f);
+                                if (direction.X > 0)
+                            {
+                                    phase1State = Phase1State.AimingLeft;
                             }
-                            if(speed < 3.0f || timer >= 45)
+                                else
                             {
-                                phase1State = Phase1State.AimingLeft;
+                                    phase1State = Phase1State.AimingRight;
+                                }
                                 timer = 0;
                                 damageTaken = 0;
+                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                            }
+                            else if (timer >= 50)
+                            {
+                                NPC.velocity = Math.Max(speed - 0.3f, 1E-5f) * velocityDirection;
                             }
                             break;
                         }
