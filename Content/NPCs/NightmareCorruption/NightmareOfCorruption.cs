@@ -12,6 +12,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
+    [AutoloadBossHead]
     public class NightmareOfCorruption : ModNPC
     {
         enum AIState
@@ -31,6 +32,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Marching,
         }
 
+        enum Phase2State
+        {
+            Targeting,
+        }
+
         private AIState aiState {
             get => (AIState)NPC.ai[0];
             set => NPC.ai[0] = (float)value;
@@ -39,6 +45,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Phase1State phase1State
         {
             get => (Phase1State)NPC.ai[1];
+            set => NPC.ai[1] = (float)value;
+        }
+
+        private Phase2State phase2State
+        {
+            get => (Phase2State)NPC.ai[1];
             set => NPC.ai[1] = (float)value;
         }
 
@@ -120,6 +132,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 case AIState.Phase1:
                     Phase1AI();
                     break;
+                case AIState.Phase2:
+                    Phase2AI();
+                    break;
             }
         }
 
@@ -134,7 +149,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
             if(NPC.life <= NPC.lifeMax * 0.6)
             {
-                // TODO: phase 2
+                aiState = AIState.Phase2;
+                phase2State = Phase2State.Targeting;
+                timer = 0;
+                NPC.noGravity = false;
+                NPC.noTileCollide = false;
+                NPCUtils.ForceSyncNPC(NPC.whoAmI);
             }
             else
             {
@@ -274,7 +294,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                         npc.velocity = velocityDirection.RotatedBy(i * 1.0417f) * 7.0f;
                                         NPCUtils.ForceSyncNPC(npc.whoAmI);
                                     }
-                                }      
+                                }
 
                                 NPCUtils.PlaySound(this, ShootSound);
 
@@ -336,6 +356,42 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     npc.netUpdate = true;
                     weight -= mininons[idx].Item2;
                 }
+            }
+        }
+
+        private void Phase2AI()
+        {
+            NPCUtils.TargetIfRequired(this);
+            var target = NPCUtils.GetTargetPlayer(NPC.target);
+
+            var speed = NPC.velocity.Length();
+
+            // if no target, run away from the screen
+            if (target == null)
+            {
+                NPC.noTileCollide = true;
+                return;
+            }
+            else
+            {
+                NPC.noTileCollide = false;
+            }
+
+            var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
+            var velocityDirection = NPC.velocity.SafeNormalize(Vector2.Zero);
+
+            switch(phase2State)
+            {
+                case Phase2State.Targeting:
+                    var acc = direction.X * 0.21f;
+                    NPC.velocity.X += acc;
+                    NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(Math.Abs(NPC.velocity.X), 3.2f);
+                    // jump
+                    if(Math.Abs(NPC.oldVelocity.X) <= 0.4f && NPC.collideY)
+                    {
+                        NPC.velocity.Y -= 10.0f;
+                    }
+                    break;
             }
         }
 
