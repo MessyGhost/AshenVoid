@@ -54,6 +54,10 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             set => NPC.ai[3] = value;
         }
 
+        public int BGM => MusicLoader.GetMusicSlot(Mod, "Music/FoulAbyssEcho");
+        public static SoundStyle ShootSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionShoot");
+        public static SoundStyle BornSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionBorn");
+
         public override void SetStaticDefaults()
         {
             Main.npcFrameCount[NPC.type] = 1;
@@ -67,8 +71,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.damage = 52;
             NPC.defense = 10;
             NPC.knockBackResist = 0f;
-            NPC.HitSound = SoundID.NPCHit1;
-            NPC.DeathSound = SoundID.NPCDeath1;
             NPC.value = Item.buyPrice(0, 3, 0, 0);
             NPC.boss = true;
             NPC.noGravity = true;
@@ -77,12 +79,18 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.aiStyle = -1;
             NPC.alpha = 255;
 
-            this.aiState = AIState.Born;
+            NPC.HitSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionHurt");
+            NPC.DeathSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionDead");
+
+            Music = BGM;
+
+            aiState = AIState.Born;
         }
 
         public override void AI()
         {
             ++timer;
+
             switch (aiState)
             {
                 case AIState.Born:
@@ -106,6 +114,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         phase1State = Phase1State.AimingLeft;
                         damageTaken = 0;
                         NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        NPCUtils.PlaySound(this, BornSound);
                     }
                     break;
                 case AIState.Phase1:
@@ -202,6 +211,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                     NPCUtils.ForceSyncNPC(projtl.whoAmI);
                                 }
                             }
+
+                            NPCUtils.PlaySound(this, ShootSound);
+
                             if (Main.rand.NextBool(2))
                             {
                                 phase1State = phase1State == Phase1State.AimingLeft ? Phase1State.AimingRight : Phase1State.AimingLeft;
@@ -263,6 +275,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                         NPCUtils.ForceSyncNPC(npc.whoAmI);
                                     }
                                 }      
+
+                                NPCUtils.PlaySound(this, ShootSound);
+
                                 phase1State = Phase1State.Marching;
                                 timer = 0;
                                 NPCUtils.ForceSyncNPC(NPC.whoAmI);

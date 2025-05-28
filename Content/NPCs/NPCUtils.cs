@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Terraria;
+using Terraria.Audio;
 using Terraria.DataStructures;
 using Terraria.ID;
 using Terraria.ModLoader;
@@ -36,6 +37,14 @@ namespace AshenVoid.Content.NPCs
             } else
             {
                 return null;
+            }
+        }
+
+        public static void PlaySound(ModNPC npc, SoundStyle sound)
+        {
+            if (Main.netMode != NetmodeID.Server)
+            {
+                SoundEngine.PlaySound(sound, npc.NPC.Center);
             }
         }
     }
