@@ -413,24 +413,26 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 case Phase2State.Targeting:
                     NPC.noGravity = false;
                     NPC.noTileCollide = false;
+
                     var acc = direction.X * 0.21f;
                     NPC.velocity.X += acc;
                     NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(Math.Abs(NPC.velocity.X), 3.2f);
 
-                    if (NPC.collideY) {
-                        // jump to slam
-                        if (timer > 180)
-                        {
-                            NPC.velocity.Y = -16.0f;
-                            phase2State = Phase2State.BeforeSlam;
-                            timer = 0;
-                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
-                        }
-                        // jump
-                        else if (Math.Abs(NPC.oldVelocity.X) <= 0.4f)
-                        {
-                            NPC.velocity.Y = -13.0f;
-                        }
+                    bool collideX = Collision.SolidCollision((NPC.position + NPC.velocity) - new Vector2(0, 1), NPC.width, NPC.height - 2);
+
+                    if (collideX)
+                    {
+                        NPC.noTileCollide = true;
+                        NPC.velocity.Y = Math.Sign(direction.Y - NPC.height * 0.6f) * Math.Min(Math.Abs(direction.Y - NPC.height * 0.6f), 4.0f);
+                    }
+
+                    // jump to slam
+                    if ((NPC.collideY && timer > 180) || timer > 240)
+                    {
+                        NPC.velocity.Y = -16.0f;
+                        phase2State = Phase2State.BeforeSlam;
+                        timer = 0;
+                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
                     }
 
                     break;
