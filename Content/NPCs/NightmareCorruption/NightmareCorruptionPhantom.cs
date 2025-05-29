@@ -73,7 +73,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             convergeSide = ConvergeSide.Left;
                         }
                     }
-                    else if(timer < 60)
+                    else if(timer < 30)
                     {
                         var toDest = player.Center - NPC.Center;
                         toDest.X += convergeSide == ConvergeSide.Left ? -400 : 400;
@@ -89,7 +89,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         NPC.velocity += acc;
                         NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), 28.0f);
                     }
-                    else if(timer == 60)
+                    else if(timer == 30)
                     {
                         for(int i = 0; i < 3; ++i)
                         {
