@@ -365,6 +365,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         }
 
         private bool onGroundBefore = false;
+        private int numPhantoms = 0;
 
         private void Phase2AI()
         {
@@ -388,7 +389,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             var dist = (target.Center - NPC.Center).Length();
             var velocityDirection = NPC.velocity.SafeNormalize(Vector2.Zero);
 
-            if((dist > 1000.0f || NPC.Center.Y - target.Center.Y > 300.0f) && phase2State != Phase2State.Chasing)
+            if ((dist > 1000.0f || NPC.Center.Y - target.Center.Y > 300.0f) && phase2State != Phase2State.Chasing)
             {
                 phase2State = Phase2State.Chasing;
                 timer = 0;
@@ -401,10 +402,26 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 if (!onGroundBefore && NPC.collideY && NPC.oldVelocity.Y > 3.0f)
                 {
                     var numDusts = (int)Math.Min(Math.Pow(Math.Max(NPC.oldVelocity.Y - 7, 0.0) + 3, 2), 100);
-                    for(int i = 0; i < numDusts; ++i)
+                    for (int i = 0; i < numDusts; ++i)
                     {
                         Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, DustID.CorruptSpray, NPC.velocity.X, -NPC.velocity.Y);
                     }
+                }
+            }
+
+            // phantoms
+            if (damageTaken > 600)
+            {
+                damageTaken = 0;
+                NPC.netUpdate = true;
+
+                if (numPhantoms < 4)
+                {
+                    var phantom = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center,
+                        ModContent.NPCType<NightmareCorruptionPhantom>(),
+                        NPC.whoAmI, NPC.whoAmI);
+                    phantom.netUpdate = true;
+                    ++numPhantoms;
                 }
             }
 
