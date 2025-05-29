@@ -359,6 +359,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             }
         }
 
+        private bool onGroundBefore = false;
+
         private void Phase2AI()
         {
             NPCUtils.TargetIfRequired(this);
@@ -380,12 +382,25 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
             var velocityDirection = NPC.velocity.SafeNormalize(Vector2.Zero);
 
+            // slam dust
+            if (Main.netMode != NetmodeID.Server)
+            {
+                if (!onGroundBefore && NPC.collideY && NPC.velocity.Y > 3.0f)
+                {
+                    for(int i = 0; i < 23; ++i)
+                    {
+                        Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, DustID.CorruptSpray, NPC.velocity.X, -NPC.velocity.Y);
+                    }
+                }
+            }
+
             switch(phase2State)
             {
                 case Phase2State.Targeting:
                     var acc = direction.X * 0.21f;
                     NPC.velocity.X += acc;
                     NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(Math.Abs(NPC.velocity.X), 3.2f);
+
                     // jump
                     if(Math.Abs(NPC.oldVelocity.X) <= 0.4f && NPC.collideY)
                     {
@@ -393,6 +408,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     }
                     break;
             }
+            onGroundBefore = NPC.collideY;
         }
 
         public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
