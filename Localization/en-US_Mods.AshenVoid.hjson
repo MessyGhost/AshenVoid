@@ -3,3 +3,5 @@ NPCs: {
 	NightmareOfCorruption.DisplayName: Nightmare Of Corruption
 	NightmareSpit.DisplayName: Nightmare Spit
 }
+
+Projectiles.NightmareCorruptionGhost.DisplayName: Nightmare Corruption Ghost
