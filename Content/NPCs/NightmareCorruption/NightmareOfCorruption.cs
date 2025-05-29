@@ -9,6 +9,7 @@ using static Terraria.GameContent.Animations.On_Actions;
 using System.Net;
 using rail;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.Xna.Framework.Content;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
@@ -35,6 +36,10 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         enum Phase2State
         {
             Targeting,
+            Chasing,
+            Slaming,
+            AdjustingSlam,
+            BeforeSlam,
         }
 
         private AIState aiState {
@@ -380,14 +385,23 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             }
 
             var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
+            var dist = (target.Center - NPC.Center).Length();
             var velocityDirection = NPC.velocity.SafeNormalize(Vector2.Zero);
+
+            if((dist > 1000.0f || NPC.Center.Y - target.Center.Y > 300.0f) && phase2State != Phase2State.Chasing)
+            {
+                phase2State = Phase2State.Chasing;
+                timer = 0;
+                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+            }
 
             // slam dust
             if (Main.netMode != NetmodeID.Server)
             {
-                if (!onGroundBefore && NPC.collideY && NPC.velocity.Y > 3.0f)
+                if (!onGroundBefore && NPC.collideY && NPC.oldVelocity.Y > 3.0f)
                 {
-                    for(int i = 0; i < 23; ++i)
+                    var numDusts = (int)Math.Min(Math.Pow(Math.Max(NPC.oldVelocity.Y - 7, 0.0) + 3, 2), 100);
+                    for(int i = 0; i < numDusts; ++i)
                     {
                         Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, DustID.CorruptSpray, NPC.velocity.X, -NPC.velocity.Y);
                     }
@@ -397,14 +411,113 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             switch(phase2State)
             {
                 case Phase2State.Targeting:
+                    NPC.noGravity = false;
+                    NPC.noTileCollide = false;
                     var acc = direction.X * 0.21f;
                     NPC.velocity.X += acc;
                     NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(Math.Abs(NPC.velocity.X), 3.2f);
 
-                    // jump
-                    if(Math.Abs(NPC.oldVelocity.X) <= 0.4f && NPC.collideY)
+                    if (NPC.collideY) {
+                        // jump to slam
+                        if (timer > 180)
+                        {
+                            NPC.velocity.Y = -16.0f;
+                            phase2State = Phase2State.BeforeSlam;
+                            timer = 0;
+                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        }
+                        // jump
+                        else if (Math.Abs(NPC.oldVelocity.X) <= 0.4f)
+                        {
+                            NPC.velocity.Y = -13.0f;
+                        }
+                    }
+
+                    break;
+                case Phase2State.BeforeSlam:
+                    NPC.noTileCollide = true;
+                    NPC.noGravity = false;
+                    if (NPC.velocity.Y > 0.0)
                     {
-                        NPC.velocity.Y -= 16.0f;
+                        NPC.velocity.Y = 0.0f;
+                        var xDist = Math.Abs(target.Center.X - NPC.Center.X);
+                        if(xDist > 100.0f)
+                        {
+                            phase2State = Phase2State.AdjustingSlam;
+                        }
+                        else
+                        {
+                            phase2State = Phase2State.Slaming;
+                        }
+                        timer = 0;
+                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                    }
+                    break;
+                case Phase2State.AdjustingSlam:
+                    NPC.noGravity = true;
+                    NPC.noTileCollide = true;
+                    var toTargetX = target.Center.X - NPC.Center.X;
+                    NPC.velocity.X = Math.Sign(toTargetX) * Math.Min(Math.Abs(toTargetX), 14.0f);
+                    if(Math.Abs(toTargetX) < 10.0f)
+                    {
+                        phase2State = Phase2State.Slaming;
+                        timer = 0;
+                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                    }
+                    break;
+                case Phase2State.Chasing:
+                    const int TicksToDisappear = 30;
+                    const int TicksToAppear = 60;
+
+                    if(timer < TicksToDisappear)
+                    {
+                        NPC.alpha = Math.Min(255, NPC.alpha + 255 / (TicksToDisappear - 1));
+                    }
+                    else if(timer < TicksToDisappear + TicksToAppear)
+                    {
+                        var targetPos = target.Center;
+                        targetPos.Y -= 270.0f;
+                        NPC.Center = targetPos;
+                        NPC.alpha = Math.Max(0, NPC.alpha - 255 / (TicksToAppear - 1));
+                    }
+                    else
+                    {
+                        phase2State = Phase2State.Slaming;
+                        timer = 0;
+                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                    }
+                    break;
+                case Phase2State.Slaming:
+                    const int TicksToPrepare = 30;
+                    NPC.velocity.X = 0;
+                    NPC.noGravity = true;
+                    if(timer == 1)
+                    {
+                        NPCUtils.PlaySound(this, SoundID.Roar);
+                    }
+                    else if (timer < TicksToPrepare)
+                    {
+                        const float k = (float)(1 / (double)TicksToPrepare * Math.PI);
+                        NPC.velocity.Y = -100.0f * k * (float)Math.Cos(timer * k);
+                    }
+                    else
+                    {
+                        NPC.velocity.Y += 0.8f;
+                        NPC.velocity.Y = Math.Min(NPC.velocity.Y, 20.0f);
+                        if (timer < TicksToPrepare + 10)
+                        {
+                            NPC.noTileCollide = true;
+                        }
+                        else
+                        {
+                            NPC.noTileCollide = false;
+                            if (NPC.collideY)
+                            {
+                                phase2State = Phase2State.Targeting;
+                                timer = 0;
+                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                            }
+                        }
                     }
                     break;
             }
