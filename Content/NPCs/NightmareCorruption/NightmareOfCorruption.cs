@@ -16,7 +16,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
     [AutoloadBossHead]
     public class NightmareOfCorruption : ModNPC
     {
-        enum AIState
+        private enum AIState
         {
             Born,
             Phase1,
@@ -24,7 +24,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Dying,
         }
 
-        enum Phase1State
+        private enum Phase1State
         {
             Chasing,
             AimingLeft,
@@ -33,7 +33,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Marching,
         }
 
-        enum Phase2State
+        public enum Phase2State
         {
             Targeting,
             Chasing,
