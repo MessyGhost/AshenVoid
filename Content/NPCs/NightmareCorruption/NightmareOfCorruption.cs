@@ -389,7 +389,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     // jump
                     if(Math.Abs(NPC.oldVelocity.X) <= 0.4f && NPC.collideY)
                     {
-                        NPC.velocity.Y -= 10.0f;
+                        NPC.velocity.Y -= 16.0f;
                     }
                     break;
             }
