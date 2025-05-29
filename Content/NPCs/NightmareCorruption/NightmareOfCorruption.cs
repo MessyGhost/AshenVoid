@@ -29,6 +29,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Chasing,
             AimingLeft,
             AimingRight,
+            BeforeSummon,
             Summoning,
             Marching,
         }
@@ -80,10 +81,13 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Main.npcFrameCount[NPC.type] = 1;
         }
 
+        public static int Width => 200;
+        public static int Height => 170;
+
         public override void SetDefaults()
         {
-            NPC.width = 200;
-            NPC.height = 170;
+            NPC.width = Width;
+            NPC.height = Height;
             NPC.lifeMax = 13100;
             NPC.damage = 52;
             NPC.defense = 10;
@@ -219,7 +223,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             // summon
                             else
                             {
-                                phase1State = Phase1State.Summoning;
+                                phase1State = Phase1State.BeforeSummon;
                                 timer = 0;
                                 NPCUtils.ForceSyncNPC(NPC.whoAmI);
                             }
@@ -270,16 +274,40 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), AimingSpeed) + 0.1f * new Vector2((float)Math.Sin(timer / 120.0), (float)Math.Sin(timer / 120.0 + 0.2));
                         }
                         break;
+                    case Phase1State.BeforeSummon:
+                        {
+                            var resFromVel = -velocityDirection * Math.Min(speed, 0.6f);
+                            NPC.velocity += resFromVel;
+                            if(NPC.velocity.Length() < 1E-2f)
+                            {
+                                phase1State = Phase1State.Summoning;
+                                timer = 0;
+                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                            }
+                            break;
+                        }
                     case Phase1State.Summoning:
                         {
-                            var angleTo = velocityDirection.AngleTo(direction);
+                            const int ticksToCharge = 45;
+                            const int ticksToBoost = 20;
                             
-                            if ((Math.Abs(angleTo) > 0.0175f || timer < 20) && timer < 40)
+                            if (timer < ticksToCharge)
                             {
-                                var newVelocity = velocityDirection.RotatedBy(
-                                    Math.Sign(angleTo) * Math.Min(Math.Abs(angleTo), 0.11f))
-                                    * Math.Min(speed + 0.5f, 10.0f);
-                                NPC.velocity = newVelocity;
+                                var k = 1 / (float)ticksToCharge * Math.PI;
+                                var acc = direction * (float)(-55.0f * k * k * Math.Cos(timer * k));
+                                NPC.velocity += acc;
+                            }
+                            else if(timer < ticksToCharge + ticksToBoost)
+                            {
+                                if (timer == ticksToCharge)
+                                {
+                                    var p = Projectile.NewProjectileDirect(NPC.GetSource_FromAI(), NPC.Center,
+                                        Vector2.Zero, ModContent.ProjectileType<NightmareCorruptionGhost>(),
+                                        0, 0);
+                                    p.netUpdate = true;
+                                }
+                                var acc = direction * 16.0f / ticksToBoost;
+                                NPC.velocity += acc;
                             }
                             // shoot
                             else
@@ -318,7 +346,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                 Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, DustID.Corruption, marchingDustVelocity.X, marchingDustVelocity.Y);
                             }
 
-                            if (timer >= 90 && speed <= AimingSpeed)
+                            if (speed <= AimingSpeed)
                             {
                                 if (direction.X > 0)
                                 {
@@ -332,9 +360,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                 damageTaken = 0;
                                 NPCUtils.ForceSyncNPC(NPC.whoAmI);
                             }
-                            else if (timer >= 50)
+                            else if (timer >= 35)
                             {
-                                NPC.velocity = Math.Max(speed - 0.3f, 1E-5f) * velocityDirection;
+                                NPC.velocity = Math.Max(speed - 0.45f, 1E-5f) * velocityDirection;
                             }
                             break;
                         }
