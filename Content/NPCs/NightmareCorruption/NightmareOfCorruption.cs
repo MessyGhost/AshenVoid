@@ -487,6 +487,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         phase2State = Phase2State.Slaming;
                         timer = 0;
                         NPCUtils.ForceSyncNPC(NPC.whoAmI);
+
+                        if(Main.netMode != NetmodeID.Server)
+                        {
+                            for(int i = 0; i < 23; ++i)
+                            {
+                                var v = Main.rand.NextVector2Circular(5.0f, 5.0f);
+                                Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, DustID.CorruptSpray,
+                                    v.X, v.Y);
+                            }
+                        }
                     }
                     break;
                 case Phase2State.Slaming:
@@ -516,11 +526,10 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         }
                         bool collideY = Collision.SolidCollision(NPC.position, NPC.width, NPC.height) && !NPC.noTileCollide;
                         if (collideY || timer > 120)
-                            {
-                                phase2State = Phase2State.Targeting;
-                                timer = 0;
-                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
-                            }
+                        {
+                            phase2State = Phase2State.Targeting;
+                            timer = 0;
+                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
                         }
                     }
                     break;
