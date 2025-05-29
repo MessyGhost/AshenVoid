@@ -469,7 +469,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     break;
                 case Phase2State.Chasing:
                     const int TicksToDisappear = 30;
-                    const int TicksToAppear = 60;
+                    const int TicksToAppear = 20;
 
                     if(timer < TicksToDisappear)
                     {
@@ -493,7 +493,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     const int TicksToPrepare = 30;
                     NPC.velocity.X = 0;
                     NPC.noGravity = true;
-                    if(timer == 1)
+                    if (timer == 1)
                     {
                         NPCUtils.PlaySound(this, SoundID.Roar);
                     }
@@ -506,14 +506,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     {
                         NPC.velocity.Y += 0.8f;
                         NPC.velocity.Y = Math.Min(NPC.velocity.Y, 20.0f);
-                        if (timer < TicksToPrepare + 10)
+                        if (NPC.position.Y + NPC.height >= target.Center.Y)
                         {
-                            NPC.noTileCollide = true;
+                            NPC.noTileCollide = false;
                         }
                         else
                         {
-                            NPC.noTileCollide = false;
-                            if (NPC.collideY)
+                            NPC.noTileCollide = true;
+                        }
+                        bool collideY = Collision.SolidCollision(NPC.position, NPC.width, NPC.height) && !NPC.noTileCollide;
+                        if (collideY || timer > 120)
                             {
                                 phase2State = Phase2State.Targeting;
                                 timer = 0;
