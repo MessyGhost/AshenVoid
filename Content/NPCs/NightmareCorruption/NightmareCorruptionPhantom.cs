@@ -12,9 +12,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         public override string Texture => "AshenVoid/Content/NPCs/NightmareCorruption/NightmareOfCorruption";
 
         private NPC originNPC => Main.npc[(int)NPC.ai[0]];
-        private NightmareOfCorruption.Phase2State phase2State => (NightmareOfCorruption.Phase2State)originNPC.ai[1];
+        private int timer => (int)originNPC.ai[3];
 
         private int order => (originNPC.whoAmI + (int)NPC.ai[1]) % 4;
+
+        private NightmareOfCorruption.Phase2State phase2State => (NightmareOfCorruption.Phase2State)originNPC.ai[1];
 
         public override void SetDefaults()
         {
@@ -105,9 +107,36 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         break;
                     }
                     break;
+                case NightmareOfCorruption.Phase2State.Encircling:
+                    if(timer < 39)
+                    {
+                        var dest = target.Center;
+                        var offset = new Vector2(600, 300);
+                        var factor = new[]
+                        {
+                            (1, -1),
+                            (-1, -1),
+                            (-1, 1),
+                            (1, 1)
+                        };
+
+                        offset.X *= factor[order].Item1;
+                        offset.Y *= factor[order].Item2;
+                        dest += offset;
+
+                        GetToPosition(dest, 36.0f);
+                    }
+                    // shoot
+                    else if(timer == 40 || timer == 50)
+                    {
+                        var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
+                        var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
+                        spit.velocity = direction * 12.0f;
+                        spit.netUpdate = true;
+                    }
+                    break;
                 default:
                     {
-                        timer = 0;
                         FollowOrigin();
                         break;
                     }
