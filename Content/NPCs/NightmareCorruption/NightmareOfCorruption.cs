@@ -417,7 +417,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             var dist = (target.Center - NPC.Center).Length();
             var velocityDirection = NPC.velocity.SafeNormalize(Vector2.Zero);
 
-            if ((dist > 1000.0f || NPC.Center.Y - target.Center.Y > 300.0f) && phase2State != Phase2State.Chasing)
+            if ((dist > 1000.0f || NPC.Center.Y - target.Center.Y > 470.0f) && phase2State != Phase2State.Chasing)
             {
                 phase2State = Phase2State.Chasing;
                 timer = 0;
@@ -461,7 +461,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
                     var acc = direction.X * 0.21f;
                     NPC.velocity.X += acc;
-                    NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(Math.Abs(NPC.velocity.X), 3.2f);
+                    NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(Math.Abs(NPC.velocity.X), 4.68f);
 
                     bool collideX = Collision.SolidCollision((NPC.position + NPC.velocity) - new Vector2(0, 1), NPC.width, NPC.height - 2);
 
@@ -488,7 +488,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     {
                         NPC.velocity.Y = 0.0f;
                         var xDist = Math.Abs(target.Center.X - NPC.Center.X);
-                        if(xDist > 100.0f)
+                        if(xDist > 60.0f)
                         {
                             phase2State = Phase2State.AdjustingSlam;
                         }
@@ -504,7 +504,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     NPC.noGravity = true;
                     NPC.noTileCollide = true;
                     var toTargetX = target.Center.X - NPC.Center.X;
-                    NPC.velocity.X = Math.Sign(toTargetX) * Math.Min(Math.Abs(toTargetX), 14.0f);
+                    NPC.velocity.X = Math.Sign(toTargetX) * Math.Min(Math.Abs(toTargetX), 16.34f);
                     if(Math.Abs(toTargetX) < 10.0f)
                     {
                         phase2State = Phase2State.Slaming;
