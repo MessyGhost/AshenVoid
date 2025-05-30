@@ -42,6 +42,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             AdjustingSlam,
             BeforeSlam,
             Encircling,
+            Sniping,
+            Marching,
         }
 
         private AIState aiState {
@@ -395,6 +397,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private bool onGroundBefore = false;
         private int numPhantoms = 0;
+        public const float SnipeBulletSpeed = 13.0f;
 
         private void Phase2AI()
         {
@@ -418,7 +421,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             var dist = (target.Center - NPC.Center).Length();
             var velocityDirection = NPC.velocity.SafeNormalize(Vector2.Zero);
 
-            if ((dist > 1200.0f || NPC.Center.Y - target.Center.Y > 500.0f) && phase2State != Phase2State.Chasing)
+            if ((dist > 2000.0f || NPC.Center.Y >= target.Center.Y + 700.0f)  && phase2State != Phase2State.Chasing)
             {
                 phase2State = Phase2State.Chasing;
                 timer = 0;
@@ -457,31 +460,51 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             switch(phase2State)
             {
                 case Phase2State.Targeting:
-                    NPC.noGravity = false;
-                    NPC.noTileCollide = false;
-
-                    var acc = direction.X * 0.21f;
-                    NPC.velocity.X += acc;
-                    NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(Math.Abs(NPC.velocity.X), 4.68f);
-
-                    bool collideX = Collision.SolidCollision((NPC.position + NPC.velocity) - new Vector2(0, 1), NPC.width, NPC.height - 2);
-
-                    if (collideX)
                     {
-                        NPC.noTileCollide = true;
-                        NPC.velocity.Y = Math.Sign(direction.Y - NPC.height * 0.6f) * Math.Min(Math.Abs(direction.Y - NPC.height * 0.6f), 4.0f);
-                    }
+                        NPC.noGravity = false;
+                        NPC.noTileCollide = false;
 
-                    // jump to slam
-                    if ((NPC.collideY && timer > 180) || timer > 240)
-                    {
-                        NPC.velocity.Y = -16.0f;
-                        phase2State = Phase2State.BeforeSlam;
-                        timer = 0;
-                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
-                    }
+                        //bool collideX = Collision.SolidCollision((NPC.position + NPC.velocity) - new Vector2(0, 1), NPC.width, NPC.height - 2);
+                        bool collideY = Collision.SolidCollision((NPC.position + NPC.velocity) - new Vector2(1, 0), NPC.width - 2, NPC.height);
 
-                    break;
+                        /*if (collideX)
+                        {
+                            NPC.noTileCollide = true;
+                            NPC.velocity.Y = Math.Sign(direction.Y - NPC.height * 0.6f) * Math.Min(Math.Abs(direction.Y - NPC.height * 0.6f), 4.0f);
+                        }*/
+
+                        if (collideY)
+                        {
+                            NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(0.0f, Math.Abs(NPC.velocity.X) - 0.4f);
+                        }
+                        else
+                        {
+                            NPC.velocity.X = Math.Sign(NPC.velocity.X) * Math.Min(0.0f, Math.Abs(NPC.velocity.X) - 0.2f);
+                        }
+
+                        // jump to slam
+                        if ((collideY && timer > 25) || timer > 240)
+                        {
+                            var heightDiff = Math.Max(0.0f, NPC.Center.Y - target.Center.Y);
+                            if (heightDiff < 200.0f)
+                            {
+                                NPC.velocity.Y = -16.0f;
+                            }
+                            else if(heightDiff < 400.0f)
+                            {
+                                NPC.velocity.Y = -20.0f;
+                            }
+                            else
+                            {
+                                NPC.velocity.Y = -24.0f;
+                            }
+                            phase2State = Phase2State.BeforeSlam;
+                            timer = 0;
+                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        }
+
+                        break;
+                    }
                 case Phase2State.BeforeSlam:
                     NPC.noTileCollide = true;
                     NPC.noGravity = false;
@@ -515,7 +538,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     break;
                 case Phase2State.Chasing:
                     const int TicksToDisappear = 30;
-                    const int TicksToAppear = 20;
+                    const int TicksToAppear = 60;
 
                     if(timer < TicksToDisappear)
                     {
@@ -549,6 +572,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     const int TicksToPrepare = 30;
                     NPC.velocity.X = 0;
                     NPC.noGravity = true;
+                    NPC.noTileCollide = true;
                     if (timer == 1)
                     {
                         NPCUtils.PlaySound(this, SoundID.Roar);
@@ -562,7 +586,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     {
                         NPC.velocity.Y += 0.8f;
                         NPC.velocity.Y = Math.Min(NPC.velocity.Y, 20.0f);
-                        if (NPC.position.Y + NPC.height >= target.Center.Y)
+                        if (NPC.position.Y + NPC.height + NPC.velocity.Y >= target.Center.Y)
                         {
                             NPC.noTileCollide = false;
                         }
@@ -573,7 +597,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         bool collideY = Collision.SolidCollision(NPC.position, NPC.width, NPC.height) && !NPC.noTileCollide;
                         if (collideY || timer > 120)
                         {
-                            /*phase2State = Phase2State.Targeting;*/
                             phase2State = Phase2State.Encircling;
                             timer = 0;
                             NPCUtils.ForceSyncNPC(NPC.whoAmI);
@@ -581,7 +604,49 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     }
                     break;
                 case Phase2State.Encircling:
-                    if(timer == 60)
+                    NPC.noTileCollide = false;
+                    NPC.noGravity = false;
+                    if(timer == 90)
+                    {
+                        //if(Main.rand.NextBool())
+                        //{
+                            phase2State = Phase2State.Sniping;
+                        //}
+                        //else
+                        //{
+                            //phase2State = Phase2State.Marching;
+                        //}
+                        timer = 0;
+                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                    }
+                    break;
+                case Phase2State.Sniping:
+                    NPC.noTileCollide = false;
+                    NPC.noGravity = false;
+                    if (timer == 90)
+                    {
+                        var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center,
+                            ModContent.NPCType<NightmareSpit>());
+                        spit.velocity = direction * SnipeBulletSpeed;
+                        NPCUtils.ForceSyncNPC(spit.whoAmI);
+
+                        phase2State = Phase2State.Marching;
+                        timer = 0;
+                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                    }
+                    break;
+                case Phase2State.Marching:
+                    NPC.noTileCollide = true;
+                    NPC.noGravity = true;
+                    if(timer == 15)
+                    {
+                        NPC.velocity = direction * 2.0f;
+                    }
+                    else if (15 < timer && timer < 45)
+                    {
+                        NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length() + 2.0f, 21.0f);
+                    }
+                    else if (timer == 50)
                     {
                         phase2State = Phase2State.Targeting;
                         timer = 0;

@@ -63,8 +63,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             switch (phase2State)
             {
                 case NightmareOfCorruption.Phase2State.Slaming:
-                    ++timer;
-
                     // set which side to converge
                     if (timer == 1)
                     {
@@ -98,6 +96,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             var toTarget = target.Center - NPC.Center;
                             var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
                             spit.velocity = toTarget.SafeNormalize(Vector2.UnitX).RotateRandom(0.04f) * 18.0f;
+                            NPCUtils.ForceSyncNPC(spit.whoAmI);
                         }
                     }
                     // after shoot
@@ -108,7 +107,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     }
                     break;
                 case NightmareOfCorruption.Phase2State.Encircling:
-                    if(timer < 39)
+                    if(timer < 79)
                     {
                         var dest = target.Center;
                         var offset = new Vector2(600, 300);
@@ -124,17 +123,52 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         offset.Y *= factor[order].Item2;
                         dest += offset;
 
-                        GetToPosition(dest, 36.0f);
+                        GetToPosition(dest, 46.0f);
                     }
                     // shoot
-                    else if(timer == 40 || timer == 50)
+                    else if(timer == 80 || timer == 89)
                     {
                         var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
                         var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
                         spit.velocity = direction * 12.0f;
-                        spit.netUpdate = true;
+                        NPCUtils.ForceSyncNPC(spit.whoAmI);
                     }
                     break;
+                case NightmareOfCorruption.Phase2State.Sniping:
+                    {
+                        if(timer == 89 || timer == 69)
+                        {
+                            var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
+                            var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
+                            spit.velocity = direction * NightmareOfCorruption.SnipeBulletSpeed;
+                            NPCUtils.ForceSyncNPC(spit.whoAmI);
+                        }
+                        else
+                        {
+                            var dest = originNPC.Center;
+                            var offset = new Vector2(200, 200);
+                            var factor = new[]
+                            {
+                                (1, -1),
+                                (-1, -1),
+                                (-1, 1),
+                                (1, 1)
+                            };
+                            offset.X *= factor[order].Item1;
+                            offset.Y *= factor[order].Item2;
+                            dest += offset;
+                            GetToPosition(dest, 36.0f);
+                        }
+                        break;
+                    }
+                case NightmareOfCorruption.Phase2State.Marching:
+                    {
+                        var dest = originNPC.Center;
+                        var offset = new Vector2(200, 200);
+                        dest += offset * Vector2.UnitX.RotatedBy(order * MathHelper.PiOver2 + Math.Pow(timer / 15.0f, 2.0f));
+                        GetToPosition(dest, 36.0f);
+                        break;
+                    }
                 default:
                     {
                         FollowOrigin();
@@ -155,14 +189,20 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), 14.0f);
         }
 
-        private void GetToPosition(Vector2 targetPos, float maxSpeed = 28.0f)
+        private void GetToPosition(Vector2 targetPos, float maxSpeed = 28.0f, float maxAcceleration = 5.0f, float resFactor = 2.0f)
         {
             var toDest = targetPos - NPC.Center;
+            var dist = toDest.Length();
+            var speed = NPC.velocity.Length();
 
             var direction = toDest.SafeNormalize(Vector2.Zero);
-            var dist = toDest.Length();
-            var accToDest = direction * Math.Min(6.0f, (float)Math.Pow(dist, 0.4f));
-            var resFromVel = -NPC.velocity.SafeNormalize(Vector2.Zero) * (float)Math.Min(Math.Pow(NPC.velocity.Length(), 0.4), NPC.velocity.Length());
+            float accLen = maxAcceleration;
+
+            // we need disturbance
+            float resLen = Math.Min(Math.Max(dist - maxAcceleration * maxAcceleration, 0.0f) / maxAcceleration * maxAcceleration, maxAcceleration);
+            var accToDest = direction * accLen;
+            var resFromVel = -NPC.velocity.SafeNormalize(Vector2.Zero) *
+                (float)Math.Min(Math.Pow(NPC.velocity.Length() / maxSpeed, resFactor) * resLen, NPC.velocity.Length());
             var acc = accToDest + resFromVel;
             NPC.velocity += acc;
             NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), maxSpeed);
