@@ -53,8 +53,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 NPC.Center = originNPC.Center + Main.rand.NextVector2Circular(100.0f, 100.0f);
             }
 
-            var player = NPCUtils.GetTargetPlayer(originNPC.target);
-            if (player == null) {
+            var target = NPCUtils.GetTargetPlayer(originNPC.target);
+            if (target == null) {
                 return;
             }
 
@@ -66,38 +66,34 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     // set which side to converge
                     if (timer == 1)
                     {
-                        if(player.velocity.X > 0)
+                        if(target.velocity.X > 0)
                         {
                             convergeSide = ConvergeSide.Right;
                         }
-                        else
+                        else if(target.velocity.X < 0)
                         {
                             convergeSide = ConvergeSide.Left;
+                        }
+                        else
+                        {
+                            convergeSide = target.direction == 1 ? ConvergeSide.Right : ConvergeSide.Left;
                         }
                     }
                     // converge
                     else if(timer < 30)
                     {
-                        var toDest = player.Center - NPC.Center;
-                        toDest.X += convergeSide == ConvergeSide.Left ? -400 : 400;
-                        const float k = 0.7264f;
-                        var offset = 140.0f * new Vector2((float)Math.Cos(NPC.whoAmI * k), (float)Math.Sin(NPC.whoAmI * k));
-                        toDest += offset;
-
-                        var direction = toDest.SafeNormalize(Vector2.Zero);
-                        var dist = toDest.Length();
-                        var accToPlayer = direction * Math.Min(8.0f, (float)Math.Pow(dist, 0.4f));
-                        var resFromVel = -NPC.velocity.SafeNormalize(Vector2.Zero) * (float)Math.Min(Math.Pow(NPC.velocity.Length(), 0.3), NPC.velocity.Length());
-                        var acc = accToPlayer - resFromVel;
-                        NPC.velocity += acc;
-                        NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), 28.0f);
+                        var dest = target.Center;
+                        dest.X += convergeSide == ConvergeSide.Left ? -400 : 400;
+                        var offset = 140.0f * new Vector2((float)Math.Cos(order * MathHelper.PiOver2), (float)Math.Sin(order * MathHelper.PiOver2));
+                        dest += offset;
+                        GetToPosition(dest);
                     }
                     // shoot
                     else if(timer == 30)
                     {
                         for(int i = 0; i < 3; ++i)
                         {
-                            var toTarget = player.Center - NPC.Center;
+                            var toTarget = target.Center - NPC.Center;
                             var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
                             spit.velocity = toTarget.SafeNormalize(Vector2.UnitX).RotateRandom(0.04f) * 18.0f;
                         }
@@ -128,6 +124,19 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
             NPC.velocity += acc;
             NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), 14.0f);
+        }
+
+        private void GetToPosition(Vector2 targetPos, float maxSpeed = 28.0f)
+        {
+            var toDest = targetPos - NPC.Center;
+
+            var direction = toDest.SafeNormalize(Vector2.Zero);
+            var dist = toDest.Length();
+            var accToDest = direction * Math.Min(6.0f, (float)Math.Pow(dist, 0.4f));
+            var resFromVel = -NPC.velocity.SafeNormalize(Vector2.Zero) * (float)Math.Min(Math.Pow(NPC.velocity.Length(), 0.4), NPC.velocity.Length());
+            var acc = accToDest + resFromVel;
+            NPC.velocity += acc;
+            NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), maxSpeed);
         }
     }
 }
