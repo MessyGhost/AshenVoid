@@ -418,7 +418,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             var dist = (target.Center - NPC.Center).Length();
             var velocityDirection = NPC.velocity.SafeNormalize(Vector2.Zero);
 
-            if ((dist > 1000.0f || NPC.Center.Y - target.Center.Y > 470.0f) && phase2State != Phase2State.Chasing)
+            if ((dist > 1200.0f || NPC.Center.Y - target.Center.Y > 500.0f) && phase2State != Phase2State.Chasing)
             {
                 phase2State = Phase2State.Chasing;
                 timer = 0;
