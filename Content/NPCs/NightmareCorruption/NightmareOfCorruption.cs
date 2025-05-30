@@ -439,7 +439,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             }
 
             // phantoms
-            if (damageTaken > 600)
+            if (damageTaken > NPC.lifeMax * 0.1f)
             {
                 damageTaken = 0;
                 NPC.netUpdate = true;
@@ -448,7 +448,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 {
                     var phantom = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center,
                         ModContent.NPCType<NightmareCorruptionPhantom>(),
-                        NPC.whoAmI, NPC.whoAmI);
+                        NPC.whoAmI, NPC.whoAmI, numPhantoms);
                     phantom.netUpdate = true;
                     ++numPhantoms;
                 }

@@ -14,11 +14,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private NPC originNPC => Main.npc[(int)NPC.ai[0]];
         private NightmareOfCorruption.Phase2State phase2State => (NightmareOfCorruption.Phase2State)originNPC.ai[1];
 
-        private int timer
-        {
-            get => (int)NPC.ai[1];
-            set => NPC.ai[1] = value;
-        }
+        private int order => (originNPC.whoAmI + (int)NPC.ai[1]) % 4;
 
         public override void SetDefaults()
         {
