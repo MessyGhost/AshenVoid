@@ -23,6 +23,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Projectile.tileCollide = false;
             Projectile.ignoreWater = true;
             Projectile.damage = 0;
+            Projectile.hostile = false;
+            Projectile.friendly = false;
         }
 
         public override void AI()
@@ -40,6 +42,21 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                  Color.White * (1f - Projectile.alpha / 255f),
                                  Projectile.rotation, texture.Size() / 2,
                                  Projectile.scale, SpriteEffects.None, 0f);
+            return false;
+        }
+
+        public override bool? CanHitNPC(NPC target)
+        {
+            return false;
+        }
+
+        public override bool CanHitPlayer(Player target)
+        {
+            return false;
+        }
+
+        public override bool CanHitPvp(Player target)
+        {
             return false;
         }
     }
