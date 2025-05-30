@@ -41,6 +41,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Slaming,
             AdjustingSlam,
             BeforeSlam,
+            Encircling,
         }
 
         private AIState aiState {
@@ -572,6 +573,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         bool collideY = Collision.SolidCollision(NPC.position, NPC.width, NPC.height) && !NPC.noTileCollide;
                         if (collideY || timer > 120)
                         {
+                            /*phase2State = Phase2State.Targeting;*/
+                            phase2State = Phase2State.Encircling;
+                            timer = 0;
+                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        }
+                    }
+                    break;
+                case Phase2State.Encircling:
+                    if(timer == 60)
+                    {
                             phase2State = Phase2State.Targeting;
                             timer = 0;
                             NPCUtils.ForceSyncNPC(NPC.whoAmI);
