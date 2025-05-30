@@ -583,10 +583,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 case Phase2State.Encircling:
                     if(timer == 60)
                     {
-                            phase2State = Phase2State.Targeting;
-                            timer = 0;
-                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
-                        }
+                        phase2State = Phase2State.Targeting;
+                        timer = 0;
+                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
                     }
                     break;
             }
