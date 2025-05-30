@@ -123,9 +123,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             var toDest = originNPC.Center - NPC.Center;
             var direction = toDest.SafeNormalize(Vector2.Zero);
             var dist = toDest.Length();
-            var accToPlayer = direction * Math.Min(4.0f, (float)Math.Pow(dist, 0.4f));
-            var resFromVel = -NPC.velocity.SafeNormalize(Vector2.Zero) * (float)Math.Min(Math.Pow(NPC.velocity.Length(), 0.3), NPC.velocity.Length());
-            var acc = accToPlayer - resFromVel;
+            var accToOrigin = direction * Math.Min(3.5f, (float)Math.Pow(dist, 0.6f));
+            var acc = accToOrigin;
 
             NPC.velocity += acc;
             NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), 14.0f);
