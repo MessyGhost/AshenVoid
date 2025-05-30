@@ -51,6 +51,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 NPC.active = false;
                 return;
             }
+            // if too far from the origin, teleport to the origin
+            else if((originNPC.Center - NPC.Center).Length() > 3400)
+            {
+                NPC.Center = originNPC.Center + Main.rand.NextVector2Circular(100.0f, 100.0f);
+            }
+
             var player = NPCUtils.GetTargetPlayer(originNPC.target);
             if (player == null) {
                 return;
@@ -73,6 +79,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             convergeSide = ConvergeSide.Left;
                         }
                     }
+                    // converge
                     else if(timer < 30)
                     {
                         var toDest = player.Center - NPC.Center;
@@ -89,6 +96,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         NPC.velocity += acc;
                         NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), 28.0f);
                     }
+                    // shoot
                     else if(timer == 30)
                     {
                         for(int i = 0; i < 3; ++i)
@@ -98,6 +106,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             spit.velocity = toTarget.SafeNormalize(Vector2.UnitX).RotateRandom(0.04f) * 18.0f;
                         }
                     }
+                    // after shoot
                     else
                     {
                         FollowOrigin();
