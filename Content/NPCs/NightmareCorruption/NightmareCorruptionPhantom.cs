@@ -18,6 +18,21 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private NightmareOfCorruption.Phase2State phase2State => (NightmareOfCorruption.Phase2State)originNPC.ai[1];
 
+        public override void SetStaticDefaults()
+        {
+            Main.npcFrameCount[Type] = NightmareOfCorruption.FrameCount;
+        }
+
+        public override void FindFrame(int frameHeight)
+        {
+            ++NPC.frameCounter;
+            if (NPC.frameCounter >= 10)
+            {
+                NPC.frameCounter = 0;
+                NPC.frame.Y = (NPC.frame.Y + frameHeight) % (frameHeight * 4);
+            }
+        }
+
         public override void SetDefaults()
         {
             NPC.width = 100;

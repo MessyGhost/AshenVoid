@@ -38,9 +38,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Texture2D texture = ModContent.Request<Texture2D>("AshenVoid/Content/NPCs/NightmareCorruption/NightmareOfCorruption").Value;
             Vector2 drawPos = Projectile.Center - Main.screenPosition;
 
-            Main.spriteBatch.Draw(texture, drawPos, null,
+            Main.spriteBatch.Draw(texture, drawPos, new Rectangle(0, 0, texture.Width, texture.Height / NightmareOfCorruption.FrameCount),
                                  Color.White * (1f - Projectile.alpha / 255f),
-                                 Projectile.rotation, texture.Size() / 2,
+                                 Projectile.rotation, new Vector2(texture.Width, texture.Height / NightmareOfCorruption.FrameCount) / 2,
                                  Projectile.scale, SpriteEffects.None, 0f);
             return false;
         }

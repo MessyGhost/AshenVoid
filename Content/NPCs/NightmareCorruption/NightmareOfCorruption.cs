@@ -79,13 +79,15 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         public static SoundStyle ShootSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionShoot");
         public static SoundStyle BornSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionBorn");
 
+        public const int FrameCount = 4;
+
         public override void SetStaticDefaults()
         {
-            Main.npcFrameCount[NPC.type] = 1;
+            Main.npcFrameCount[Type] = FrameCount;
         }
 
-        public static int Width => 200;
-        public static int Height => 170;
+        public const int Width = 200;
+        public const int Height = 170;
 
         public override void SetDefaults()
         {
@@ -108,7 +110,19 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
             Music = BGM;
 
+            Main.npcFrameCount[NPC.type] = 4;
+
             aiState = AIState.Born;
+        }
+
+        public override void FindFrame(int frameHeight)
+        {
+            ++NPC.frameCounter;
+            if(NPC.frameCounter >= 10)
+            {
+                NPC.frameCounter = 0;
+                NPC.frame.Y = (NPC.frame.Y + frameHeight) % (frameHeight * FrameCount);
+            }
         }
 
         public override void AI()
