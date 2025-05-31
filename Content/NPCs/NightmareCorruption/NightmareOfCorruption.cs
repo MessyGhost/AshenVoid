@@ -512,6 +512,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             {
                                 NPC.velocity.Y = -24.0f;
                             }
+                            NPC.noTileCollide = true;
                             phase2State = Phase2State.BeforeSlam;
                             timer = 0;
                             NPCUtils.ForceSyncNPC(NPC.whoAmI);
