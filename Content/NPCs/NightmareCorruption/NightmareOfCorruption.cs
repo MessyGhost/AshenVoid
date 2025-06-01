@@ -86,8 +86,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Main.npcFrameCount[Type] = FrameCount;
         }
 
-        public const int Width = 200;
-        public const int Height = 170;
+        public const int Width = 242;
+        public const int Height = 192;
 
         public override void SetDefaults()
         {
@@ -621,7 +621,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 case Phase2State.Encircling:
                     NPC.noTileCollide = false;
                     NPC.noGravity = false;
-                    if(timer == 90)
+                    if(timer == 105)
                     {
                         //if(Main.rand.NextBool())
                         //{
@@ -638,7 +638,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 case Phase2State.Sniping:
                     NPC.noTileCollide = false;
                     NPC.noGravity = false;
-                    if (timer == 90)
+                    if (timer == 89)
                     {
                         var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center,
                             ModContent.NPCType<NightmareSpit>());

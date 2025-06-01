@@ -4,4 +4,7 @@ NPCs: {
 	NightmareSpit.DisplayName: Nightmare Spit
 }
 
-Projectiles.NightmareCorruptionGhost.DisplayName: Nightmare Corruption Ghost
+Projectiles: {
+	NightmareCorruptionGhost.DisplayName: Nightmare Corruption Ghost
+	NightmareCorrptionPhantomGhost.DisplayName: Nightmare Corrption Phantom Ghost
+}

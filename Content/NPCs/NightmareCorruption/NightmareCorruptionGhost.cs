@@ -13,13 +13,15 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
     public class NightmareCorruptionGhost : ModProjectile
     {
         public override string Texture => "AshenVoid/Content/NPCs/NightmareCorruption/NightmareOfCorruption";
+        public const int Life = 30;
+        public const int Alpha = 105;
 
         public override void SetDefaults()
         {
             Projectile.width = NightmareOfCorruption.Width;
             Projectile.height = NightmareOfCorruption.Height;
-            Projectile.alpha = 105;
-            Projectile.timeLeft = 30;
+            Projectile.alpha = Alpha;
+            Projectile.timeLeft = Life;
             Projectile.tileCollide = false;
             Projectile.ignoreWater = true;
             Projectile.damage = 0;
@@ -30,7 +32,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         public override void AI()
         {
             Projectile.scale += 0.1f;
-            Projectile.alpha += 5;
+            Projectile.alpha += (255 - Alpha) / Life;
         }
 
         public override bool PreDraw(ref Color lightColor)

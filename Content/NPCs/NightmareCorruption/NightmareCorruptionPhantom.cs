@@ -33,6 +33,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             }
         }
 
+        public const int Alpha = 188;
+
         public override void SetDefaults()
         {
             NPC.width = 100;
@@ -41,7 +43,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.noGravity = true;
             NPC.noTileCollide = true;
             NPC.dontTakeDamage = true;
-            NPC.alpha = 188;
+            NPC.alpha = Alpha;
             NPC.value = 0f;
             NPC.damage = 0;
             NPC.dontTakeDamage = true;
@@ -59,13 +61,13 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         public override void AI()
         {
-            if(!originNPC.active)
+            if (!originNPC.active)
             {
                 NPC.active = false;
                 return;
             }
             // if too far from the origin, teleport to the origin
-            else if((originNPC.Center - NPC.Center).Length() > 3400)
+            else if ((originNPC.Center - NPC.Center).Length() > 3400)
             {
                 NPC.Center = originNPC.Center + Main.rand.NextVector2Circular(100.0f, 100.0f);
             }
@@ -81,11 +83,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     // set which side to converge
                     if (timer == 1)
                     {
-                        if(target.velocity.X > 0)
+                        if (target.velocity.X > 0)
                         {
                             convergeSide = ConvergeSide.Right;
                         }
-                        else if(target.velocity.X < 0)
+                        else if (target.velocity.X < 0)
                         {
                             convergeSide = ConvergeSide.Left;
                         }
@@ -95,7 +97,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         }
                     }
                     // converge
-                    else if(timer < 30)
+                    else if (timer < 30)
                     {
                         var dest = target.Center;
                         dest.X += convergeSide == ConvergeSide.Left ? -400 : 400;
@@ -104,9 +106,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         GetToPosition(dest);
                     }
                     // shoot
-                    else if(timer == 30)
+                    else if (timer == 30)
                     {
-                        for(int i = 0; i < 3; ++i)
+                        for (int i = 0; i < 3; ++i)
                         {
                             var toTarget = target.Center - NPC.Center;
                             var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
@@ -122,7 +124,19 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     }
                     break;
                 case NightmareOfCorruption.Phase2State.Encircling:
-                    if(timer < 79)
+                    // shoot
+                    if (timer == 89)
+                    {
+                        var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
+                        var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
+                        spit.velocity = direction * 12.0f;
+                        NPC.alpha = Alpha;
+                        NPC.color = Color.Transparent;
+                        NPCUtils.ForceSyncNPC(spit.whoAmI);
+                        NPCUtils.PlaySound(this, NightmareOfCorruption.ShootSound);
+                    }
+                    // follow
+                    else
                     {
                         var dest = target.Center;
                         var offset = new Vector2(600, 300);
@@ -139,14 +153,18 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         dest += offset;
 
                         GetToPosition(dest, 46.0f);
-                    }
-                    // shoot
-                    else if(timer == 80 || timer == 89)
-                    {
-                        var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
-                        var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
-                        spit.velocity = direction * 12.0f;
-                        NPCUtils.ForceSyncNPC(spit.whoAmI);
+
+                        if(timer == 49)
+                        {
+                            var g = Projectile.NewProjectileDirect(NPC.GetSource_FromAI(), NPC.Center,
+                                Vector2.Zero, ModContent.ProjectileType<NightmareCorrptionPhantomGhost>(), 0, 0, 0, NPC.whoAmI);
+                            g.netUpdate = true;
+                        }
+                        else if(79 <= timer && timer < 89)
+                        {
+                            //NPC.alpha = 0;
+                            NPC.color = Color.White;
+                        }
                     }
                     break;
                 case NightmareOfCorruption.Phase2State.Sniping:
