@@ -14,7 +14,7 @@ namespace AshenVoid.Functions.NPCChat.Flows
         /// <summary>
         /// 选项文本
         /// </summary>
-        public string Text
+        public Func<string> GetText
         {
             get; set;
         }
@@ -27,9 +27,9 @@ namespace AshenVoid.Functions.NPCChat.Flows
             get; set;
         }
 
-        public NPCChatOption(string text, NPCChatParagraph next)
+        public NPCChatOption(Func<string> text, NPCChatParagraph next)
         {
-            Text = text;
+            GetText = text;
             Next = next;
         }
     }
@@ -44,15 +44,15 @@ namespace AshenVoid.Functions.NPCChat.Flows
         /// </summary>
         public virtual string Text
         {
-            get => _text;
+            get => _text.Invoke();
         }
 
         /// <summary>
         /// 选项列表（可为空）
         /// </summary>
-        public List<NPCChatOption>? Options
+        public virtual List<NPCChatOption>? Options
         {
-            get; set;
+            get;
         }
 
         /// <summary>
@@ -77,28 +77,73 @@ namespace AshenVoid.Functions.NPCChat.Flows
         public float Interval { get; set; } = 0f;
 
 
-        private string _text;
+        private Func<string> _text;
 
-        public NPCChatParagraph(string text)
+        public NPCChatParagraph(Func<string> text)
         {
             Next = this;
             _text = text;
         }
+
+        /// <summary>
+        /// 决定UI是否立即显示该段落文本，而不是打字机效果
+        /// </summary>
+        public virtual bool ImmediateShow
+        {
+            get => false;
+        }
+
+        /// <summary>
+        /// 当用户选择了某个选项时调用
+        /// </summary>
+        /// <param name="index"></param>
+        public virtual void UserChooseOption(int index)
+        {
+        }
+
+        /// <summary>
+        /// 当用户点击下一步时调用
+        /// </summary>
+        public virtual void UserNext()
+        {
+
+        }
     }
 
-    public class NPCChatParagraphFunc : NPCChatParagraph
+    public class NPCChatLoopBackAllOptionsParagraph : NPCChatParagraph
     {
-        /// <summary>
-        /// 段落执行的动作
-        /// </summary>
-        public Func<string> GetText { get; set; }
-        public override string Text
+        private List<(Func<string>, NPCChatParagraph)> _options;
+        private int _initalOptionsCount;
+        public NPCChatLoopBackAllOptionsParagraph(Func<string> func, List<(Func<string>, NPCChatParagraph)> options) : base(func)
         {
-            get => GetText() ?? base.Text;
+            _options = options;
+            _initalOptionsCount = options.Count;
+            foreach (var (option, para) in options)
+            {
+                para.Next = this; // 设置每个选项的下一段落为当前段落
+            }
         }
-        public NPCChatParagraphFunc(Func<string> func) : base("")
+        public override bool ImmediateShow => _options.Count < _initalOptionsCount;
+
+        public override List<NPCChatOption>? Options
         {
-            GetText = func;
+            get
+            {
+                if (_options == null || _options.Count == 0)
+                    return null;
+                return _options.Select(option => new NPCChatOption(option.Item1, option.Item2)).ToList();
+            }
+        }
+
+        public override void UserChooseOption(int index)
+        {
+            // 移除选择了的选项
+            _options.RemoveAt(index);
+
+            if (_options.Count == 1)
+            {
+                _options[0].Item2.Next = Next;
+            }
         }
     }
 

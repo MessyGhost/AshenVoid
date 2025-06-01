@@ -61,12 +61,21 @@ namespace AshenVoid.Functions.NPCChat
                     var examplePerson = (ExamplePerson)npc.ModNPC;
                     // 将NPC的对话流程数据上传给UI渲染模块
                     var flow = examplePerson.GetFlow;
-                    flow.Update(1 / 60.0f, _activeNPCChatUI);
+                    flow.Update(1 / 60.0f);
                     int option = _activeNPCChatUI.GetAndClearChosenOption();
                     if (option != -1)
                     {
                         flow.SelectOption(option);
                     }
+                    else
+                    {
+                        bool nextStep = _activeNPCChatUI.GetAndClearNextStep();
+                        if (nextStep)
+                        {
+                            flow.GoToNext();
+                        }
+                    }
+
                     if (_oldChatParagraph != flow.Current)
                     {
                         _oldChatParagraph = flow.Current;
@@ -95,11 +104,11 @@ namespace AshenVoid.Functions.NPCChat
         {
             if (flow.Current != null)
             {
-                _activeNPCChatUI.Text = flow.Current.Text;
+                _activeNPCChatUI.SetPage(flow.Current.Text, flow.Current.ImmediateShow);
 
                 if (flow.Current.Options != null && flow.Current.Options.Count > 0)
                 {
-                    _activeNPCChatUI.SetOptions(flow.Current.Options.Select(o => o.Text).ToList());
+                    _activeNPCChatUI.SetOptions(flow.Current.Options.Select(o => o.GetText()).ToList());
 
                 }
                 else

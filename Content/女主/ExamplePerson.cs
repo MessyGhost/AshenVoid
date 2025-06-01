@@ -32,7 +32,6 @@ namespace AshenVoid.Content.女主
         private static int ShimmerHeadIndex;
         private static Profiles.StackedNPCProfile NPCProfile;
         private NPCChatControlFlow _flow;
-        private NPCChatParagraph _para1;
 
 
         public NPCChatControlFlow GetFlow
@@ -112,36 +111,43 @@ namespace AshenVoid.Content.女主
 
             AnimationType = NPCID.Guide;
 
+
+            BuildNPCTalk();
+        }
+
+        public void BuildNPCTalk()
+        {
             // 构建段落，这部分之后可以用别的工具构建，而不是写死在这里
-            _para1 = new NPCChatParagraph("你好，勇士！") { Interval = 1.0f };
-            var para2 = new NPCChatParagraph("你要做什么？") { Interval = 0.5f };
-            var para3 = new NPCChatParagraph("再见！") { Interval = 0.5f };
-            var para4 = new NPCChatParagraph("祝你好运！") {  Interval = 0.5f };
-            var para5 = new NPCChatParagraphFunc(GetChat); // 这里可以用函数来获取对话内容
+            var para1 = new NPCChatParagraph(() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q1").Value);
+            var para2 = new NPCChatParagraph(() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q2").Value);
 
-            _para1.Next = para2;
-            para2.Options = new List<NPCChatOption>
-            {
-                new NPCChatOption("冒险", para4),
-                new NPCChatOption("休息", para3)
-            };
+            var para3_1 = new NPCChatParagraph(() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q3_A1").Value);
+            var para3_2 = new NPCChatParagraph(() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q3_A2").Value);
+            var para3_3 = new NPCChatParagraph(() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q3_A3").Value);
 
-            para3.Options = new List<NPCChatOption>
-            {
-                new NPCChatOption("重来", para2),
-                new NPCChatOption("继续", para5)
-            };
+            var para3 = new NPCChatLoopBackAllOptionsParagraph(() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q3").Value,
+                new List<(Func<string>, NPCChatParagraph)> {
+                    (() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q3_O1").Value, para3_1),
+                    (() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q3_O2").Value, para3_2),
+                    (() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q3_O3").Value, para3_3),
+                });
 
-            para4.Options = new List<NPCChatOption>
-            {
-                new NPCChatOption("重来", para2),
-                new NPCChatOption("继续", para5)
-            };
+            para1.Next = para2;
+            para2.Next = para3;
+
+            var para4 = new NPCChatParagraph(()=> Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q4").Value);
+            var para5 = new NPCChatParagraph(() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q5").Value);
+            var para6 = new NPCChatParagraph(() => Mod.GetLocalization($"{nameof(ExamplePerson)}.Dialogue.FirstMet.Q6").Value);
+
+            para3.Next = para4;
+            para4.Next = para5;
+            para5.Next = para6;
+            para6.Next = para6; // 让para6循环，表示结束
+
 
             // 启动流程
             _flow = new NPCChatControlFlow();
-            _flow.Start(_para1);
-
+            _flow.Start(para1);
         }
 
         public override void SetBestiary(BestiaryDatabase database, BestiaryEntry bestiaryEntry)

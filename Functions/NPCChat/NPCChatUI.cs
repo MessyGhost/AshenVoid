@@ -1,5 +1,7 @@
-﻿using Microsoft.Xna.Framework;
+﻿using Microsoft.CodeAnalysis.Options;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Newtonsoft.Json.Linq;
 using ReLogic.Content;
 using ReLogic.Graphics;
 using System;
@@ -31,20 +33,23 @@ namespace AshenVoid.Functions.NPCChat
         private bool _isActive;
         private NPC _targetNPC;
         private int _chosenOption;
+        private bool _userClickNextStep;
 
         // 打字的时候的间隔
-        private readonly int _typingInterval = 10;
+        private readonly int _typingInterval = 6;
         // 停顿的间隔
-        private readonly int _pauseInterval = 40;
+        private readonly int _pauseInterval = 30;
 
 
         private Asset<Texture2D> 聊天栏;
         private Asset<Texture2D> 宝石;
+        private Asset<Texture2D> 下一步;
         private SoundStyle 打字声;
         public NPCChatUI()
         {
             聊天栏 = ModContent.Request<Texture2D>($"{nameof(AshenVoid)}/Functions/NPCChat/Images/聊天栏");
             宝石 = ModContent.Request<Texture2D>($"{nameof(AshenVoid)}/Functions/NPCChat/Images/宝石");
+            下一步 = ModContent.Request<Texture2D>($"{nameof(AshenVoid)}/Functions/NPCChat/Images/下一步");
             打字声 = new SoundStyle($"{nameof(AshenVoid)}/Functions/NPCChat/Sounds/对话音效")
             {
                 Volume = 0.9f,
@@ -65,6 +70,13 @@ namespace AshenVoid.Functions.NPCChat
         {
             int result = _chosenOption;
             _chosenOption = -1;
+            return result;
+        }
+
+        public bool GetAndClearNextStep()
+        {
+            bool result = _userClickNextStep;
+            _userClickNextStep = false;
             return result;
         }
 
@@ -89,22 +101,29 @@ namespace AshenVoid.Functions.NPCChat
             }
         }
 
+        public void SetPage(string text, bool immediateShow)
+        {
+            _currentText = text;
+            if (text != _lastText)
+            {
+                if (immediateShow)
+                {
+                    _typewriterCharCount = text.Length; // 立即显示全部文本
+                }
+                else
+                {
+                    _typewriterCharCount = 0; // 重置打字机计数
+                }
+                _updateCounter = 0; // 重置更新时间
+                _chosenOption = -1;
+                _lastText = text; // 更新最后的文本
+            }
+        }
         public string Text
         {
             get
             {
                 return _currentText;
-            }
-            set
-            {
-                _currentText = value;
-                if (value != _lastText)
-                {
-                    _typewriterCharCount = 0; // 重置打字机计数
-                    _updateCounter = 0; // 重置更新时间
-                    _chosenOption = -1;
-                    _lastText = value; // 更新最后的文本
-                }
             }
         }
 
@@ -151,9 +170,9 @@ namespace AshenVoid.Functions.NPCChat
             spriteBatch.Begin(SpriteSortMode.Deferred, null, SamplerState.PointClamp, null, null, null, Main.GameViewMatrix.ZoomMatrix);
 
             DynamicSpriteFont value = FontAssets.MouseText.Value;
-            Vector2 vector = value.MeasureString(text);
-            int width = Math.Max(400, (int)value.MeasureString(text).X + 60);
-            int height = 130;
+            Vector2 mainTextSize = value.MeasureString(text);
+            int width = Math.Max(400, (int)mainTextSize.X + 60);
+            int height = 130 + (_typewriterCharCount >= _currentText.Length ? Math.Max(0, _options.Count - 2) * 30 : 0);
             float x = (npc.Center.X - Main.screenPosition.X - width / 2);
             float y = (npc.Center.Y - Main.screenPosition.Y + height / 2);
 
@@ -172,29 +191,51 @@ namespace AshenVoid.Functions.NPCChat
 
             Terraria.Utils.DrawBorderString(spriteBatch, text, new Vector2(x + 40, y + 20), Color.Yellow, 1f);
 
-            foreach(var option in _options)
+            // 文本准备完毕以后才显示选项
+            if (_typewriterCharCount >= _currentText.Length)
             {
-                Vector2 text_size = value.MeasureString(option);
-                float yDraw = y + 60 + _options.IndexOf(option) * 30;
-                spriteBatch.Draw(宝石.Value, new Vector2(x + 10, yDraw), Color.White);
-
-                Rectangle buttonRect = new Rectangle((int)x + 10, (int)yDraw, 100, 30);
-                Color color = Color.White;
-                float scale = 1f;
-                PlayerInput.SetZoom_World();
-                if (buttonRect.Contains(Main.MouseScreen.ToPoint()))
+                if (_options.Count == 0)
                 {
-                    color = Color.Yellow;
-                    scale = 1.33f;
-                    //spriteBatch.Draw(panel, new Rectangle((int)(x + 40), (int)(yDraw + text_size.Y / 2), (int)text_size.X + 10, 2), Color.White);
-                    if (Main.mouseLeft && Main.mouseLeftRelease)
+                    float yDraw = y + 80;
+                    float xDraw = x + width - 55;
+                    spriteBatch.Draw(下一步.Value, new Vector2(xDraw, yDraw), Color.White);
+
+                    Rectangle buttonRect = new Rectangle((int)xDraw, (int)yDraw, 45, 30);
+                    PlayerInput.SetZoom_World();
+                    if (buttonRect.Contains(Main.MouseScreen.ToPoint()))
                     {
-                        _chosenOption = _options.IndexOf(option);
+                        if (Main.mouseLeft && Main.mouseLeftRelease)
+                        {
+                            _userClickNextStep = true;
+                        }
                     }
                 }
-                Terraria.Utils.DrawBorderString(spriteBatch, option, new Vector2(x + 40, yDraw + text_size.Y / 2), color, scale, 0.0f, 0.5f);
-            }
+                else
+                {
+                    foreach (var option in _options)
+                    {
+                        Vector2 text_size = value.MeasureString(option);
+                        float yDraw = y + 60 + _options.IndexOf(option) * 30;
+                        spriteBatch.Draw(宝石.Value, new Vector2(x + 10, yDraw), Color.White);
 
+                        Rectangle buttonRect = new Rectangle((int)x + 10, (int)yDraw, (int)(text_size.X + 20), 30);
+                        Color color = Color.White;
+                        float scale = 1f;
+                        PlayerInput.SetZoom_World();
+                        if (buttonRect.Contains(Main.MouseScreen.ToPoint()))
+                        {
+                            color = Color.Yellow;
+                            scale = 1.33f;
+                            //spriteBatch.Draw(panel, new Rectangle((int)(x + 40), (int)(yDraw + text_size.Y / 2), (int)text_size.X + 10, 2), Color.White);
+                            if (Main.mouseLeft && Main.mouseLeftRelease)
+                            {
+                                _chosenOption = _options.IndexOf(option);
+                            }
+                        }
+                        Terraria.Utils.DrawBorderString(spriteBatch, option, new Vector2(x + 40, yDraw + text_size.Y / 2), color, scale, 0.0f, 0.5f);
+                    }
+                }
+            }
 
 
             PlayerInput.SetZoom_UI();

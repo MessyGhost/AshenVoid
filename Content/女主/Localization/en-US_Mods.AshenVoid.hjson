@@ -32,5 +32,20 @@ ExamplePerson: {
 		CommonDialogue: This message has a weight of 5, meaning it appears 5 times more often.
 		RareDialogue: This message has a weight of 0.1, meaning it appears 10 times as rare.
 		TalkALot: I'm getting tired of talking to you. I have to go.
+
+		FirstMet: {
+			Q1: 嘶...这么可以这么疼...这个陌生的地方...我该从哪开始呢...
+			Q2: （小声蛐蛐）太恶毒了...哎嗨你...好？He...Hello？括泥几...wa？（也不知道当地语言是说的什么....）
+			Q3: 噢！噢你好嘞，原来你也是说的中文呀，那就好，幸好我也会...
+			Q3_O1: 请问你为什么会飞出来？
+			Q3_O2: 你是谁？
+			Q3_O3: 你是从哪里来的？
+			Q3_A1: 啊...我...我可能是大概是会飞吧...其实我也想走出来...
+			Q3_A2: 嗯...我来自伊洛特星球...也不知道你知不知道那颗星球
+			Q3_A3: 哎呀呀...也不会干什么，我是一个好孩子。不是坏蛋啦
+			Q4: 那个...我第一次来到这个地方，请问可以带我了解一下这里吗？比如让我看看你们世界相关的书籍...？
+			Q5: 嗯？没事，我的话你不用担心的，我就在附近转一转
+			Q6: 这个世界也很奇妙呢，诶，你找齐书了嘛？
+		}
 	}
 }

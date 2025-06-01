@@ -35,29 +35,27 @@ namespace AshenVoid.Functions.NPCChat
         /// <summary>
         /// 更新流程，deltaTime为秒
         /// </summary>
-        public void Update(float deltaTime, NPCChatUI ui)
+        public void Update(float deltaTime)
         {
             if (_current == null)
                 return;
             if (_waitingForOption)
                 return;
-            if (!ui.IsReady)
-                return;
 
-            _timer += deltaTime;
-            if (_timer >= _current.Interval)
-            {
-                if (_current.Options != null && _current.Options.Count > 0)
-                {
-                    // 等待玩家选择
-                    _waitingForOption = true;
-                }
-                else
-                {
-                    // 自动跳转到下一个段落
-                    GoToNext();
-                }
-            }
+            //_timer += deltaTime;
+            //if (_timer >= _current.Interval)
+            //{
+            //    if (_current.Options != null && _current.Options.Count > 0)
+            //    {
+            //        // 等待玩家选择
+            //        _waitingForOption = true;
+            //    }
+            //    else
+            //    {
+            //        // 自动跳转到下一个段落
+            //        GoToNext();
+            //    }
+            //}
         }
 
         /// <summary>
@@ -68,15 +66,18 @@ namespace AshenVoid.Functions.NPCChat
             if (_current == null || _current.Options == null || index < 0 || index >= _current.Options.Count)
                 return;
 
-            _current = _current.Options[index].Next;
+            var next = _current.Options[index].Next;
+            _current.UserChooseOption(index);
+            _current = next;
             _timer = 0f;
             _waitingForOption = false;
+
         }
 
         /// <summary>
         /// 跳转到下一个段落（支持随机）
         /// </summary>
-        private void GoToNext()
+        public void GoToNext()
         {
             if (_current == null)
                 return;
