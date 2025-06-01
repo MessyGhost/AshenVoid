@@ -1,0 +1,36 @@
+NPCs: {
+	ExamplePerson: {
+		DisplayName: ExampleNPC
+
+		TownNPCMood: {
+			Content: 我很满足。
+			NoHome: 我讨厌没有家。
+			FarFromHome: 我离家太远了。
+			LoveSpace: 我非常喜欢有这么大的空间。
+			DislikeCrowded: 我不喜欢这么拥挤。
+			HateCrowded: 我讨厌这么拥挤。
+			LoveBiome: 我非常喜欢{BiomeName}。
+			LikeBiome: 我喜欢{BiomeName}。
+			DislikeBiome: 我不喜欢{BiomeName}。
+			LoveNPC: 我非常喜欢{NPCName}。
+			LikeNPC: 我喜欢{NPCName}。
+			DislikeNPC: 我不喜欢{NPCName}。
+			HateNPC: 我讨厌{NPCName}。
+			LikeNPC_Princess: 我喜欢 {NPCName}。
+			Princess_LovesNPC: 我喜欢 {NPCName}。
+		}
+	}
+}
+
+ExamplePerson: {
+	Dialogue: {
+		PartyGirlDialogue: Can you please tell {0} to stop decorating my house with colors?
+		StandardDialogue1: Sometimes I feel like I'm different from everyone else here.
+		StandardDialogue2: What's your favorite color? My favorite colors are white and black.
+		StandardDialogue3: What? I don't have any arms or legs? Oh, don't be ridiculous!
+		StandardDialogue4: Hey, if you find a [i:HiveBackpack], I can upgrade it for you.
+		CommonDialogue: This message has a weight of 5, meaning it appears 5 times more often.
+		RareDialogue: This message has a weight of 0.1, meaning it appears 10 times as rare.
+		TalkALot: I'm getting tired of talking to you. I have to go.
+	}
+}
