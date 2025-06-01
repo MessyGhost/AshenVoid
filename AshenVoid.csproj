@@ -9,8 +9,5 @@
 	</PropertyGroup>
 
 	<!-- References -->
-	<ItemGroup>
-	  <Folder Include="Assets\Textures\" />
-	</ItemGroup>
 
 </Project>

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.IO;
 using Terraria;
@@ -37,8 +38,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         public override void SetDefaults()
         {
-            NPC.width = 100;
-            NPC.height = 100;
+            NPC.width = NightmareOfCorruption.Width;
+            NPC.height = NightmareOfCorruption.Height;
             NPC.knockBackResist = 0f;
             NPC.noGravity = true;
             NPC.noTileCollide = true;
@@ -130,8 +131,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
                         var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
                         spit.velocity = direction * 12.0f;
-                        NPC.alpha = Alpha;
-                        NPC.color = Color.Transparent;
                         NPCUtils.ForceSyncNPC(spit.whoAmI);
                         NPCUtils.PlaySound(this, NightmareOfCorruption.ShootSound);
                     }
@@ -159,11 +158,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             var g = Projectile.NewProjectileDirect(NPC.GetSource_FromAI(), NPC.Center,
                                 Vector2.Zero, ModContent.ProjectileType<NightmareCorrptionPhantomGhost>(), 0, 0, 0, NPC.whoAmI);
                             g.netUpdate = true;
-                        }
-                        else if(79 <= timer && timer < 89)
-                        {
-                            //NPC.alpha = 0;
-                            NPC.color = Color.White;
                         }
                     }
                     break;
@@ -239,6 +233,43 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             var acc = accToDest + resFromVel;
             NPC.velocity += acc;
             NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), maxSpeed);
+        }
+
+        public override bool PreDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
+        {
+            spriteBatch.End();
+            spriteBatch.Begin(
+                SpriteSortMode.Immediate,
+                BlendState.NonPremultiplied,
+                SamplerState.AnisotropicClamp,
+                DepthStencilState.None,
+                RasterizerState.CullNone,
+                null,
+                Main.GameViewMatrix.TransformationMatrix);
+            float brightness = 1.0f;
+            if(phase2State == NightmareOfCorruption.Phase2State.Encircling)
+            {
+                var dist = Math.Abs(timer - 89) / 12.0f;
+                brightness = (float)Math.Exp(-dist) + 1;
+            }
+            AshenVoid.BrightnessShader.Parameters["uBrightness"].SetValue(brightness);
+            AshenVoid.BrightnessShader.Parameters["uOpacity"].SetValue(NPC.Opacity * brightness);
+            AshenVoid.BrightnessShader.CurrentTechnique.Passes["BrightnessPass"].Apply();
+
+            var texture = ModContent.Request<Texture2D>(Texture).Value;
+
+            spriteBatch.Draw(texture, NPC.position - screenPos, NPC.frame, drawColor);
+
+            spriteBatch.End();
+            spriteBatch.Begin(
+                SpriteSortMode.Deferred,
+                BlendState.AlphaBlend,
+                SamplerState.AnisotropicClamp,
+                DepthStencilState.None,
+                RasterizerState.CullNone,
+                null,
+                Main.GameViewMatrix.TransformationMatrix);
+            return false;
         }
     }
 }
