@@ -1,2 +1,10 @@
-# This file will automatically update with entries for new content after a build and reload.
+NPCs: {
+	NightmareCorruptionPhantom.DisplayName: Nightmare Corruption Phantom
+	NightmareOfCorruption.DisplayName: Nightmare Of Corruption
+	NightmareSpit.DisplayName: Nightmare Spit
+}
 
+Projectiles: {
+	NightmareCorruptionGhost.DisplayName: Nightmare Corruption Ghost
+	NightmareCorrptionPhantomGhost.DisplayName: Nightmare Corrption Phantom Ghost
+}
