@@ -32,6 +32,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             BeforeSummon,
             Summoning,
             Marching,
+            PrepareSummon
         }
 
         public enum Phase2State
@@ -173,7 +174,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         {
             const float AimingSpeed = 6.0f;
 
-            if(NPC.life <= NPC.lifeMax * 0.6)
+            if(NPC.life <= NPC.lifeMax * 0.5)
             {
                 aiState = AIState.Phase2;
                 phase2State = Phase2State.Targeting;
@@ -215,12 +216,21 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     }
                 }
                 // stop chasing
-                else if (dist <= 250 && phase1State == Phase1State.Chasing)
-                    {
+                else if (dist <= 320 && phase1State == Phase1State.Chasing)
+                {
                     NPCUtils.ForceSyncNPCWithAction(NPC.whoAmI, () =>
                     {
-                    phase1State = Main.rand.NextBool() ? Phase1State.AimingLeft : Phase1State.AimingRight;
+                        phase1State = Main.rand.NextBool() ? Phase1State.AimingLeft : Phase1State.AimingRight;
                     });    
+                }
+
+                // spawn grasps
+                if(damageTaken >= NPC.lifeMax * 0.1f)
+                {
+                    var grasp = NPC.NewNPCDirect(NPC.GetSource_FromAI(), (int)target.Center.X, (int)target.Center.Y + 1000,
+                        ModContent.NPCType<DazedGrasp>());
+                    grasp.netUpdate = true;
+                    damageTaken = 0;
                 }
                 
                 switch (phase1State)
@@ -230,24 +240,23 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         d.Y -= 270;
                         NPC.velocity = Vector2.Lerp(NPC.velocity, d.SafeNormalize(Vector2.Zero) * 17.0f, 0.037f);
                         break;
+                    case Phase1State.PrepareSummon:
+                        // aim before summon
+                        if (dist < 320.0f)
+                        {
+                            NPC.velocity = Vector2.Lerp(NPC.velocity, -direction * 15.0f, 0.05f);
+                        }
+                        // summon
+                        else
+                        {
+                            phase1State = Phase1State.BeforeSummon;
+                            timer = 0;
+                            NPC.netUpdate = true;
+                        }
+                        break;
                     case Phase1State.AimingRight:
                     case Phase1State.AimingLeft:
-                        if(damageTaken >= 300)
-                        {
-                            // aim before summon
-                            if (dist < 320.0f)
-                            {
-                                NPC.velocity = Vector2.Lerp(NPC.velocity, -direction * 15.0f, 0.05f);
-                            }
-                            // summon
-                            else
-                            {
-                                phase1State = Phase1State.BeforeSummon;
-                                timer = 0;
-                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
-                            }
-                        }
-                        else if(Math.Abs(direction.AngleFrom(Vector2.UnitY)) < 1.4f && timer > 150)
+                        if(Math.Abs(direction.AngleFrom(Vector2.UnitY)) < 1.4f && timer > 150)
                         {
                             // shoot
                             if (Main.netMode != NetmodeID.MultiplayerClient)
@@ -264,15 +273,15 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
                             NPCUtils.ForceSyncNPCWithAction(NPC.whoAmI, () =>
                             {
-                            if (Main.rand.NextBool(2))
-                            {
-                                phase1State = phase1State == Phase1State.AimingLeft ? Phase1State.AimingRight : Phase1State.AimingLeft;
-                            }
-                            else
-                            {
+                                if (Main.rand.NextBool(2))
+                                {
+                                    phase1State = phase1State == Phase1State.AimingLeft ? Phase1State.AimingRight : Phase1State.AimingLeft;
+                                }
+                                else
+                                {
                                     phase1State = Phase1State.PrepareSummon;
-                            }
-                            timer = 0;
+                                }
+                                timer = 0;
                             });
                         }
                         else
@@ -574,7 +583,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         timer = 0;
                         NPC.netUpdate = true;
 
-                        if(Main.netMode != NetmodeID.Server)
+                        if (Main.netMode != NetmodeID.Server)
                         {
                             for(int i = 0; i < 23; ++i)
                             {
@@ -674,14 +683,31 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             onGroundBefore = NPC.collideY;
         }
 
+        private void onHit()
+        {
+            // when hit, may march
+            if (aiState == AIState.Phase1 && (phase1State == Phase1State.AimingLeft || phase1State == Phase1State.AimingRight))
+            {
+                NPCUtils.ForceSyncNPCWithAction(NPC.whoAmI, () =>
+                {
+                    if (Main.rand.NextBool(15))
+                    {
+                        phase1State = Phase1State.PrepareSummon;
+                    }
+                });
+            }
+        }
+
         public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
         {
             damageTaken += damageDone;
+            onHit();
         }
 
         public override void OnHitByProjectile(Projectile projectile, NPC.HitInfo hit, int damageDone)
         {
             damageTaken += damageDone;
+            onHit();
         }
     }
 }

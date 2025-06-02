@@ -2,6 +2,9 @@ NPCs: {
 	NightmareCorruptionPhantom.DisplayName: Nightmare Corruption Phantom
 	NightmareOfCorruption.DisplayName: Nightmare Of Corruption
 	NightmareSpit.DisplayName: Nightmare Spit
+	DazedGrasp.DisplayName: Dazed Grasp
+	DazedGraspBody.DisplayName: Dazed Grasp Body
+	DazedGraspTail.DisplayName: Dazed Grasp Tail
 }
 
 Projectiles: {
