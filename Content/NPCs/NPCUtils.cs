@@ -21,6 +21,19 @@ namespace AshenVoid.Content.NPCs
             }
         }
 
+        public static void ForceSyncNPCWithAction(int npcId, Action action)
+        {
+            if(Main.netMode != NetmodeID.MultiplayerClient)
+            {
+                action();
+            }
+
+            if (Main.netMode == NetmodeID.Server)
+            {
+                NetMessage.SendData(MessageID.SyncNPC, -1, -1, null, npcId);
+            }
+        }
+
         public static void TargetIfRequired(ModNPC npc, bool faceTarget = false)
         {
             if(!npc.NPC.HasValidTarget)
