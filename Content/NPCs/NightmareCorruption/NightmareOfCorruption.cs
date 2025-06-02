@@ -151,7 +151,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         aiState = AIState.Phase1;
                         phase1State = Phase1State.AimingLeft;
                         damageTaken = 0;
-                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        NPC.netUpdate = true;
                         NPCUtils.PlaySound(this, BornSound);
                     }
                     break;
@@ -180,7 +180,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 timer = 0;
                 NPC.noGravity = false;
                 NPC.noTileCollide = false;
-                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                NPC.netUpdate = true;
             }
             else
             {
@@ -210,15 +210,17 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         {
                             var projtl = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
                             projtl.velocity = direction.RotateRandom(0.09) * 14.0f;
-                            NPCUtils.ForceSyncNPC(projtl.whoAmI);
+                            NPC.netUpdate = true;
                         }
                     }
                 }
                 // stop chasing
                 else if (dist <= 250 && phase1State == Phase1State.Chasing)
-                {
+                    {
+                    NPCUtils.ForceSyncNPCWithAction(NPC.whoAmI, () =>
+                    {
                     phase1State = Main.rand.NextBool() ? Phase1State.AimingLeft : Phase1State.AimingRight;
-                    NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                    });    
                 }
                 
                 switch (phase1State)
@@ -254,23 +256,24 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                 {
                                     var projtl = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
                                     projtl.velocity = direction.RotatedBy(i * 0.7f) * 7.0f;
-                                    NPCUtils.ForceSyncNPC(projtl.whoAmI);
+                                    NPC.netUpdate = true;
                                 }
                             }
 
                             NPCUtils.PlaySound(this, ShootSound);
 
+                            NPCUtils.ForceSyncNPCWithAction(NPC.whoAmI, () =>
+                            {
                             if (Main.rand.NextBool(2))
                             {
                                 phase1State = phase1State == Phase1State.AimingLeft ? Phase1State.AimingRight : Phase1State.AimingLeft;
                             }
                             else
                             {
-                                // force summoning
-                                damageTaken = 999;
+                                    phase1State = Phase1State.PrepareSummon;
                             }
                             timer = 0;
-                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                            });
                         }
                         else
                         {
@@ -299,7 +302,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             {
                                 phase1State = Phase1State.Summoning;
                                 timer = 0;
-                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                                NPC.netUpdate = true;
                             }
                             break;
                         }
@@ -342,7 +345,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
                                         var npc = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
                                         npc.velocity = velocityDirection.RotatedBy(i * 1.0417f) * 7.0f;
-                                        NPCUtils.ForceSyncNPC(npc.whoAmI);
+                                        NPC.netUpdate = true;
                                     }
                                 }
 
@@ -350,7 +353,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
                                 phase1State = Phase1State.Marching;
                                 timer = 0;
-                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                                NPC.netUpdate = true;
                             }
                             break;
                         }
@@ -374,8 +377,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                     phase1State = Phase1State.AimingRight;
                                 }
                                 timer = 0;
-                                damageTaken = 0;
-                                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                                NPC.netUpdate = true;
                             }
                             else if (timer >= 35)
                             {
@@ -439,7 +441,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             {
                 phase2State = Phase2State.Chasing;
                 timer = 0;
-                NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                NPC.netUpdate = true;
             }
 
             // slam dust
@@ -515,7 +517,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             NPC.noTileCollide = true;
                             phase2State = Phase2State.BeforeSlam;
                             timer = 0;
-                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                            NPC.netUpdate = true;
                         }
 
                         break;
@@ -536,7 +538,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                             phase2State = Phase2State.Slaming;
                         }
                         timer = 0;
-                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        NPC.netUpdate = true;
                     }
                     break;
                 case Phase2State.AdjustingSlam:
@@ -548,7 +550,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     {
                         phase2State = Phase2State.Slaming;
                         timer = 0;
-                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        NPC.netUpdate = true;
                     }
                     break;
                 case Phase2State.Chasing:
@@ -570,7 +572,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     {
                         phase2State = Phase2State.Slaming;
                         timer = 0;
-                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        NPC.netUpdate = true;
 
                         if(Main.netMode != NetmodeID.Server)
                         {
@@ -614,7 +616,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         {
                             phase2State = Phase2State.Encircling;
                             timer = 0;
-                            NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                            NPC.netUpdate = true;
                         }
                     }
                     break;
@@ -643,11 +645,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center,
                             ModContent.NPCType<NightmareSpit>());
                         spit.velocity = direction * SnipeBulletSpeed;
-                        NPCUtils.ForceSyncNPC(spit.whoAmI);
+                        spit.netUpdate = true;
 
                         phase2State = Phase2State.Marching;
                         timer = 0;
-                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        NPC.netUpdate = true;
                     }
                     break;
                 case Phase2State.Marching:
@@ -665,7 +667,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     {
                         phase2State = Phase2State.Targeting;
                         timer = 0;
-                        NPCUtils.ForceSyncNPC(NPC.whoAmI);
+                        NPC.netUpdate = true;
                     }
                     break;
             }
