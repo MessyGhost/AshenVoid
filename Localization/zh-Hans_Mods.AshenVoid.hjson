@@ -1,0 +1,13 @@
+NPCs: {
+	NightmareCorruptionPhantom.DisplayName: 烂梦幻影
+	NightmareOfCorruption.DisplayName: 腐烂噩梦
+	NightmareSpit.DisplayName: 噩梦唾液
+	DazedGrasp.DisplayName: 眩晕之握
+	DazedGraspBody.DisplayName: 眩晕之握主体
+	DazedGraspTail.DisplayName: 眩晕之握尾部
+}
+
+Projectiles: {
+	NightmareCorruptionGhost.DisplayName: 烂梦幽灵
+	NightmareCorrptionPhantomGhost.DisplayName: 烂梦幻灵
+}
