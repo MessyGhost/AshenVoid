@@ -74,7 +74,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             }
 
             var target = NPCUtils.GetTargetPlayer(originNPC.target);
-            if (target == null) {
+            if (target == null)
+            {
                 return;
             }
 
@@ -153,17 +154,17 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
                         GetToPosition(dest, 46.0f);
 
-                        if(timer == 49)
+                        if (timer == 49)
                         {
                             var g = Projectile.NewProjectileDirect(NPC.GetSource_FromAI(), NPC.Center,
-                                Vector2.Zero, ModContent.ProjectileType<NightmareCorrptionPhantomGhost>(), 0, 0, 0, NPC.whoAmI);
+                                Vector2.Zero, ModContent.ProjectileType<NightmareCorruptionPhantomGhost>(), 0, 0, 0, NPC.whoAmI);
                             g.netUpdate = true;
                         }
                     }
                     break;
                 case NightmareOfCorruption.Phase2State.Sniping:
                     {
-                        if(timer == 89 || timer == 69)
+                        if (timer == 89 || timer == 69)
                         {
                             var direction = (target.Center - NPC.Center).SafeNormalize(Vector2.Zero);
                             var spit = NPC.NewNPCDirect(NPC.GetSource_FromAI(), NPC.Center, ModContent.NPCType<NightmareSpit>());
@@ -247,7 +248,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 null,
                 Main.GameViewMatrix.TransformationMatrix);
             float brightness = 1.0f;
-            if(phase2State == NightmareOfCorruption.Phase2State.Encircling)
+            if (phase2State == NightmareOfCorruption.Phase2State.Encircling)
             {
                 var dist = Math.Abs(timer - 89) / 12.0f;
                 brightness = (float)Math.Exp(-dist) + 1;

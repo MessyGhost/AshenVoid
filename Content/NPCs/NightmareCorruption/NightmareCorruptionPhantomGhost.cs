@@ -8,7 +8,7 @@ using Terraria;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
-    public class NightmareCorrptionPhantomGhost : NightmareCorruptionGhost
+    public class NightmareCorruptionPhantomGhost : NightmareCorruptionGhost
     {
         public override void SetDefaults()
         {

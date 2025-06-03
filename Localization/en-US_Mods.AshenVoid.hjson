@@ -1,13 +1,14 @@
-NPCs: {
-	NightmareCorruptionPhantom.DisplayName: Nightmare Corruption Phantom
-	NightmareOfCorruption.DisplayName: Nightmare Of Corruption
-	NightmareSpit.DisplayName: Nightmare Spit
-	DazedGrasp.DisplayName: Dazed Grasp
-	DazedGraspBody.DisplayName: Dazed Grasp Body
-	DazedGraspTail.DisplayName: Dazed Grasp Tail
-}
-
-Projectiles: {
-	NightmareCorruptionGhost.DisplayName: Nightmare Corruption Ghost
-	NightmareCorrptionPhantomGhost.DisplayName: Nightmare Corrption Phantom Ghost
+{
+  "NPCs": {
+    "NightmareCorruptionPhantom.DisplayName": "Nightmare Corruption Phantom",
+    "NightmareOfCorruption.DisplayName": "Nightmare Of Corruption",
+    "NightmareSpit.DisplayName": "Nightmare Spit",
+    "DazedGrasp.DisplayName": "Dazed Grasp",
+    "DazedGraspBody.DisplayName": "Dazed Grasp Body",
+    "DazedGraspTail.DisplayName": "Dazed Grasp Tail"
+  },
+  "Projectiles": {
+    "NightmareCorruptionGhost.DisplayName": "Nightmare Corruption Ghost",
+    "NightmareCorruptionPhantomGhost.DisplayName": "Nightmare Corrption Phantom Ghost"
+  }
 }
