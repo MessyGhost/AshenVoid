@@ -1,48 +1,54 @@
-{
-  "Content": {
-    "NPCs": {
-      "NightmareCorruption": {
-        "NightmareCorruption": {
-          "DisplayName": "Nightmare Corruption",
-          "Description": "A rotting embodiment of corruption and despair"
-        },
-        "NightmareSummon": {
-          "DisplayName": "Nightmare Summoning Orb",
-          "Tooltip": "Summons the Nightmare Corruption\\nOnly usable in the Corruption"
-        },
-        "NightmareEssence": {
-          "DisplayName": "Nightmare Essence",
-          "Tooltip": "Pure corruption energy from the defeated Nightmare Corruption"
-        },
-        "NightmareCorruptionCorpse.DisplayName": "Remains of Nightmare Corruption",
-        "GraspOfTrance.DisplayName": "Grasp of Trance",
-        "NightmarePhantom.DisplayName": "Nightmare Phantom",
-        "NightmareTrident.DisplayName": "Nightmare Trident",
-        "NightmareSpike.DisplayName": "Nightmare Spike",
-        "NightmareBeam.DisplayName": "Nightmare Beam",
-        "Dialogue": {
-          "Summoned": "The corruption seeps into your soul...",
-          "Phase2": "YOU WILL DROWN IN MY NIGHTMARES!",
-          "Defeated": "This... is not... the end..."
-        }
-      }
-    }
-  },
-  "Items": {
-    "NightmareEssence": {
-      "DisplayName": "Nightmare Essence",
-      "Tooltip": ""
-    },
-    "NightmareSummon": {
-      "DisplayName": "Nightmare Summon",
-      "Tooltip": ""
-    }
-  },
-  "NPCs": {
-    "GraspOfTrance.DisplayName": "Grasp Of Trance",
-    "NightmareCorruption.DisplayName": "Nightmare Corruption",
-    "NightmareCorruptionCorpse.DisplayName": "Nightmare Corruption Corpse",
-    "NightmarePhantom.DisplayName": "Nightmare Phantom"
-  },
-  "Projectiles.NightmareTrident.DisplayName": "Nightmare Trident"
+Content: {
+	NPCs: {
+		NightmareCorruption: {
+			NightmareCorruption: {
+				DisplayName: Nightmare Corruption
+				Description: A rotting embodiment of corruption and despair
+			}
+
+			NightmareSummon: {
+				DisplayName: Nightmare Summoning Orb
+				Tooltip: Summons the Nightmare Corruption\nOnly usable in the Corruption
+			}
+
+			NightmareEssence: {
+				DisplayName: Nightmare Essence
+				Tooltip: Pure corruption energy from the defeated Nightmare Corruption
+			}
+
+			NightmareCorruptionCorpse.DisplayName: Remains of Nightmare Corruption
+			GraspOfTrance.DisplayName: Grasp of Trance
+			NightmarePhantom.DisplayName: Nightmare Phantom
+			NightmareTrident.DisplayName: Nightmare Trident
+			NightmareSpike.DisplayName: Nightmare Spike
+			NightmareBeam.DisplayName: Nightmare Beam
+
+			Dialogue: {
+				Summoned: The corruption seeps into your soul...
+				Phase2: YOU WILL DROWN IN MY NIGHTMARES!
+				Defeated: This... is not... the end...
+			}
+		}
+	}
 }
+
+Items: {
+	NightmareEssence: {
+		DisplayName: Nightmare Essence
+		Tooltip: ""
+	}
+
+	NightmareSummon: {
+		DisplayName: Nightmare Summon
+		Tooltip: ""
+	}
+}
+
+NPCs: {
+	GraspOfTrance.DisplayName: Grasp Of Trance
+	NightmareCorruption.DisplayName: Nightmare Corruption
+	NightmareCorruptionCorpse.DisplayName: Nightmare Corruption Corpse
+	NightmarePhantom.DisplayName: Nightmare Phantom
+}
+
+Projectiles.NightmareTrident.DisplayName: Nightmare Trident

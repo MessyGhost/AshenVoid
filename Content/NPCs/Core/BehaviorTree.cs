@@ -17,10 +17,10 @@ namespace AshenVoid.Core.BehaviorTree
         public abstract NodeState Evaluate();
     }
 
-    // 基础组合节点
     public class FallbackNode : Node
     {
         private List<Node> _children = new List<Node>();
+        private int currentChildIndex = 0;
 
         public FallbackNode(params Node[] children)
         {
@@ -29,17 +29,25 @@ namespace AshenVoid.Core.BehaviorTree
 
         public override NodeState Evaluate()
         {
-            foreach (var child in _children)
+            for (; currentChildIndex < _children.Count; currentChildIndex++)
             {
+                var child = _children[currentChildIndex];
                 var state = child.Evaluate();
+
                 if (state != NodeState.Failure)
+                {
+                    currentChildIndex = 0;
                     return state;
+                }
             }
+
+            currentChildIndex = 0;
             return NodeState.Failure;
         }
 
         public override void Reset()
         {
+            currentChildIndex = 0;
             foreach (var child in _children)
                 child.Reset();
             base.Reset();
@@ -49,6 +57,7 @@ namespace AshenVoid.Core.BehaviorTree
     public class SequenceNode : Node
     {
         private List<Node> _children = new List<Node>();
+        private int currentChildIndex = 0;
 
         public SequenceNode(params Node[] children)
         {
@@ -57,24 +66,40 @@ namespace AshenVoid.Core.BehaviorTree
 
         public override NodeState Evaluate()
         {
-            foreach (var child in _children)
+            while (currentChildIndex < _children.Count)
             {
+                var child = _children[currentChildIndex];
                 var state = child.Evaluate();
+
+                if (state == NodeState.Running)
+                {
+                    return NodeState.Running;
+                }
+
                 if (state == NodeState.Failure)
+                {
+                    currentChildIndex = 0; // 重置索引
                     return NodeState.Failure;
+                }
+
+                // 成功则继续下一个节点
+                currentChildIndex++;
             }
+
+            // 所有子节点执行完毕
+            currentChildIndex = 0;
             return NodeState.Success;
         }
 
         public override void Reset()
         {
+            currentChildIndex = 0;
             foreach (var child in _children)
                 child.Reset();
             base.Reset();
         }
     }
 
-    // 并行执行节点
     public class ParallelNode : Node
     {
         private List<Node> _children = new List<Node>();
@@ -93,14 +118,10 @@ namespace AshenVoid.Core.BehaviorTree
                 var state = child.Evaluate();
 
                 if (state == NodeState.Failure)
-                {
                     return NodeState.Failure;
-                }
 
                 if (state == NodeState.Running)
-                {
                     hasRunning = true;
-                }
             }
 
             return hasRunning ? NodeState.Running : NodeState.Success;
@@ -109,15 +130,11 @@ namespace AshenVoid.Core.BehaviorTree
         public override void Reset()
         {
             foreach (var child in _children)
-            {
                 child.Reset();
-            }
-
             base.Reset();
         }
     }
 
-    // 条件节点
     public class ConditionNode : Node
     {
         private Func<bool> _condition;
@@ -214,7 +231,7 @@ namespace AshenVoid.Core.BehaviorTree
 
         public override NodeState Evaluate()
         {
-            while (_currentIteration < _count)
+            while (_count < 0 || _currentIteration < _count)
             {
                 var result = _child.Evaluate();
 
@@ -294,98 +311,6 @@ namespace AshenVoid.Core.BehaviorTree
         }
     }
 
-    // 动画播放节点
-    public class AnimationNode : Node
-    {
-        private int _frameCount;
-        private int _frameDelay;
-        private int _currentFrame;
-        private int _currentDelay;
-        private Action<int> _onFrameUpdate;
-
-        public AnimationNode(int frameCount, int frameDelay, Action<int> onFrameUpdate)
-        {
-            _frameCount = frameCount;
-            _frameDelay = frameDelay;
-            _onFrameUpdate = onFrameUpdate;
-        }
-
-        public override NodeState Evaluate()
-        {
-            _currentDelay++;
-            if (_currentDelay >= _frameDelay)
-            {
-                _currentFrame = (_currentFrame + 1) % _frameCount;
-                _currentDelay = 0;
-
-                _onFrameUpdate?.Invoke(_currentFrame);
-
-                if (_currentFrame == 0) // 完成一轮动画
-                    return NodeState.Success;
-            }
-            return NodeState.Running;
-        }
-
-        public override void Reset()
-        {
-            _currentFrame = 0;
-            _currentDelay = 0;
-            base.Reset();
-        }
-    }
-
-    // 血量百分比检测节点
-    public class HealthCheckNode : Node
-    {
-        private NPC _boss;
-        private float _threshold;
-        private bool _invert;
-
-        public HealthCheckNode(NPC boss, float threshold, bool invert = false)
-        {
-            _boss = boss;
-            _threshold = threshold;
-            _invert = invert;
-        }
-
-        public override NodeState Evaluate()
-        {
-            float healthRatio = (float)_boss.life / _boss.lifeMax;
-            bool condition = healthRatio <= _threshold;
-            return (condition ^ _invert) ? NodeState.Success : NodeState.Failure;
-        }
-    }
-
-    // 冷却控制节点
-    public class CooldownNode : Node
-    {
-        private Node _child;
-        private int _cooldownFrames;
-        private int _remainingFrames;
-
-        public CooldownNode(Node child, int cooldownFrames)
-        {
-            _child = child;
-            _cooldownFrames = cooldownFrames;
-            _remainingFrames = 0;
-        }
-
-        public override NodeState Evaluate()
-        {
-            if (_remainingFrames > 0)
-            {
-                _remainingFrames--;
-                return NodeState.Failure;
-            }
-
-            var result = _child.Evaluate();
-            if (result == NodeState.Success)
-                _remainingFrames = _cooldownFrames;
-
-            return result;
-        }
-    }
-
     public static class BehaviorTreeBuilder
     {
         public static SequenceNode Sequence(params Node[] nodes) => new SequenceNode(nodes);
@@ -394,12 +319,9 @@ namespace AshenVoid.Core.BehaviorTree
         public static ConditionNode Condition(Func<bool> condition) => new ConditionNode(condition);
         public static WaitUntilNode WaitUntil(Func<bool> condition) => new WaitUntilNode(condition);
         public static WaitFramesNode WaitFrames(int frames) => new WaitFramesNode(frames);
-        public static ActionNode Do(Func<NodeState> action) => new ActionNode(action);
+        public static ActionNode Action(Func<NodeState> action) => new ActionNode(action);
         public static RepeatNode Repeat(Node node, int count) => new RepeatNode(node, count);
         public static TimeoutNode Timeout(Node node, float seconds) => new TimeoutNode(node, seconds);
         public static RandomSelectorNode Random(params Node[] nodes) => new RandomSelectorNode(nodes);
-        public static AnimationNode Animate(int frames, int delay, Action<int> onFrame) => new AnimationNode(frames, delay, onFrame);
-        public static HealthCheckNode HealthBelow(NPC boss, float percentage) => new HealthCheckNode(boss, percentage);
-        public static CooldownNode Every(Node node, int frames) => new CooldownNode(node, frames);
     }
 }

@@ -1,5 +1,6 @@
 using AshenVoid.Core.BehaviorTree;
 using Microsoft.Xna.Framework;
+using System;
 using System.Collections.Generic;
 using Terraria;
 using Terraria.ID;
@@ -8,6 +9,9 @@ namespace AshenVoid.Content.NPCs
 {
     public abstract class BossBase : EnemyBase
     {
+        // 快照坐标（用于类似定点攻击）
+        Vector2 snapshotPos;
+
         // 阶段管理
         protected int currentPhase = 0;
         protected Dictionary<int, Node> phaseBehaviors = new Dictionary<int, Node>();
@@ -82,6 +86,21 @@ namespace AshenVoid.Content.NPCs
         }
 
         // ===== 常用行为节点 =====
+
+        protected NodeState MoveToTarget(Func<Vector2> getTarget)
+        {
+            Vector2 target = getTarget();
+            float distance = Vector2.Distance(NPC.Center, target);
+
+            if (distance < 5f)
+            {
+                NPC.velocity = Vector2.Zero;
+                return NodeState.Success;
+            }
+
+            MoveToPosition(target, 10f, 2f); // 调整速度和加速度
+            return NodeState.Running;
+        }
 
         // 追逐目标玩家
         protected NodeState ChaseTarget(float r)
