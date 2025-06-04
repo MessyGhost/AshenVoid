@@ -53,18 +53,29 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private Node CreatePhase1Behavior()
         {
-            return new RepeatNode(
+            return new ParallelNode(
+                // 移动到玩家头顶
+                new ActionNode(() => MoveToPosition(
+                    target: () => TargetPlayer.Center + new Vector2(0, -200),
+                    maxSpeed: 8f,
+                    acceleration: 0.3f,
+                    slowdownDistance: 150f,
+                    stopDistance: 20f,
+                    faceTarget: true
+                )),
+
+                // 每隔一段时间生成随机偏移
                 new SequenceNode(
-                    new ActionNode(() => MoveToTarget(() => TargetPlayer.Center + new Vector2(-120, -200))),
-                    new WaitFramesNode(60), // 停留1秒
-                    new ActionNode(() => MoveToTarget(() => TargetPlayer.Center + new Vector2(120, -200))),
-                    new WaitFramesNode(60), // 停留1秒
-                    new ActionNode(() => MoveToTarget(() => TargetPlayer.Center + new Vector2(-120, -200))),
-                    new WaitFramesNode(60), // 停留1秒
-                    new ActionNode(() => MoveToTarget(() => TargetPlayer.Center + new Vector2(120, -200))),
-                    new WaitFramesNode(60) // 停留1秒
-                ),
-                -1 // 负数代表无限重复
+                    new WaitFramesNode(600),
+                    new ActionNode(() =>
+                    {
+                        // 随机调整目标位置
+                        float offsetX = Main.rand.NextFloat(-100, 100);
+                        float offsetY = Main.rand.NextFloat(-50, 20);
+                        NPC.Center += new Vector2(offsetX, offsetY);
+                        return NodeState.Success;
+                    })
+                )
             );
         }
 
@@ -104,6 +115,15 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             {
                 Item.NewItem(NPC.GetSource_Loot(), NPC.getRect(), ModContent.ItemType<NightmareEssence>(), 10);
             }
+        }
+
+        public override void FindFrame(int frameHeight)
+        {
+            base.FindFrame(frameHeight);
+
+            // 根据速度方向计算倾斜角度
+            float tiltAngle = MathHelper.Clamp(NPC.velocity.X * 0.05f, -MathHelper.PiOver4, MathHelper.PiOver4);
+            NPC.rotation = tiltAngle;
         }
     }
 }

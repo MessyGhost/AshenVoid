@@ -87,18 +87,62 @@ namespace AshenVoid.Content.NPCs
 
         // ===== 常用行为节点 =====
 
-        protected NodeState MoveToTarget(Func<Vector2> getTarget)
+        /// <summary>
+        /// 控制Boss移动到指定位置，支持参数化控制
+        /// </summary>
+        /// <param name="target">目标位置</param>
+        /// <param name="maxSpeed">最大速度</param>
+        /// <param name="acceleration">加速度</param>
+        /// <param name="slowdownDistance">开始减速的距离</param>
+        /// <param name="stopDistance">停止阈值</param>
+        /// <param name="faceTarget">是否面向目标</param>
+        /// <returns>NodeState 表示当前状态</returns>
+        protected NodeState MoveToPosition(Func<Vector2> target, float maxSpeed, float acceleration,
+            float slowdownDistance, float stopDistance, bool faceTarget = true)
         {
-            Vector2 target = getTarget();
-            float distance = Vector2.Distance(NPC.Center, target);
+            if (TargetPlayer == null) return NodeState.Failure;
 
-            if (distance < 5f)
+            Vector2 targetPos = target();
+            Vector2 direction = targetPos - NPC.Center;
+            float distance = direction.Length();
+            direction.Normalize();
+
+            if (faceTarget)
+            {
+                NPC.spriteDirection = direction.X < 0 ? -1 : 1;
+            }
+
+            // 距离足够近时停止移动
+            if (distance <= stopDistance)
             {
                 NPC.velocity = Vector2.Zero;
                 return NodeState.Success;
             }
 
-            MoveToPosition(target, 10f, 2f); // 调整速度和加速度
+            // 根据距离调整速度
+            float speedFactor = 1f;
+            if (distance < slowdownDistance)
+            {
+                speedFactor = distance / slowdownDistance;
+            }
+
+            // 计算期望速度
+            Vector2 desiredVelocity = direction * maxSpeed * speedFactor;
+
+            // 应用加速度限制
+            Vector2 deltaV = desiredVelocity - NPC.velocity;
+            if (deltaV.Length() > acceleration)
+            {
+                deltaV = Vector2.Normalize(deltaV) * acceleration;
+            }
+            NPC.velocity += deltaV;
+
+            // 限制最大速度
+            if (NPC.velocity.Length() > maxSpeed)
+            {
+                NPC.velocity = Vector2.Normalize(NPC.velocity) * maxSpeed;
+            }
+
             return NodeState.Running;
         }
 

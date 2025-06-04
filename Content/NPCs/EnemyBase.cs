@@ -56,18 +56,6 @@ namespace AshenVoid.Content.NPCs
             }
         }
 
-        // 移动到目标位置
-        protected void MoveToPosition(Vector2 targetPos, float maxSpeed = 28.0f, float maxAcceleration = 5.0f)
-        {
-            var toDest = targetPos - NPC.Center;
-            var direction = toDest.SafeNormalize(Vector2.Zero);
-            var dist = toDest.Length();
-
-            var acc = direction * maxAcceleration;
-            NPC.velocity += acc;
-            NPC.velocity = NPC.velocity.SafeNormalize(Vector2.Zero) * Math.Min(NPC.velocity.Length(), maxSpeed);
-        }
-
         // 动画帧更新
         public override void FindFrame(int frameHeight)
         {
