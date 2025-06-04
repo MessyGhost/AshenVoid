@@ -177,17 +177,21 @@ namespace AshenVoid.Core.BehaviorTree
     // 基于帧数的等待节点
     public class WaitFramesNode : Node
     {
+        private readonly int _totalFrames;
         private int _framesRemaining;
 
         public WaitFramesNode(int frames)
         {
+            _totalFrames = frames;
             _framesRemaining = frames;
         }
 
         public override NodeState Evaluate()
         {
             if (_framesRemaining <= 0)
+            {
                 return NodeState.Success;
+            }
 
             _framesRemaining--;
             return NodeState.Running;
@@ -195,7 +199,7 @@ namespace AshenVoid.Core.BehaviorTree
 
         public override void Reset()
         {
-            _framesRemaining = 0;
+            _framesRemaining = _totalFrames;
             base.Reset();
         }
     }

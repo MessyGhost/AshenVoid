@@ -58,6 +58,10 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     new ActionNode(() => MoveToTarget(() => TargetPlayer.Center + new Vector2(-120, -200))),
                     new WaitFramesNode(60), // 停留1秒
                     new ActionNode(() => MoveToTarget(() => TargetPlayer.Center + new Vector2(120, -200))),
+                    new WaitFramesNode(60), // 停留1秒
+                    new ActionNode(() => MoveToTarget(() => TargetPlayer.Center + new Vector2(-120, -200))),
+                    new WaitFramesNode(60), // 停留1秒
+                    new ActionNode(() => MoveToTarget(() => TargetPlayer.Center + new Vector2(120, -200))),
                     new WaitFramesNode(60) // 停留1秒
                 ),
                 -1 // 负数代表无限重复
