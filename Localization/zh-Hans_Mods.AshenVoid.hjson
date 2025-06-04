@@ -1,13 +1,54 @@
-NPCs: {
-	NightmareCorruptionPhantom.DisplayName: 烂梦幻影
-	NightmareOfCorruption.DisplayName: 腐烂噩梦
-	NightmareSpit.DisplayName: 噩梦唾液
-	DazedGrasp.DisplayName: 眩晕之握
-	DazedGraspBody.DisplayName: 眩晕之握主体
-	DazedGraspTail.DisplayName: 眩晕之握尾部
+Content: {
+	NPCs: {
+		NightmareCorruption: {
+			NightmareCorruption: {
+				DisplayName: 腐烂噩梦
+				Description: 腐朽与绝望的腐化化身
+			}
+
+			NightmareSummon: {
+				DisplayName: 噩梦召唤宝珠
+				Tooltip: 召唤腐烂噩梦\n只能在腐化之地使用
+			}
+
+			NightmareEssence: {
+				DisplayName: 腐化精华
+				Tooltip: 来自腐烂噩梦的纯净腐化能量
+			}
+
+			NightmareCorruptionCorpse.DisplayName: 腐烂噩梦残骸
+			GraspOfTrance.DisplayName: 恍惚之握
+			NightmarePhantom.DisplayName: 噩梦幻影
+			NightmareTrident.DisplayName: 噩梦三叉戟
+			NightmareSpike.DisplayName: 噩梦尖刺
+			NightmareBeam.DisplayName: 噩梦光束
+
+			Dialogue: {
+				Summoned: 腐化将渗入你的灵魂...
+				Phase2: 你将在我的噩梦中溺亡！
+				Defeated: 这...不是...终结...
+			}
+		}
+	}
 }
 
-Projectiles: {
-	NightmareCorruptionGhost.DisplayName: 烂梦幽灵
-	NightmareCorruptionPhantomGhost.DisplayName: 烂梦幻灵
+Items: {
+	NightmareEssence: {
+		DisplayName: 噩梦精华
+		Tooltip: 噩梦精华
+	}
+
+	NightmareSummon: {
+		DisplayName: 噩梦召唤物
+		Tooltip: 噩梦召唤物
+	}
 }
+
+NPCs: {
+	GraspOfTrance.DisplayName: 迷幻爪
+	NightmareCorruption.DisplayName: 腐烂噩梦
+	NightmareCorruptionCorpse.DisplayName: 腐烂噩梦尸体
+	NightmarePhantom.DisplayName: 噩梦幽灵
+}
+
+Projectiles.NightmareTrident.DisplayName: 噩梦三叉戟

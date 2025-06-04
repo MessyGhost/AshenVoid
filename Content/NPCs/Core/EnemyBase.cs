@@ -1,4 +1,5 @@
 using System;
+using AshenVoid.Core.BehaviorTree;
 using Microsoft.Xna.Framework;
 using Terraria;
 using Terraria.Audio;
@@ -9,7 +10,7 @@ namespace AshenVoid.Content.NPCs
 {
     public abstract class EnemyBase : ModNPC
     {
-        // 获取目标玩家
+        // 目标玩家
         public Player TargetPlayer
         {
             get
@@ -19,6 +20,23 @@ namespace AshenVoid.Content.NPCs
                 return null;
             }
         }
+
+        // 行为树
+        protected Node BehaviorTree;
+
+        public override void AI()
+        {
+            // 初始化行为树（每个NPC子类需重写）
+            if (BehaviorTree == null)
+                InitializeBehaviorTree();
+
+            // 更新行为树
+            BehaviorTree?.Evaluate();
+        }
+
+        // 子类需重写此方法以定义行为树
+        protected abstract void InitializeBehaviorTree();
+
 
         // 确保有目标
         public void TargetIfRequired(bool faceTarget = false)
@@ -35,29 +53,6 @@ namespace AshenVoid.Content.NPCs
             if (Main.netMode != NetmodeID.Server)
             {
                 SoundEngine.PlaySound(sound, NPC.Center);
-            }
-        }
-
-        // 网络同步NPC
-        public static void ForceSyncNPC(int npcId)
-        {
-            if (Main.netMode == NetmodeID.Server)
-            {
-                NetMessage.SendData(MessageID.SyncNPC, -1, -1, null, npcId);
-            }
-        }
-
-        // 网络同步NPC（带动作）
-        public static void ForceSyncNPCWithAction(int npcId, Action action)
-        {
-            if (Main.netMode != NetmodeID.MultiplayerClient)
-            {
-                action();
-            }
-
-            if (Main.netMode == NetmodeID.Server)
-            {
-                NetMessage.SendData(MessageID.SyncNPC, -1, -1, null, npcId);
             }
         }
 

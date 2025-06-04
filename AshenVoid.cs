@@ -10,16 +10,7 @@ using Terraria.ModLoader;
 
 namespace AshenVoid
 {
-	public class AshenVoid : Mod
-	{
-		public static Effect BrightnessShader;
-
-        public override void PostSetupContent()
-        {
-            if (!Main.dedServ)
-            {
-                BrightnessShader = Assets.Request<Effect>("Assets/Shaders/BrightnessShader", AssetRequestMode.ImmediateLoad).Value;
-            }
-        }
+    public class AshenVoid : Mod
+    {
     }
 }
