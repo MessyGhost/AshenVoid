@@ -6,6 +6,7 @@ using Terraria;
 using Terraria.Audio;
 using Terraria.ID;
 using Terraria.ModLoader;
+using static AshenVoid.Core.BehaviorTree.NodeBuilder;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
@@ -55,17 +56,17 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private int healthThreshold = 0;
         private Node CreatePhase1Behavior()
         {
-            return new FallbackNode(
-                // new SequenceNode(
-                //     new ConditionNode(() =>
-                //         Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
-                //     ),
-                //     RushTowards(TargetPlayer.Center)
-                // ),
-                new ParallelNode(
-                    NodeBuilder.Interval(RandomWander(TargetPlayer.Center + new Vector2(0, -200), 300f), 1.0f),
-                    NodeBuilder.Interval(
-                        NodeBuilder.Interval(
+            return Fallback(
+                Sequence(
+                    Condition(() =>
+                        Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
+                    ),
+                    RushTowards(TargetPlayer.Center)
+                ),
+                Parallel(
+                    Interval(RandomWander(TargetPlayer.Center + new Vector2(0, -200), 300f), 1.0f),
+                    Interval(
+                        Interval(
                             ShootTowardPlayer(), 0.2f, 4
                         )
                         , 2.5f
@@ -76,16 +77,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private Node CreatePhase2Behavior()
         {
-            return new ParallelNode(
-                new SequenceNode(
-                    new ActionNode(() => SummonMinions(ModContent.NPCType<NightmarePhantom>(), 2))
+            return Parallel(
+                Sequence(
+                    Do(() => SummonMinions(ModContent.NPCType<NightmarePhantom>(), 2))
                 )
             );
         }
 
         private Node ShootTowardPlayer()
         {
-            return new ActionNode(() =>
+            return Do(() =>
             {
                 if (TargetPlayer == null) return NodeState.Failure;
 

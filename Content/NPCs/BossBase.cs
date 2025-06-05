@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Terraria;
 using Terraria.ID;
+using static AshenVoid.Core.BehaviorTree.NodeBuilder;
 
 namespace AshenVoid.Content.NPCs
 {
@@ -138,15 +139,15 @@ namespace AshenVoid.Content.NPCs
                                         float r = 0)
         {
             return
-            new SequenceNode(
-                NodeBuilder.Once(
+            Sequence(
+                Once(
                     () =>
                     {
                         _currentTargetPos = target();
                         _movementController.SetConstants(f, z, r, NPC.Center);
                     }
                 ),
-                new ActionNode(() =>
+                Do(() =>
                 {
                     if (stopDistance > (_currentTargetPos - NPC.Center).Length())
                     {
@@ -166,8 +167,8 @@ namespace AshenVoid.Content.NPCs
         private Vector2? wanderTarget;
         protected Node RandomWander(Vector2 center, float radius = 150f)
         {
-            return new SequenceNode(
-                NodeBuilder.Once(
+            return Sequence(
+                Once(
                     () =>
                     {
                         // 生成新的随机目标点
