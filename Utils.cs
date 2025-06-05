@@ -1,33 +1,33 @@
-﻿using Microsoft.Xna.Framework;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// using Microsoft.Xna.Framework;
+// using System;
+// using System.Collections.Generic;
+// using System.Linq;
+// using System.Text;
+// using System.Threading.Tasks;
 
-namespace AshenVoid
-{
-    internal static class Utils
-    {
-        private static double TwoPI = Math.PI * 2;
+// namespace AshenVoid
+// {
+//     internal static class Utils
+//     {
+//         private static double TwoPI = Math.PI * 2;
 
-        public static float AngleTo(this Vector2 origin, Vector2 target)
-        {
-            var result = Math.Atan2(target.Y, target.X) - Math.Atan2(origin.Y, origin.X);
-            if (result < -Math.PI)
-            {
-                result += TwoPI;
-            }
-            else if (result > Math.PI)
-            {
-                result -= TwoPI;
-            }
-            return (float)result;
-        }
+//         public static float AngleTo(this Vector2 origin, Vector2 target)
+//         {
+//             var result = Math.Atan2(target.Y, target.X) - Math.Atan2(origin.Y, origin.X);
+//             if (result < -Math.PI)
+//             {
+//                 result += TwoPI;
+//             }
+//             else if (result > Math.PI)
+//             {
+//                 result -= TwoPI;
+//             }
+//             return (float)result;
+//         }
 
-        public static float AngleFrom(this Vector2 target, Vector2 origin)
-        {
-            return AngleTo(origin, target);
-        }
-    }
-}
+//         public static float AngleFrom(this Vector2 target, Vector2 origin)
+//         {
+//             return AngleTo(origin, target);
+//         }
+//     }
+// }

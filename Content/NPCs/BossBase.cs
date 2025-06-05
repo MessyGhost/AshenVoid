@@ -17,12 +17,11 @@ namespace AshenVoid.Content.NPCs
         protected bool isActive = false;
         protected bool hasSummonedMinions = false;
 
-        // 移动系统相关变量
+        // // 移动系统相关变量
+        protected SecondOrderDynamics _movementController;
         protected Vector2 snapshotPos;          // 用于保存玩家位置的快照
         private Vector2 _currentTargetPos;      // 当前目标位置
-        private float _currentMaxSpeed = 15f;          // 当前最大速度
-        private Vector2? _currentOmegaN;         // 当前X/Y轴自然频率
-        private Vector2? _currentZeta;           // 当前X/Y轴阻尼比
+        public Vector2 velocity;                // 计算得到的速度，用于倾斜动画
 
         // 初始化行为树（子类必须实现）
         protected abstract void CreateBehaviorTree();
@@ -59,16 +58,35 @@ namespace AshenVoid.Content.NPCs
                 ActivateBoss();
             }
 
-            UpdateMovement();
-            base.AI();  // 执行行为树逻辑
+            // 使用二阶系统更新位置
+            if (_movementController != null && TargetPlayer != null)
+            {
+                Vector2 smoothedPos = _movementController.Update(
+                    (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds,
+                    _currentTargetPos
+                );
 
-            // Boss通用行为
+                // 计算速度差值
+                velocity = (smoothedPos - NPC.Center) / (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
+                // Main.NewText((smoothedPos - NPC.Center) / (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds);
+                NPC.Center = smoothedPos;
+            }
+
+            base.AI();
+
             HandleDespawn();
         }
 
-        // boss出生时调用，设置目标、网络和初始targetpos(设为boss当前位置，这个需要在覆写中先一步设置)
+        // boss出生时调用
         public virtual void ActivateBoss()
         {
+            // 初始化控制器
+            _movementController = new SecondOrderDynamics(
+                frequency: 2f,      // 调整频率（越高越灵敏）
+                dampingRatio: 0.7f, // 阻尼比（0.7-1.0防止振荡）
+                responseScale: 1f,  // 响应幅度
+                initialPosition: NPC.Center
+            );
             _currentTargetPos = NPC.Center;
             isActive = true;
             NPC.TargetClosest(true);
@@ -92,40 +110,12 @@ namespace AshenVoid.Content.NPCs
             }
         }
 
-        // 基于二阶PID系统的移动逻辑
-        protected virtual void UpdateMovement()
-        {
-            // Main.NewText($"{_currentTargetPos}");
-            // Main.NewText($"{NPC.Center}");
-            Vector2 dir = _currentTargetPos - NPC.Center;
-            float distance = dir.Length();
-            if (distance == 0) return;
-            dir.Normalize();
-
-            // 计算加速度
-            Vector2 desiredAcceleration = new Vector2(
-                _currentOmegaN.Value.X * _currentOmegaN.Value.X * dir.X * distance
-                - 2 * _currentZeta.Value.X * _currentOmegaN.Value.X * NPC.velocity.X,
-
-                _currentOmegaN.Value.Y * _currentOmegaN.Value.Y * dir.Y * distance
-                - 2 * _currentZeta.Value.Y * _currentOmegaN.Value.Y * NPC.velocity.Y
-            );
-
-            NPC.velocity += desiredAcceleration * (1f / 60f);
-            NPC.Center += NPC.velocity * (1f / 60f);
-
-            // if (NPC.velocity.Length() > _currentMaxSpeed)
-            // {
-            //     NPC.velocity = Vector2.Normalize(NPC.velocity) * _currentMaxSpeed;
-            // }
-        }
-
-        // 移动函数，实质是设置目标位置和震荡阻尼等相关参数，
+        // 移动函数，实质是设置目标位置和系统参数，
         protected Node MoveToPosition(Func<Vector2> target,
                                         float stopDistance = 10f,
-                                        float maxSpeed = 15f,
-                                        Vector2? omega_n = null,
-                                        Vector2? zeta = null)
+                                        float f = 0.5f,
+                                        float z = 1.0f,
+                                        float r = 0)
         {
             return
             new SequenceNode(
@@ -133,9 +123,7 @@ namespace AshenVoid.Content.NPCs
                     () =>
                     {
                         _currentTargetPos = target();
-                        _currentMaxSpeed = maxSpeed;
-                        _currentOmegaN = omega_n ?? new Vector2(2.0f);
-                        _currentZeta = zeta ?? new Vector2(0.7f);
+                        _movementController.SetConstants(f, z, r, NPC.Center);
                         return NodeState.Success;
                     }
                 ),
@@ -153,53 +141,6 @@ namespace AshenVoid.Content.NPCs
         }
 
         #region 移动预设方法
-
-        /// <summary>
-        /// 快速冲刺移动（高加速度低阻尼）
-        /// </summary>
-        protected Node RushTowards(Vector2 target, float stopDistance = 20f)
-        {
-            return MoveToPosition(() => target, stopDistance, 30f,
-                new Vector2(3.0f, 2.5f), new Vector2(0.4f, 0.3f));
-        }
-
-        /// <summary>
-        /// 缓慢接近（低速度高阻尼）
-        /// </summary>
-        protected Node CautiousApproach(Func<Vector2> target, float stopDistance = 30f)
-        {
-            return MoveToPosition(target, stopDistance, 10f,
-                new Vector2(1.0f, 1.0f), new Vector2(0.8f, 0.8f));
-        }
-
-        /// <summary>
-        /// 环绕移动（围绕目标旋转）
-        /// </summary>
-        protected float orbitAngle = 0f;
-        protected Node OrbitMovement(Func<Vector2> center, float radius = 200f, float angularSpeed = 0.05f)
-        {
-            return MoveToPosition(() =>
-            {
-                orbitAngle += angularSpeed;
-                float x = center().X + (float)Math.Cos(orbitAngle) * radius;
-                float y = center().Y + (float)Math.Sin(orbitAngle) * radius;
-                return new Vector2(x, y);
-            }, 15f, 18f, new Vector2(1.5f, 1.2f), new Vector2(0.6f, 0.5f));
-        }
-
-        /// <summary>
-        /// 智能撤退（与玩家保持距离）
-        /// </summary>
-        protected Node IntelligentRetreat(Func<Vector2> target, float minDistance = 300f)
-        {
-            return MoveToPosition(() =>
-            {
-                Vector2 dir = NPC.Center - target();
-                dir.Normalize();
-                return target() + dir * minDistance;
-            }, 20f, 12f, new Vector2(1.2f, 1.0f), new Vector2(0.7f, 0.7f));
-        }
-
         /// <summary>
         /// 随机游荡（在指定范围内随机移动）
         /// </summary>
@@ -220,8 +161,54 @@ namespace AshenVoid.Content.NPCs
                         return NodeState.Success;
                     }
                 ),
-                MoveToPosition(() => wanderTarget.Value, 15f, 8f, new Vector2(0.8f, 0.8f), new Vector2(1f, 1f))
+                MoveToPosition(() => wanderTarget.Value, 15f, 1f, 0.5f, 0)
             );
+        }
+
+        /// <summary>
+        /// 快速冲刺移动（高加速度低阻尼）
+        /// </summary>
+        protected Node RushTowards(Vector2 target, float stopDistance = 20f)
+        {
+            return MoveToPosition(() => target, stopDistance,
+                2f, 0.9f, 0.5f);
+        }
+
+        /// <summary>
+        /// 缓慢接近（低速度高阻尼）
+        /// </summary>
+        protected Node CautiousApproach(Func<Vector2> target, float stopDistance = 30f)
+        {
+            return MoveToPosition(target, stopDistance, 10f,
+                1f, 0.8f);
+        }
+
+        /// <summary>
+        /// 环绕移动（围绕目标旋转）
+        /// </summary>
+        protected float orbitAngle = 0f;
+        protected Node OrbitMovement(Func<Vector2> center, float radius = 200f, float angularSpeed = 0.05f)
+        {
+            return MoveToPosition(() =>
+            {
+                orbitAngle += angularSpeed;
+                float x = center().X + (float)Math.Cos(orbitAngle) * radius;
+                float y = center().Y + (float)Math.Sin(orbitAngle) * radius;
+                return new Vector2(x, y);
+            }, 15f, 18f, 1.5f, 0.6f);
+        }
+
+        /// <summary>
+        /// 智能撤退（与玩家保持距离）
+        /// </summary>
+        protected Node IntelligentRetreat(Func<Vector2> target, float minDistance = 300f)
+        {
+            return MoveToPosition(() =>
+            {
+                Vector2 dir = NPC.Center - target();
+                dir.Normalize();
+                return target() + dir * minDistance;
+            }, 20f, 12f, 1.2f, 0.7f);
         }
 
         #endregion
@@ -255,6 +242,33 @@ namespace AshenVoid.Content.NPCs
                 return NodeState.Success;
             }
             return NodeState.Failure;
+        }
+
+
+        // 倾斜动画
+        public override void FindFrame(int frameHeight)
+        {
+            // 倾斜角度控制
+            float maxTiltAngle = MathHelper.ToRadians(30); // 最大倾斜角度
+            float tiltFactor = 0.005f; // 倾斜灵敏度，可调
+
+            if (velocity.X != 0)
+            {
+                // 根据速度方向设置倾斜方向
+                float tiltDirection = Math.Sign(velocity.X);
+                float tiltMagnitude = Math.Min(Math.Abs(velocity.X) * tiltFactor, 1f);
+
+                NPC.rotation = tiltDirection * MathHelper.Lerp(0, maxTiltAngle, tiltMagnitude);
+            }
+            else
+            {
+                NPC.rotation = 0; // 静止时归零
+            }
+
+            // 设置方向
+            NPC.spriteDirection = velocity.X > 0 ? 1 : -1;
+
+            base.FindFrame(frameHeight);
         }
     }
 }

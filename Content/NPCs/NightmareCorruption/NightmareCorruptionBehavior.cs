@@ -1,3 +1,4 @@
+using System;
 using AshenVoid.Content.Items.Drops;
 using AshenVoid.Core.BehaviorTree;
 using Microsoft.Xna.Framework;
@@ -59,8 +60,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 new SequenceNode(
                     new ConditionNode(() =>
                         Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
-                    ),
-                    RushTowards(TargetPlayer.Center)
+                    )
+                // RushTowards(TargetPlayer.Center)
                 ),
                 new ParallelNode(
                     new RepeatNode(
@@ -88,7 +89,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreatePhase2Behavior()
         {
             return new ParallelNode(
-                MoveToPosition(() => TargetPlayer.Center, 50f, 42f, new Vector2(1.0f, 0.5f), new Vector2(1.0f, 0.9f)),
                 new SequenceNode(
                     new WaitFramesNode(5 * 60),
                     new ActionNode(() => SummonMinions(ModContent.NPCType<NightmarePhantom>(), 2))
@@ -163,14 +163,5 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 Item.NewItem(NPC.GetSource_Loot(), NPC.getRect(), ModContent.ItemType<NightmareEssence>(), 10);
             }
         }
-
-        // public override void FindFrame(int frameHeight)
-        // {
-        //     base.FindFrame(frameHeight);
-
-        //     // 根据速度方向计算倾斜角度
-        //     float tiltAngle = MathHelper.Clamp(NPC.velocity.X * 0.05f, -MathHelper.PiOver4 * 2, MathHelper.PiOver4 * 2);
-        //     NPC.rotation = tiltAngle;
-        // }
     }
 }
