@@ -95,28 +95,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             );
         }
 
-        private float offsetX;
         private Node DriftingBehavior()
         {
-            return new ActionNode(() => RandomWander(TargetPlayer.Center + new Vector2(0, -200), 200f));
-            return new SequenceNode(
-                new OnceNode(() =>
-                {
-                    offsetX = (NPC.Center.X < TargetPlayer.Center.X) ? 200 : -200;
-                    offsetX += Main.rand.Next(-20, 20);
-                    return NodeState.Success;
-                }),
-                new ActionNode(() =>
-                {
-                    Vector2 targetPosition = new Vector2(
-                        TargetPlayer.Center.X + offsetX,
-                        TargetPlayer.Center.Y - 150
-                    );
-
-                    var moveState = MoveToPosition(() => targetPosition, 10f, 15f, new Vector2(1.0f, 0.5f), new Vector2(1.0f, 0.9f));
-                    return moveState;
-                })
-            );
+            return new OnceNode(() => RandomWander(TargetPlayer.Center + new Vector2(0, -200), 200f));
         }
         private NodeState ShootTowardPlayer()
         {
