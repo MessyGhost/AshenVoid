@@ -51,4 +51,7 @@ NPCs: {
 	NightmarePhantom.DisplayName: Nightmare Phantom
 }
 
-Projectiles.NightmareTrident.DisplayName: Nightmare Trident
+Projectiles: {
+	NightmareTrident.DisplayName: Nightmare Trident
+	NightmareBolt.DisplayName: Nightmare Bolt
+}

@@ -56,6 +56,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreatePhase1Behavior()
         {
             return new FallbackNode(
+                new SequenceNode(
+                    new ConditionNode(() =>
+                        Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
+                    )
+                ),
                 new ParallelNode(
                     new RepeatNode(
                         new SequenceNode(
@@ -64,9 +69,15 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                         ), -1),
                     new RepeatNode(
                         new SequenceNode(
-                            new ActionNode(ShootTowardPlayer),
-                            new WaitFramesNode(20)
-                        ),
+                            new RepeatNode(
+                                new SequenceNode(
+                                    new ActionNode(ShootTowardPlayer),
+                                    new WaitFramesNode(23)
+                                    )
+                                , 4
+                            ),
+                            new WaitFramesNode(79)
+                            ),
                         -1
                     )
                 )
@@ -76,19 +87,14 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreatePhase2Behavior()
         {
             return new ParallelNode(
-                // 主行为：持续追逐
-                new ActionNode(() => MoveToPosition(() => TargetPlayer.Center, 50f)),
-
-                // 辅助行为：周期召唤小弟
+                new ActionNode(() => MoveToPosition(() => TargetPlayer.Center, 50f, 42f, new Vector2(1.0f, 0.5f), new Vector2(1.0f, 0.9f))),
                 new SequenceNode(
-                    // 每5秒召唤
                     new WaitFramesNode(5 * 60),
-
-                    // 召唤2个幻影
                     new ActionNode(() => SummonMinions(ModContent.NPCType<NightmarePhantom>(), 2))
                 )
             );
         }
+
         private float offsetX;
         private Node DriftingBehavior()
         {
@@ -96,17 +102,17 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 new OnceNode(() =>
                 {
                     offsetX = (NPC.Center.X < TargetPlayer.Center.X) ? 200 : -200;
-                    offsetX += Main.rand.Next(-200, 200);
+                    offsetX += Main.rand.Next(-20, 20);
                     return NodeState.Success;
                 }),
                 new ActionNode(() =>
                 {
                     Vector2 targetPosition = new Vector2(
                         TargetPlayer.Center.X + offsetX,
-                        TargetPlayer.Center.Y - 150 + offsetX % 25
+                        TargetPlayer.Center.Y - 150
                     );
 
-                    var moveState = MoveToPosition(() => targetPosition, 40f, 12f, 3f);
+                    var moveState = MoveToPosition(() => targetPosition, 10f, 15f, new Vector2(1.0f, 0.5f), new Vector2(1.0f, 0.9f));
                     return moveState;
                 })
             );
@@ -118,11 +124,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Vector2 direction = (TargetPlayer.Center - NPC.Center).SafeNormalize(Vector2.UnitY);
             direction = direction.RotatedByRandom(MathHelper.ToRadians(5));
 
-            const int projType = ProjectileID.CorruptSpray;
-            const int damage = 20;
+            int projType = ProjectileID.CorruptSpray;// ModContent.ProjectileType<NightmareBolt>();
+            const int damage = 30; // 提升伤害
 
             return ShootProjectile(projType, direction, 12f, damage);
         }
+
         private void TriggerGraspOfTrance()
         {
             if (Main.netMode == NetmodeID.MultiplayerClient) return;
@@ -183,7 +190,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             base.FindFrame(frameHeight);
 
             // 根据速度方向计算倾斜角度
-            float tiltAngle = MathHelper.Clamp(NPC.velocity.X * 0.05f, -MathHelper.PiOver4, MathHelper.PiOver4);
+            float tiltAngle = MathHelper.Clamp(NPC.velocity.X * 0.05f, -MathHelper.PiOver4 * 2, MathHelper.PiOver4 * 2);
             NPC.rotation = tiltAngle;
         }
     }

@@ -51,4 +51,7 @@ NPCs: {
 	NightmarePhantom.DisplayName: 噩梦幽灵
 }
 
-Projectiles.NightmareTrident.DisplayName: 噩梦三叉戟
+Projectiles: {
+	NightmareTrident.DisplayName: 噩梦三叉戟
+	// NightmareBolt.DisplayName: Nightmare Bolt
+}

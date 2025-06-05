@@ -17,8 +17,12 @@ namespace AshenVoid.Content.NPCs
         protected bool isActive = false;
         protected bool hasSummonedMinions = false;
 
-        // 用于保存玩家位置的快照
-        protected Vector2 snapshotPos;
+        // 移动系统相关变量
+        protected Vector2 snapshotPos;          // 用于保存玩家位置的快照
+        private Vector2 _currentTargetPos;      // 当前目标位置
+        private float _currentMaxSpeed = 15f;          // 当前最大速度
+        private Vector2? _currentOmegaN;         // 当前X/Y轴自然频率
+        private Vector2? _currentZeta;           // 当前X/Y轴阻尼比
 
         // 初始化行为树（子类必须实现）
         protected abstract void CreateBehaviorTree();
@@ -46,14 +50,7 @@ namespace AshenVoid.Content.NPCs
         // 阶段切换时的自定义逻辑
         protected virtual void OnPhaseChanged() { }
 
-        // 激活Boss
-        public virtual void ActivateBoss()
-        {
-            isActive = true;
-            NPC.TargetClosest(true);
-            NPC.netUpdate = true;
-        }
-
+        // 帧循环逻辑
         public override void AI()
         {
             // 首次激活检查
@@ -62,10 +59,20 @@ namespace AshenVoid.Content.NPCs
                 ActivateBoss();
             }
 
+            UpdateMovement();
             base.AI();  // 执行行为树逻辑
 
             // Boss通用行为
             HandleDespawn();
+        }
+
+        // boss出生时调用，设置目标、网络和初始targetpos(设为boss当前位置，这个需要在覆写中先一步设置)
+        public virtual void ActivateBoss()
+        {
+            _currentTargetPos = NPC.Center;
+            isActive = true;
+            NPC.TargetClosest(true);
+            NPC.netUpdate = true;
         }
 
         // 防止Boss在玩家死亡后消失
@@ -85,68 +92,43 @@ namespace AshenVoid.Content.NPCs
             }
         }
 
-        // ===== 常用行为节点 =====
-
-        #region 移动方法
-        /// <summary>
-        /// 控制Boss移动到指定位置，支持参数化控制
-        /// </summary>
-        /// <param name="target">目标位置</param>
-        /// <param name="maxSpeed">最大速度</param>
-        /// <param name="acceleration">加速度</param>
-        /// <param name="slowdownDistance">开始减速的距离</param>
-        /// <param name="stopDistance">停止阈值</param>
-        /// <param name="faceTarget">是否面向目标</param>
-        /// <returns>NodeState 表示当前状态</returns>
-        protected NodeState MoveToPosition(Func<Vector2> target, float stopDistance = 4f, float maxSpeed = 8f, float acceleration = 2f,
-            float slowdownDistance = 50, bool faceTarget = true)
+        // 基于二阶PID系统的移动逻辑
+        protected virtual void UpdateMovement()
         {
-            if (TargetPlayer == null) return NodeState.Failure;
+            // Main.NewText($"{_currentTargetPos}");
+            // Main.NewText($"{NPC.Center}");
+            Vector2 dir = _currentTargetPos - NPC.Center;
+            float distance = dir.Length();
+            if (distance == 0) return;
+            dir.Normalize();
 
-            Vector2 targetPos = target();
-            Vector2 direction = targetPos - NPC.Center;
-            float distance = direction.Length();
-            direction.Normalize();
+            // 分量计算加速度
+            Vector2 desiredAcceleration = new Vector2(
+                _currentOmegaN.Value.X * _currentOmegaN.Value.X * dir.X * distance - 2 * _currentZeta.Value.X * _currentOmegaN.Value.X * NPC.velocity.X,
+                _currentOmegaN.Value.Y * _currentOmegaN.Value.Y * dir.Y * distance - 2 * _currentZeta.Value.Y * _currentOmegaN.Value.Y * NPC.velocity.Y
+            );
 
-            if (faceTarget)
+            NPC.velocity += desiredAcceleration * (1f / 60f);
+            NPC.position += NPC.velocity * (1f / 60f);
+
+            if (NPC.velocity.Length() > _currentMaxSpeed)
             {
-                NPC.spriteDirection = direction.X < 0 ? -1 : 1;
+                NPC.velocity = Vector2.Normalize(NPC.velocity) * _currentMaxSpeed;
             }
-
-            // 距离足够近时停止移动
-            if (distance <= stopDistance)
-            {
-                NPC.velocity = Vector2.Zero;
-                return NodeState.Success;
-            }
-
-            // 根据距离调整速度
-            float speedFactor = 1f;
-            if (distance < slowdownDistance)
-            {
-                speedFactor = distance / slowdownDistance;
-            }
-
-            // 计算期望速度
-            Vector2 desiredVelocity = direction * maxSpeed * speedFactor;
-
-            // 应用加速度限制
-            Vector2 deltaV = desiredVelocity - NPC.velocity;
-            if (deltaV.Length() > acceleration)
-            {
-                deltaV = Vector2.Normalize(deltaV) * acceleration;
-            }
-            NPC.velocity += deltaV;
-
-            // 限制最大速度
-            if (NPC.velocity.Length() > maxSpeed)
-            {
-                NPC.velocity = Vector2.Normalize(NPC.velocity) * maxSpeed;
-            }
-
-            return NodeState.Running;
         }
-        #endregion
+        protected NodeState MoveToPosition(Func<Vector2> target,
+                                        float stopDistance = 10f,
+                                        float maxSpeed = 15f,
+                                        Vector2? omega_n = null,
+                                        Vector2? zeta = null,
+                                        bool faceTarget = true)
+        {
+            _currentTargetPos = target();
+            _currentMaxSpeed = maxSpeed;
+            _currentOmegaN = omega_n ?? new Vector2(2.0f);
+            _currentZeta = zeta ?? new Vector2(0.7f);
+            return stopDistance > (_currentTargetPos - NPC.Center).Length() ? NodeState.Success : NodeState.Running;
+        }
 
         // 发射弹幕
         protected NodeState ShootProjectile(int projectileType, Vector2 direction, float speed, int damage)
