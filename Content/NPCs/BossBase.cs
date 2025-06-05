@@ -139,12 +139,11 @@ namespace AshenVoid.Content.NPCs
         {
             return
             new SequenceNode(
-                new OnceNode(
+                NodeBuilder.Once(
                     () =>
                     {
                         _currentTargetPos = target();
                         _movementController.SetConstants(f, z, r, NPC.Center);
-                        return NodeState.Success;
                     }
                 ),
                 new ActionNode(() =>
@@ -152,7 +151,6 @@ namespace AshenVoid.Content.NPCs
                     if (stopDistance > (_currentTargetPos - NPC.Center).Length())
                     {
                         Main.NewText($"Approach: {_currentTargetPos}");
-                        return NodeState.Success;
                     }
                     return NodeState.Running;
                 }
@@ -168,7 +166,7 @@ namespace AshenVoid.Content.NPCs
         protected Node RandomWander(Vector2 center, float radius = 150f)
         {
             return new SequenceNode(
-                new OnceNode(
+                NodeBuilder.Once(
                     () =>
                     {
                         // 生成新的随机目标点
@@ -178,7 +176,6 @@ namespace AshenVoid.Content.NPCs
                             (float)Math.Cos(angle) * distance,
                             (float)Math.Sin(angle) * distance
                         );
-                        return NodeState.Success;
                     }
                 ),
                 MoveToPosition(() => wanderTarget.Value, 15f, 1f, 0.5f, 0)

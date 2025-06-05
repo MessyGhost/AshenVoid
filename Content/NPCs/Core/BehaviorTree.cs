@@ -5,9 +5,6 @@ using Terraria;
 
 namespace AshenVoid.Core.BehaviorTree
 {
-    /// <summary>
-    /// 行为树节点执行状态
-    /// </summary>
     public enum NodeState
     {
         Running,
@@ -15,26 +12,12 @@ namespace AshenVoid.Core.BehaviorTree
         Failure
     }
 
-    /// <summary>
-    /// 行为树基类
-    /// </summary>
     public abstract class Node
     {
-        /// <summary>
-        /// 重置节点状态（用于循环执行）
-        /// </summary>
         public virtual void Reset() { }
-
-        /// <summary>
-        /// 执行节点逻辑
-        /// </summary>
-        /// <returns>节点执行结果</returns>
         public abstract NodeState Evaluate();
     }
 
-    /// <summary>
-    /// 基本动作节点
-    /// </summary>
     public class ActionNode : Node
     {
         private readonly Func<NodeState> _action;
@@ -47,9 +30,6 @@ namespace AshenVoid.Core.BehaviorTree
         public override NodeState Evaluate() => _action();
     }
 
-    /// <summary>
-    /// 序列节点（顺序执行子节点）
-    /// </summary>
     public class SequenceNode : Node
     {
         private readonly List<Node> _children = new List<Node>();
@@ -92,13 +72,11 @@ namespace AshenVoid.Core.BehaviorTree
         }
     }
 
-    /// <summary>
-    /// 回退节点（选择第一个成功的子节点）
-    /// </summary>
+
     public class FallbackNode : Node
     {
-        private readonly List<Node> _children = new List<Node>();
-        private int _currentChildIndex;
+        private List<Node> _children = new List<Node>();
+        private int currentChildIndex = 0;
 
         public FallbackNode(params Node[] children)
         {
@@ -107,33 +85,65 @@ namespace AshenVoid.Core.BehaviorTree
 
         public override NodeState Evaluate()
         {
-            for (; _currentChildIndex < _children.Count; _currentChildIndex++)
+            for (; currentChildIndex < _children.Count; currentChildIndex++)
             {
-                var result = _children[_currentChildIndex].Evaluate();
+                var child = _children[currentChildIndex];
+                var state = child.Evaluate();
 
-                if (result != NodeState.Failure)
+                if (state != NodeState.Failure)
                 {
-                    _currentChildIndex = 0;
-                    return result;
+                    currentChildIndex = 0;
+                    return state;
                 }
             }
 
-            _currentChildIndex = 0;
+            currentChildIndex = 0;
             return NodeState.Failure;
         }
 
         public override void Reset()
         {
-            _currentChildIndex = 0;
+            currentChildIndex = 0;
             foreach (var child in _children)
                 child.Reset();
             base.Reset();
         }
     }
 
-    /// <summary>
-    /// 条件节点（封装条件判断）
-    /// </summary>
+    public class ParallelNode : Node
+    {
+        private List<Node> _children = new List<Node>();
+
+        public ParallelNode(params Node[] children)
+        {
+            _children.AddRange(children);
+        }
+
+        public override NodeState Evaluate()
+        {
+            bool hasRunning = false;
+
+            foreach (var child in _children)
+            {
+                var state = child.Evaluate();
+
+                if (state == NodeState.Failure)
+                    return NodeState.Failure;
+
+                if (state == NodeState.Running)
+                    hasRunning = true;
+            }
+
+            return hasRunning ? NodeState.Running : NodeState.Success;
+        }
+
+        public override void Reset()
+        {
+            foreach (var child in _children)
+                child.Reset();
+            base.Reset();
+        }
+    }
     public class ConditionNode : Node
     {
         private readonly Func<bool> _condition;
@@ -147,21 +157,14 @@ namespace AshenVoid.Core.BehaviorTree
             _condition() ? NodeState.Success : NodeState.Failure;
     }
 
-    /// <summary>
-    /// 一次性执行节点
-    /// </summary>
     public class OnceNode : Node
     {
-        private readonly Func<NodeState> _action;
-        private bool _executed;
-        private readonly bool _alwaysSuccess;
+        private Func<NodeState> _action;
+        private bool _executed = false;
 
-        /// <param name="action">要执行的动作</param>
-        /// <param name="alwaysSuccess">是否始终返回成功</param>
-        public OnceNode(Func<NodeState> action, bool alwaysSuccess = true)
+        public OnceNode(Func<NodeState> action)
         {
-            _action = action ?? throw new ArgumentNullException(nameof(action));
-            _alwaysSuccess = alwaysSuccess;
+            _action = action;
         }
 
         public override NodeState Evaluate()
@@ -169,12 +172,8 @@ namespace AshenVoid.Core.BehaviorTree
             if (!_executed)
             {
                 _executed = true;
-                var result = _action();
-
-                if (_alwaysSuccess)
-                    return NodeState.Success;
-
-                return result;
+                // Main.NewText("_executed");
+                return _action();
             }
             return NodeState.Success;
         }
@@ -185,43 +184,136 @@ namespace AshenVoid.Core.BehaviorTree
             base.Reset();
         }
     }
-
-    /// <summary>
-    /// 重复执行节点
-    /// </summary>
-    public class RepeatNode : Node
+    public class DoUntilNode : Node
     {
         private readonly Node _child;
-        private readonly int _count;
-        private int _currentIteration;
+        private readonly Func<bool> _condition;
 
-        /// <param name="child">要重复的节点</param>
-        /// <param name="count">重复次数（-1表示无限）</param>
-        public RepeatNode(Node child, int count = -1)
+        public DoUntilNode(Node child, Func<bool> condition)
         {
             _child = child ?? throw new ArgumentNullException(nameof(child));
+            _condition = condition ?? throw new ArgumentNullException(nameof(condition));
+        }
+
+        public override NodeState Evaluate()
+        {
+            if (_condition())
+            {
+                _child.Reset();
+                return NodeState.Success;
+            }
+
+            var result = _child.Evaluate();
+            if (result == NodeState.Failure)
+                return NodeState.Failure;
+
+            if (result == NodeState.Success)
+                _child.Reset();
+
+            return NodeState.Running;
+        }
+
+        public override void Reset()
+        {
+            _child.Reset();
+            base.Reset();
+        }
+    }
+
+    public class DoSecondsNode : Node
+    {
+        private readonly Node _child;
+        private readonly float _timeoutSeconds;
+
+        private float _elapsedTime;
+
+        public DoSecondsNode(Node child, float timeoutSeconds)
+        {
+            _child = child ?? throw new ArgumentNullException(nameof(child));
+            _timeoutSeconds = timeoutSeconds;
+        }
+
+        public override NodeState Evaluate()
+        {
+            if (_elapsedTime >= _timeoutSeconds)
+            {
+                _child.Reset();
+                return NodeState.Success;
+            }
+
+            _elapsedTime += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
+            var result = _child.Evaluate();
+
+            if (result == NodeState.Failure)
+                return NodeState.Failure;
+
+            return NodeState.Running;
+        }
+
+        public override void Reset()
+        {
+            _elapsedTime = 0f;
+            _child.Reset();
+            base.Reset();
+        }
+    }
+
+    public class DoWhenNode : Node
+    {
+        private readonly Func<bool> _condition;
+        private readonly Node _child;
+
+        public DoWhenNode(Func<bool> condition, Node child)
+        {
+            _condition = condition ?? throw new ArgumentNullException(nameof(condition));
+            _child = child ?? throw new ArgumentNullException(nameof(child));
+        }
+
+        public override NodeState Evaluate()
+        {
+            if (_condition())
+                return _child.Evaluate();
+
+            _child.Reset();
+            return NodeState.Failure;
+        }
+
+        public override void Reset()
+        {
+            _child.Reset();
+            base.Reset();
+        }
+    }
+
+    public class RepeatNode : Node
+    {
+        private Node _child;
+        private int _count;
+        private int _currentIteration;
+
+        public RepeatNode(Node child, int count = -1)
+        {
+            _child = child;
             _count = count;
         }
 
         public override NodeState Evaluate()
         {
-            if (_count >= 0 && _currentIteration >= _count)
-                return NodeState.Success;
+            while (_count < 0 || _currentIteration < _count)
+            {
+                var result = _child.Evaluate();
 
-            var result = _child.Evaluate();
+                if (result == NodeState.Running)
+                    return NodeState.Running;
 
-            if (result == NodeState.Running)
-                return NodeState.Running;
+                if (result == NodeState.Failure)
+                    return NodeState.Failure;
 
-            if (result == NodeState.Failure)
-                return NodeState.Failure;
+                _currentIteration++;
+                _child.Reset();
+            }
 
-            _currentIteration++;
-            _child.Reset();
-
-            return _count < 0 || _currentIteration < _count
-                ? NodeState.Running
-                : NodeState.Success;
+            return NodeState.Success;
         }
 
         public override void Reset()
@@ -232,179 +324,6 @@ namespace AshenVoid.Core.BehaviorTree
         }
     }
 
-    /// <summary>
-    /// 每隔固定时间执行一次子节点，支持指定执行次数（-1 表示无限循环）
-    /// </summary>
-    public class IntervalNode : Node
-    {
-        private readonly Node _child;
-        private readonly float _interval;
-        private float _elapsed;
-        private bool _executingChild;
-        private int _currentCount;
-        private readonly int _totalCount; // -1 表示无限循环
-
-        public IntervalNode(Node child, float intervalSeconds, int count = -1)
-        {
-            _child = child ?? throw new ArgumentNullException(nameof(child));
-            _interval = intervalSeconds;
-            _totalCount = count;
-        }
-
-        public override NodeState Evaluate()
-        {
-            if (_executingChild)
-            {
-                var result = _child.Evaluate();
-
-                if (result != NodeState.Running)
-                {
-                    _executingChild = false;
-                    _elapsed = 0f;
-                    _child.Reset();
-
-                    // 如果有执行次数限制，检查是否已达到上限
-                    if (_totalCount != -1)
-                    {
-                        _currentCount++;
-                        if (_currentCount >= _totalCount)
-                        {
-                            return NodeState.Success;
-                        }
-                    }
-                }
-
-                return result;
-            }
-            else
-            {
-                _elapsed += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
-
-                if (_elapsed >= _interval)
-                {
-                    _executingChild = true;
-                    _elapsed = 0f;
-
-                    var result = _child.Evaluate();
-
-                    if (result != NodeState.Running)
-                    {
-                        _executingChild = false;
-                        _elapsed = 0f;
-                        _child.Reset();
-
-                        if (_totalCount != -1)
-                        {
-                            _currentCount++;
-                            if (_currentCount >= _totalCount)
-                            {
-                                return NodeState.Success;
-                            }
-                        }
-
-                        return result;
-                    }
-
-                    return NodeState.Running;
-                }
-
-                return NodeState.Running;
-            }
-        }
-
-        public override void Reset()
-        {
-            _elapsed = 0f;
-            _executingChild = false;
-            _currentCount = 0;
-            _child.Reset();
-            base.Reset();
-        }
-    }
-    /// <summary>
-    /// 超时保护节点
-    /// </summary>
-    public class DoUntilNode : Node
-    {
-        private readonly Node _child;
-        private readonly float _timeout;
-        private float _elapsed;
-
-        public DoUntilNode(Node child, float timeoutSeconds)
-        {
-            _child = child ?? throw new ArgumentNullException(nameof(child));
-            _timeout = timeoutSeconds;
-        }
-
-        public override NodeState Evaluate()
-        {
-            _elapsed += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
-
-            if (_elapsed >= _timeout)
-            {
-                _elapsed = 0f; // 可选：是否允许重复计时？视需求而定
-                return NodeState.Success;
-            }
-
-            return _child.Evaluate();
-        }
-
-        public override void Reset()
-        {
-            _elapsed = 0f;
-            _child.Reset();
-            base.Reset();
-        }
-    }
-
-    /// <summary>
-    /// 并行执行节点
-    /// </summary>
-    public class ParallelNode : Node
-    {
-        private readonly List<Node> _children = new List<Node>();
-
-        public ParallelNode(params Node[] children)
-        {
-            _children.AddRange(children);
-        }
-
-        public override NodeState Evaluate()
-        {
-            bool hasRunning = false;
-            bool hasFailure = false;
-
-            foreach (var child in _children)
-            {
-                var state = child.Evaluate();
-
-                if (state == NodeState.Failure)
-                {
-                    hasFailure = true;
-                }
-                else if (state == NodeState.Running)
-                {
-                    hasRunning = true;
-                }
-            }
-
-            if (hasFailure)
-                return NodeState.Failure;
-
-            return hasRunning ? NodeState.Running : NodeState.Success;
-        }
-
-        public override void Reset()
-        {
-            foreach (var child in _children)
-                child.Reset();
-            base.Reset();
-        }
-    }
-
-    /// <summary>
-    /// 随机选择器节点
-    /// </summary>
     public class RandomSelectorNode : Node
     {
         private readonly List<Node> _children = new List<Node>();
@@ -429,9 +348,57 @@ namespace AshenVoid.Core.BehaviorTree
         }
     }
 
-    /// <summary>
-    /// 节点构造器
-    /// </summary>
+    public class WaitUntilNode : Node
+    {
+        private Func<bool> _condition;
+        private bool _hasStarted = false;
+
+        public WaitUntilNode(Func<bool> condition)
+        {
+            _condition = condition;
+        }
+
+        public override NodeState Evaluate()
+        {
+            _hasStarted = true;
+            return _condition() ? NodeState.Success : NodeState.Running;
+        }
+
+        public override void Reset()
+        {
+            _hasStarted = false;
+            base.Reset();
+        }
+    }
+
+    public class WaitFramesNode : Node
+    {
+        private readonly int _totalFrames;
+        private int _framesRemaining;
+
+        public WaitFramesNode(int frames)
+        {
+            _totalFrames = frames;
+            _framesRemaining = frames;
+        }
+
+        public override NodeState Evaluate()
+        {
+            if (_framesRemaining <= 0)
+            {
+                return NodeState.Success;
+            }
+
+            _framesRemaining--;
+            return NodeState.Running;
+        }
+
+        public override void Reset()
+        {
+            _framesRemaining = _totalFrames;
+            base.Reset();
+        }
+    }
     public static class NodeBuilder
     {
         public static SequenceNode Sequence(params Node[] nodes) =>
@@ -448,20 +415,34 @@ namespace AshenVoid.Core.BehaviorTree
 
         public static ActionNode Do(Func<NodeState> action) =>
             new ActionNode(action);
+        public static ActionNode Do(Action action) =>
+            new ActionNode(() => { action(); return NodeState.Success; });
 
         public static RepeatNode Repeat(Node node, int count = -1) =>
             new RepeatNode(node, count);
 
-        public static IntervalNode Interval(Node node, float seconds, int count = -1) =>
-            new IntervalNode(node, seconds, count);
+        public static OnceNode Once(Func<NodeState> action) =>
+            new OnceNode(action);
 
-        public static OnceNode Once(Func<NodeState> action, bool alwaysSuccess = true) =>
-            new OnceNode(action, alwaysSuccess);
+        public static OnceNode Once(Action action) =>
+            new OnceNode(() => { action(); return NodeState.Success; });
 
-        public static DoUntilNode DoUntil(Node node, float timeoutSeconds) =>
-            new DoUntilNode(node, timeoutSeconds);
+        public static RepeatNode Interval(Node node, float seconds, int count = -1) =>
+            new RepeatNode(new SequenceNode(node, new WaitFramesNode((int)(seconds * 60))), count);
 
-        public static RandomSelectorNode Random(params Node[] nodes) =>
-            new RandomSelectorNode(nodes);
+        public static WaitUntilNode WaitUntil(Func<bool> condition) =>
+            new WaitUntilNode(condition);
+
+        public static WaitFramesNode WaitFrames(int frames) =>
+            new WaitFramesNode(frames);
+
+        public static DoUntilNode DoUntil(Node node, Func<bool> condition) =>
+            new DoUntilNode(node, condition);
+
+        public static DoSecondsNode DoSeconds(Node node, float timeoutSeconds) =>
+            new DoSecondsNode(node, timeoutSeconds);
+
+        public static DoWhenNode DoWhen(Func<bool> condition, Node node) =>
+            new DoWhenNode(condition, node);
     }
 }

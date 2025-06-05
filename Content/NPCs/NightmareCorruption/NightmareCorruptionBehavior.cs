@@ -30,10 +30,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.alpha = 255;
 
             return new SequenceNode(
-                new OnceNode(() =>
+                NodeBuilder.Once(() =>
                 {
                     PlaySound(new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionSpawn"));
-                    return NodeState.Success;
                 }),
                 // 淡入动画
                 new ActionNode(() =>
@@ -45,10 +44,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     }
                     return NodeState.Success;
                 }),
-                new OnceNode(() =>
+                NodeBuilder.Once(() =>
                 {
                     ChangePhase(1);
-                    return NodeState.Success;
                 })
             );
         }
@@ -58,16 +56,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreatePhase1Behavior()
         {
             return new FallbackNode(
-                new SequenceNode(
-                    new ConditionNode(() =>
-                        Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
-                    ),
-                    RushTowards(TargetPlayer.Center)
-                ),
+                // new SequenceNode(
+                //     new ConditionNode(() =>
+                //         Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
+                //     ),
+                //     RushTowards(TargetPlayer.Center)
+                // ),
                 new ParallelNode(
-                    new IntervalNode(RandomWander(TargetPlayer.Center + new Vector2(0, -200), 300f), 1.0f, -1),
-                    new IntervalNode(
-                        new IntervalNode(
+                    NodeBuilder.Interval(RandomWander(TargetPlayer.Center + new Vector2(0, -200), 300f), 1.0f),
+                    NodeBuilder.Interval(
+                        NodeBuilder.Interval(
                             ShootTowardPlayer(), 0.2f, 4
                         )
                         , 2.5f
