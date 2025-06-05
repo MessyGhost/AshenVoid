@@ -9,9 +9,6 @@ namespace AshenVoid.Content.NPCs
 {
     public abstract class BossBase : EnemyBase
     {
-        // 快照坐标（用于类似定点攻击）
-        Vector2 snapshotPos;
-
         // 阶段管理
         protected int currentPhase = 0;
         protected Dictionary<int, Node> phaseBehaviors = new Dictionary<int, Node>();
@@ -19,6 +16,9 @@ namespace AshenVoid.Content.NPCs
         // Boss状态
         protected bool isActive = false;
         protected bool hasSummonedMinions = false;
+
+        // 用于保存玩家位置的快照
+        protected Vector2 snapshotPos;
 
         // 初始化行为树（子类必须实现）
         protected abstract void CreateBehaviorTree();
@@ -87,6 +87,7 @@ namespace AshenVoid.Content.NPCs
 
         // ===== 常用行为节点 =====
 
+        #region 移动方法
         /// <summary>
         /// 控制Boss移动到指定位置，支持参数化控制
         /// </summary>
@@ -97,8 +98,8 @@ namespace AshenVoid.Content.NPCs
         /// <param name="stopDistance">停止阈值</param>
         /// <param name="faceTarget">是否面向目标</param>
         /// <returns>NodeState 表示当前状态</returns>
-        protected NodeState MoveToPosition(Func<Vector2> target, float maxSpeed, float acceleration,
-            float slowdownDistance, float stopDistance, bool faceTarget = true)
+        protected NodeState MoveToPosition(Func<Vector2> target, float stopDistance = 4f, float maxSpeed = 8f, float acceleration = 2f,
+            float slowdownDistance = 50, bool faceTarget = true)
         {
             if (TargetPlayer == null) return NodeState.Failure;
 
@@ -145,24 +146,7 @@ namespace AshenVoid.Content.NPCs
 
             return NodeState.Running;
         }
-
-        // 追逐目标玩家
-        protected NodeState ChaseTarget(float r)
-        {
-            // Main.NewText("ChaseTarget");
-            if (TargetPlayer == null) return NodeState.Failure;
-
-            Vector2 direction = TargetPlayer.Center - NPC.Center;
-
-            if (direction.Length() < r) return NodeState.Success;// r为追及半径，到达后算作追及成功
-
-            direction.Normalize();
-
-            NPC.velocity = (NPC.velocity * 15f + direction * 8f) / 16f;
-            NPC.velocity = Vector2.Clamp(NPC.velocity, -Vector2.One * 10f, Vector2.One * 10f);
-
-            return NodeState.Running;
-        }
+        #endregion
 
         // 发射弹幕
         protected NodeState ShootProjectile(int projectileType, Vector2 direction, float speed, int damage)

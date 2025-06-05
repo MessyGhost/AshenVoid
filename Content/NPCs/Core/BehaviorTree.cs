@@ -220,6 +220,34 @@ namespace AshenVoid.Core.BehaviorTree
         }
     }
 
+    // 装饰器节点：只执行一次的节点
+    public class OnceNode : Node
+    {
+        private Func<NodeState> _action;
+        private bool _executed = false;
+
+        public OnceNode(Func<NodeState> action)
+        {
+            _action = action;
+        }
+
+        public override NodeState Evaluate()
+        {
+            if (!_executed)
+            {
+                _executed = true;
+                // Main.NewText("_executed");
+                return _action();
+            }
+            return NodeState.Success;
+        }
+
+        public override void Reset()
+        {
+            _executed = false;
+            base.Reset();
+        }
+    }
     // 装饰器节点：重复执行子节点
     public class RepeatNode : Node
     {
@@ -315,6 +343,7 @@ namespace AshenVoid.Core.BehaviorTree
         }
     }
 
+    // 用于构造节点的builder类，可以链式调用
     public static class BehaviorTreeBuilder
     {
         public static SequenceNode Sequence(params Node[] nodes) => new SequenceNode(nodes);
@@ -324,6 +353,7 @@ namespace AshenVoid.Core.BehaviorTree
         public static WaitUntilNode WaitUntil(Func<bool> condition) => new WaitUntilNode(condition);
         public static WaitFramesNode WaitFrames(int frames) => new WaitFramesNode(frames);
         public static ActionNode Action(Func<NodeState> action) => new ActionNode(action);
+        public static OnceNode Once(Func<NodeState> action) => new OnceNode(action);
         public static RepeatNode Repeat(Node node, int count) => new RepeatNode(node, count);
         public static TimeoutNode Timeout(Node node, float seconds) => new TimeoutNode(node, seconds);
         public static RandomSelectorNode Random(params Node[] nodes) => new RandomSelectorNode(nodes);
