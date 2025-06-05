@@ -65,23 +65,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     RushTowards(TargetPlayer.Center)
                 ),
                 new ParallelNode(
-                    new RepeatNode(
-                        new SequenceNode(
-                            RandomWander(TargetPlayer.Center + new Vector2(0, -200), 300f),
-                            new WaitFramesNode(120)
+                    new IntervalNode(RandomWander(TargetPlayer.Center + new Vector2(0, -200), 300f), 1.0f, -1),
+                    new IntervalNode(
+                        new IntervalNode(
+                            ShootTowardPlayer(), 0.2f, 4
                         )
-                    ),
-                    new RepeatNode(
-                        new SequenceNode(
-                            new RepeatNode(
-                                new SequenceNode(
-                                    new ActionNode(ShootTowardPlayer),
-                                    new WaitFramesNode(23)
-                                    )
-                                    , 4
-                                ),
-                            new WaitFramesNode(79)
-                            )
+                        , 2.5f
                     )
                 )
             );
@@ -91,23 +80,25 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         {
             return new ParallelNode(
                 new SequenceNode(
-                    new WaitFramesNode(5 * 60),
                     new ActionNode(() => SummonMinions(ModContent.NPCType<NightmarePhantom>(), 2))
                 )
             );
         }
 
-        private NodeState ShootTowardPlayer()
+        private Node ShootTowardPlayer()
         {
-            if (TargetPlayer == null) return NodeState.Failure;
+            return new ActionNode(() =>
+            {
+                if (TargetPlayer == null) return NodeState.Failure;
 
-            Vector2 direction = (TargetPlayer.Center - NPC.Center).SafeNormalize(Vector2.UnitY);
-            direction = direction.RotatedByRandom(MathHelper.ToRadians(5));
+                Vector2 direction = (TargetPlayer.Center - NPC.Center).SafeNormalize(Vector2.UnitY);
+                direction = direction.RotatedByRandom(MathHelper.ToRadians(5));
 
-            int projType = ProjectileID.CorruptSpray;// ModContent.ProjectileType<NightmareBolt>();
-            const int damage = 30; // 提升伤害
+                int projType = ProjectileID.CorruptSpray;// ModContent.ProjectileType<NightmareBolt>();
+                const int damage = 30; // 提升伤害
 
-            return ShootProjectile(projType, direction, 12f, damage);
+                return ShootProjectile(projType, direction, 12f, damage);
+            });
         }
 
         private void TriggerGraspOfTrance()
