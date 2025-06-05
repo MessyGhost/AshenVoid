@@ -151,6 +151,7 @@ namespace AshenVoid.Content.NPCs
                     if (stopDistance > (_currentTargetPos - NPC.Center).Length())
                     {
                         Main.NewText($"Approach: {_currentTargetPos}");
+                        return NodeState.Success;
                     }
                     return NodeState.Running;
                 }

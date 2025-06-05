@@ -75,8 +75,8 @@ namespace AshenVoid.Core.BehaviorTree
 
     public class FallbackNode : Node
     {
-        private List<Node> _children = new List<Node>();
-        private int currentChildIndex = 0;
+        private readonly List<Node> _children = new List<Node>();
+        private int _currentChildIndex;
 
         public FallbackNode(params Node[] children)
         {
@@ -85,34 +85,32 @@ namespace AshenVoid.Core.BehaviorTree
 
         public override NodeState Evaluate()
         {
-            for (; currentChildIndex < _children.Count; currentChildIndex++)
+            for (; _currentChildIndex < _children.Count; _currentChildIndex++)
             {
-                var child = _children[currentChildIndex];
-                var state = child.Evaluate();
+                var result = _children[_currentChildIndex].Evaluate();
 
-                if (state != NodeState.Failure)
+                if (result != NodeState.Failure)
                 {
-                    currentChildIndex = 0;
-                    return state;
+                    _currentChildIndex = 0;
+                    return result;
                 }
             }
 
-            currentChildIndex = 0;
+            _currentChildIndex = 0;
             return NodeState.Failure;
         }
 
         public override void Reset()
         {
-            currentChildIndex = 0;
+            _currentChildIndex = 0;
             foreach (var child in _children)
                 child.Reset();
             base.Reset();
         }
     }
-
     public class ParallelNode : Node
     {
-        private List<Node> _children = new List<Node>();
+        private readonly List<Node> _children = new List<Node>();
 
         public ParallelNode(params Node[] children)
         {
@@ -122,17 +120,24 @@ namespace AshenVoid.Core.BehaviorTree
         public override NodeState Evaluate()
         {
             bool hasRunning = false;
+            bool hasFailure = false;
 
             foreach (var child in _children)
             {
                 var state = child.Evaluate();
 
                 if (state == NodeState.Failure)
-                    return NodeState.Failure;
-
-                if (state == NodeState.Running)
+                {
+                    hasFailure = true;
+                }
+                else if (state == NodeState.Running)
+                {
                     hasRunning = true;
+                }
             }
+
+            if (hasFailure)
+                return NodeState.Failure;
 
             return hasRunning ? NodeState.Running : NodeState.Success;
         }
@@ -144,6 +149,7 @@ namespace AshenVoid.Core.BehaviorTree
             base.Reset();
         }
     }
+
     public class ConditionNode : Node
     {
         private readonly Func<bool> _condition;
@@ -287,33 +293,34 @@ namespace AshenVoid.Core.BehaviorTree
 
     public class RepeatNode : Node
     {
-        private Node _child;
-        private int _count;
+        private readonly Node _child;
+        private readonly int _count;
         private int _currentIteration;
-
         public RepeatNode(Node child, int count = -1)
         {
-            _child = child;
+            _child = child ?? throw new ArgumentNullException(nameof(child));
             _count = count;
         }
 
         public override NodeState Evaluate()
         {
-            while (_count < 0 || _currentIteration < _count)
-            {
-                var result = _child.Evaluate();
+            if (_count >= 0 && _currentIteration >= _count)
+                return NodeState.Success;
 
-                if (result == NodeState.Running)
-                    return NodeState.Running;
+            var result = _child.Evaluate();
 
-                if (result == NodeState.Failure)
-                    return NodeState.Failure;
+            if (result == NodeState.Running)
+                return NodeState.Running;
 
-                _currentIteration++;
-                _child.Reset();
-            }
+            if (result == NodeState.Failure)
+                return NodeState.Failure;
 
-            return NodeState.Success;
+            _currentIteration++;
+            _child.Reset();
+
+            return _count < 0 || _currentIteration < _count
+                ? NodeState.Running
+                : NodeState.Success;
         }
 
         public override void Reset()
