@@ -255,7 +255,7 @@ namespace AshenVoid.Core.BehaviorTree
         private int _count;
         private int _currentIteration;
 
-        public RepeatNode(Node child, int count)
+        public RepeatNode(Node child, int count = -1)
         {
             _child = child;
             _count = count;

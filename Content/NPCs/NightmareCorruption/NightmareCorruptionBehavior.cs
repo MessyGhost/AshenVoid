@@ -56,17 +56,19 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreatePhase1Behavior()
         {
             return new FallbackNode(
-                // new SequenceNode(
-                //     new ConditionNode(() =>
-                //         Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
-                //     )
-                // ),
+                new SequenceNode(
+                    new ConditionNode(() =>
+                        Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
+                    ),
+                    RushTowards(TargetPlayer.Center)
+                ),
                 new ParallelNode(
                     new RepeatNode(
                         new SequenceNode(
-                            DriftingBehavior(),
+                            RandomWander(TargetPlayer.Center + new Vector2(0, -200), 300f),
                             new WaitFramesNode(120)
-                        ), -1),
+                        )
+                    ),
                     new RepeatNode(
                         new SequenceNode(
                             new RepeatNode(
@@ -74,11 +76,10 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                                     new ActionNode(ShootTowardPlayer),
                                     new WaitFramesNode(23)
                                     )
-                                , 4
-                            ),
+                                    , 4
+                                ),
                             new WaitFramesNode(79)
-                            ),
-                        -1
+                            )
                     )
                 )
             );
@@ -87,7 +88,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreatePhase2Behavior()
         {
             return new ParallelNode(
-                new ActionNode(() => MoveToPosition(() => TargetPlayer.Center, 50f, 42f, new Vector2(1.0f, 0.5f), new Vector2(1.0f, 0.9f))),
+                MoveToPosition(() => TargetPlayer.Center, 50f, 42f, new Vector2(1.0f, 0.5f), new Vector2(1.0f, 0.9f)),
                 new SequenceNode(
                     new WaitFramesNode(5 * 60),
                     new ActionNode(() => SummonMinions(ModContent.NPCType<NightmarePhantom>(), 2))
@@ -95,10 +96,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             );
         }
 
-        private Node DriftingBehavior()
-        {
-            return new OnceNode(() => RandomWander(TargetPlayer.Center + new Vector2(0, -200), 200f));
-        }
         private NodeState ShootTowardPlayer()
         {
             if (TargetPlayer == null) return NodeState.Failure;
@@ -167,13 +164,13 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             }
         }
 
-        public override void FindFrame(int frameHeight)
-        {
-            base.FindFrame(frameHeight);
+        // public override void FindFrame(int frameHeight)
+        // {
+        //     base.FindFrame(frameHeight);
 
-            // 根据速度方向计算倾斜角度
-            float tiltAngle = MathHelper.Clamp(NPC.velocity.X * 0.05f, -MathHelper.PiOver4 * 2, MathHelper.PiOver4 * 2);
-            NPC.rotation = tiltAngle;
-        }
+        //     // 根据速度方向计算倾斜角度
+        //     float tiltAngle = MathHelper.Clamp(NPC.velocity.X * 0.05f, -MathHelper.PiOver4 * 2, MathHelper.PiOver4 * 2);
+        //     NPC.rotation = tiltAngle;
+        // }
     }
 }
