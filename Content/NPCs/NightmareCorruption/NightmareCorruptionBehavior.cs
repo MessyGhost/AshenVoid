@@ -56,11 +56,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreatePhase1Behavior()
         {
             return new FallbackNode(
-                new SequenceNode(
-                    new ConditionNode(() =>
-                        Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
-                    )
-                ),
+                // new SequenceNode(
+                //     new ConditionNode(() =>
+                //         Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
+                //     )
+                // ),
                 new ParallelNode(
                     new RepeatNode(
                         new SequenceNode(
@@ -98,6 +98,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private float offsetX;
         private Node DriftingBehavior()
         {
+            return new ActionNode(() => RandomWander(TargetPlayer.Center + new Vector2(0, -200), 200f));
             return new SequenceNode(
                 new OnceNode(() =>
                 {

@@ -116,19 +116,97 @@ namespace AshenVoid.Content.NPCs
                 NPC.velocity = Vector2.Normalize(NPC.velocity) * _currentMaxSpeed;
             }
         }
+
+        // 移动函数，实质是设置目标位置和震荡阻尼等相关参数，
         protected NodeState MoveToPosition(Func<Vector2> target,
                                         float stopDistance = 10f,
                                         float maxSpeed = 15f,
                                         Vector2? omega_n = null,
-                                        Vector2? zeta = null,
-                                        bool faceTarget = true)
+                                        Vector2? zeta = null)
         {
             _currentTargetPos = target();
             _currentMaxSpeed = maxSpeed;
             _currentOmegaN = omega_n ?? new Vector2(2.0f);
             _currentZeta = zeta ?? new Vector2(0.7f);
-            return stopDistance > (_currentTargetPos - NPC.Center).Length() ? NodeState.Success : NodeState.Running;
+            if (stopDistance > (_currentTargetPos - NPC.Center).Length())
+            {
+                Main.NewText($"Approach: {_currentTargetPos}");
+                return NodeState.Success;
+            }
+            return NodeState.Running;
         }
+
+        #region 移动预设方法
+
+        /// <summary>
+        /// 快速冲刺移动（高加速度低阻尼）
+        /// </summary>
+        protected NodeState RushTowards(Func<Vector2> target, float stopDistance = 20f)
+        {
+            return MoveToPosition(target, stopDistance, 30f,
+                new Vector2(3.0f, 2.5f), new Vector2(0.4f, 0.3f));
+        }
+
+        /// <summary>
+        /// 缓慢接近（低速度高阻尼）
+        /// </summary>
+        protected NodeState CautiousApproach(Func<Vector2> target, float stopDistance = 30f)
+        {
+            return MoveToPosition(target, stopDistance, 10f,
+                new Vector2(1.0f, 1.0f), new Vector2(0.8f, 0.8f));
+        }
+
+        /// <summary>
+        /// 环绕移动（围绕目标旋转）
+        /// </summary>
+        protected float orbitAngle = 0f;
+        protected NodeState OrbitMovement(Func<Vector2> center, float radius = 200f, float angularSpeed = 0.05f)
+        {
+            return MoveToPosition(() =>
+            {
+                orbitAngle += angularSpeed;
+                float x = center().X + (float)Math.Cos(orbitAngle) * radius;
+                float y = center().Y + (float)Math.Sin(orbitAngle) * radius;
+                return new Vector2(x, y);
+            }, 15f, 18f, new Vector2(1.5f, 1.2f), new Vector2(0.6f, 0.5f));
+        }
+
+        /// <summary>
+        /// 智能撤退（与玩家保持距离）
+        /// </summary>
+        protected NodeState IntelligentRetreat(Func<Vector2> target, float minDistance = 300f)
+        {
+            return MoveToPosition(() =>
+            {
+                Vector2 dir = NPC.Center - target();
+                dir.Normalize();
+                return target() + dir * minDistance;
+            }, 20f, 12f, new Vector2(1.2f, 1.0f), new Vector2(0.7f, 0.7f));
+        }
+
+        /// <summary>
+        /// 随机游荡（在指定范围内随机移动）
+        /// </summary>
+        private Vector2? wanderTarget;
+        protected NodeState RandomWander(Vector2 center, float radius = 150f)
+        {
+            return MoveToPosition(() =>
+            {
+                if (!wanderTarget.HasValue || Vector2.Distance(NPC.Center, wanderTarget.Value) < 20f)
+                {
+                    // 生成新的随机目标点
+                    float angle = Main.rand.NextFloat(MathHelper.TwoPi);
+                    float distance = Main.rand.NextFloat(radius * 0.1f, radius);
+                    wanderTarget = center + new Vector2(
+                        (float)Math.Cos(angle) * distance,
+                        (float)Math.Sin(angle) * distance
+                    );
+                }
+                return wanderTarget.Value;
+            }, 15f, 8f, new Vector2(0.8f, 0.8f), new Vector2(0.9f, 0.9f));
+        }
+
+        #endregion
 
         // 发射弹幕
         protected NodeState ShootProjectile(int projectileType, Vector2 direction, float speed, int damage)
