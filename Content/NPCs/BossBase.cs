@@ -17,11 +17,14 @@ namespace AshenVoid.Content.NPCs
         protected bool isActive = false;
         protected bool hasSummonedMinions = false;
 
-        // // 移动系统相关变量
+        // 移动系统相关
         protected SecondOrderDynamics _movementController;
         protected Vector2 snapshotPos;          // 用于保存玩家位置的快照
-        private Vector2 _currentTargetPos;      // 当前目标位置
+        protected Vector2 _currentTargetPos;      // 当前目标位置
         public Vector2 velocity;                // 计算得到的速度，用于倾斜动画
+
+        // 动画相关
+        protected float animationSpeedMultiplier = 1.0f;
 
         // 初始化行为树（子类必须实现）
         protected abstract void CreateBehaviorTree();
@@ -72,6 +75,8 @@ namespace AshenVoid.Content.NPCs
                 NPC.Center = smoothedPos;
             }
 
+            UpdateAnimationSpeed();
+
             base.AI();
 
             HandleDespawn();
@@ -91,6 +96,21 @@ namespace AshenVoid.Content.NPCs
             isActive = true;
             NPC.TargetClosest(true);
             NPC.netUpdate = true;
+
+            // 初始动画速度
+            animationSpeedMultiplier = 3.0f;
+        }
+
+        // 更新动画速度
+        private void UpdateAnimationSpeed()
+        {
+            if (animationSpeedMultiplier > 1.0f)
+            {
+                animationSpeedMultiplier -=
+                    0.05f * (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds * 60f;
+                if (animationSpeedMultiplier < 1.0f)
+                    animationSpeedMultiplier = 1.0f;
+            }
         }
 
         // 防止Boss在玩家死亡后消失
@@ -245,30 +265,34 @@ namespace AshenVoid.Content.NPCs
         }
 
 
-        // 倾斜动画
+        // 动画相关逻辑
         public override void FindFrame(int frameHeight)
         {
-            // 倾斜角度控制
-            float maxTiltAngle = MathHelper.ToRadians(30); // 最大倾斜角度
-            float tiltFactor = 0.005f; // 倾斜灵敏度，可调
+            // 倾斜动画逻辑
+            float maxTiltAngle = MathHelper.ToRadians(30);
+            float tiltFactor = 0.001f;
 
             if (velocity.X != 0)
             {
-                // 根据速度方向设置倾斜方向
                 float tiltDirection = Math.Sign(velocity.X);
                 float tiltMagnitude = Math.Min(Math.Abs(velocity.X) * tiltFactor, 1f);
-
                 NPC.rotation = tiltDirection * MathHelper.Lerp(0, maxTiltAngle, tiltMagnitude);
             }
             else
             {
-                NPC.rotation = 0; // 静止时归零
+                NPC.rotation = 0;
             }
 
-            // 设置方向
             NPC.spriteDirection = velocity.X > 0 ? 1 : -1;
 
-            base.FindFrame(frameHeight);
+            // 动画帧控制
+            NPC.frameCounter += animationSpeedMultiplier;
+            if (NPC.frameCounter >= 10f)
+            {
+                NPC.frameCounter = 0f;
+                NPC.frame.Y = (NPC.frame.Y + frameHeight) %
+                             (Main.npcFrameCount[NPC.type] * frameHeight);
+            }
         }
     }
 }

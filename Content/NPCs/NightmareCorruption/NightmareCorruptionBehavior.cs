@@ -28,23 +28,24 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreateSpawnBehavior()
         {
             NPC.alpha = 255;
+
             return new SequenceNode(
-                new ActionNode(() =>
+                new OnceNode(() =>
                 {
                     PlaySound(new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionSpawn"));
                     return NodeState.Success;
                 }),
+                // 淡入动画
                 new ActionNode(() =>
                 {
                     if (NPC.alpha > 0)
                     {
                         NPC.alpha -= 5;
-                        // Main.NewText($"alpha:{NPC.alpha}");
                         return NodeState.Running;
                     }
                     return NodeState.Success;
                 }),
-                new ActionNode(() =>
+                new OnceNode(() =>
                 {
                     ChangePhase(1);
                     return NodeState.Success;
@@ -60,8 +61,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 new SequenceNode(
                     new ConditionNode(() =>
                         Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
-                    )
-                // RushTowards(TargetPlayer.Center)
+                    ),
+                    RushTowards(TargetPlayer.Center)
                 ),
                 new ParallelNode(
                     new RepeatNode(
