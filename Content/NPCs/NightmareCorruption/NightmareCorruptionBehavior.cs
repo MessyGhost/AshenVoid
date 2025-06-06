@@ -31,7 +31,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.alpha = 255;
 
             return new SequenceNode(
-                NodeBuilder.Once(() =>
+                Once(() =>
                 {
                     PlaySound(new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionSpawn"));
                 }),
@@ -45,7 +45,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     }
                     return NodeState.Success;
                 }),
-                NodeBuilder.Once(() =>
+                Once(() =>
                 {
                     ChangePhase(1);
                 })
@@ -57,19 +57,22 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private Node CreatePhase1Behavior()
         {
             return Fallback(
-                Sequence(
-                    Condition(() =>
-                        Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
+                DoUntil(
+                    RushTowards(() => TargetPlayer.Center),
+                    () => Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
                     ),
-                    RushTowards(TargetPlayer.Center)
-                ),
                 Parallel(
-                    Interval(RandomWander(TargetPlayer.Center + new Vector2(0, -200), 300f), 1.0f),
+                    Interval(
+                        Sequence(
+                            Interval(RandomWander(() => TargetPlayer.Center + new Vector2(0, -200)), 1f, 4),
+                            CautiousApproach(() => TargetPlayer.Center + new Vector2(0, -100), 100)
+                        ), 2),
                     Interval(
                         Interval(
-                            ShootTowardPlayer(), 0.2f, 4
+                            Breathing(0.2f)
+                            , Parallel(ShootTowardPlayer(), Breathing(0.2f)), 4
                         )
-                        , 2.5f
+                        , Breathing(2)
                     )
                 )
             );
@@ -86,7 +89,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private Node ShootTowardPlayer()
         {
-            return Do(() =>
+            return Once(() =>
             {
                 if (TargetPlayer == null) return NodeState.Failure;
 

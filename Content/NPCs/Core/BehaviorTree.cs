@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Terraria;
 
@@ -119,27 +120,32 @@ namespace AshenVoid.Core.BehaviorTree
 
         public override NodeState Evaluate()
         {
-            bool hasRunning = false;
-            bool hasFailure = false;
+            bool allSuccess = true;
+            bool anyRunning = false;
 
             foreach (var child in _children)
             {
                 var state = child.Evaluate();
-
                 if (state == NodeState.Failure)
                 {
-                    hasFailure = true;
+                    return NodeState.Failure;
                 }
-                else if (state == NodeState.Running)
+                if (state == NodeState.Running)
                 {
-                    hasRunning = true;
+                    anyRunning = true;
+                }
+                if (state != NodeState.Success)
+                {
+                    allSuccess = false;
                 }
             }
 
-            if (hasFailure)
-                return NodeState.Failure;
+            if (anyRunning)
+            {
+                return NodeState.Running;
+            }
 
-            return hasRunning ? NodeState.Running : NodeState.Success;
+            return allSuccess ? NodeState.Success : NodeState.Failure;
         }
 
         public override void Reset()
@@ -190,106 +196,6 @@ namespace AshenVoid.Core.BehaviorTree
             base.Reset();
         }
     }
-    public class DoUntilNode : Node
-    {
-        private readonly Node _child;
-        private readonly Func<bool> _condition;
-
-        public DoUntilNode(Node child, Func<bool> condition)
-        {
-            _child = child ?? throw new ArgumentNullException(nameof(child));
-            _condition = condition ?? throw new ArgumentNullException(nameof(condition));
-        }
-
-        public override NodeState Evaluate()
-        {
-            if (_condition())
-            {
-                _child.Reset();
-                return NodeState.Success;
-            }
-
-            var result = _child.Evaluate();
-            if (result == NodeState.Failure)
-                return NodeState.Failure;
-
-            if (result == NodeState.Success)
-                _child.Reset();
-
-            return NodeState.Running;
-        }
-
-        public override void Reset()
-        {
-            _child.Reset();
-            base.Reset();
-        }
-    }
-
-    public class DoSecondsNode : Node
-    {
-        private readonly Node _child;
-        private readonly float _timeoutSeconds;
-
-        private float _elapsedTime;
-
-        public DoSecondsNode(Node child, float timeoutSeconds)
-        {
-            _child = child ?? throw new ArgumentNullException(nameof(child));
-            _timeoutSeconds = timeoutSeconds;
-        }
-
-        public override NodeState Evaluate()
-        {
-            if (_elapsedTime >= _timeoutSeconds)
-            {
-                _child.Reset();
-                return NodeState.Success;
-            }
-
-            _elapsedTime += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
-            var result = _child.Evaluate();
-
-            if (result == NodeState.Failure)
-                return NodeState.Failure;
-
-            return NodeState.Running;
-        }
-
-        public override void Reset()
-        {
-            _elapsedTime = 0f;
-            _child.Reset();
-            base.Reset();
-        }
-    }
-
-    public class DoWhenNode : Node
-    {
-        private readonly Func<bool> _condition;
-        private readonly Node _child;
-
-        public DoWhenNode(Func<bool> condition, Node child)
-        {
-            _condition = condition ?? throw new ArgumentNullException(nameof(condition));
-            _child = child ?? throw new ArgumentNullException(nameof(child));
-        }
-
-        public override NodeState Evaluate()
-        {
-            if (_condition())
-                return _child.Evaluate();
-
-            _child.Reset();
-            return NodeState.Failure;
-        }
-
-        public override void Reset()
-        {
-            _child.Reset();
-            base.Reset();
-        }
-    }
 
     public class RepeatNode : Node
     {
@@ -334,17 +240,59 @@ namespace AshenVoid.Core.BehaviorTree
     public class RandomSelectorNode : Node
     {
         private readonly List<Node> _children = new List<Node>();
+        private readonly List<int> _weights = new List<int>();
         private readonly Random _random = new Random();
+        private bool _useWeights;
 
+        // 构造函数：等概率选择
         public RandomSelectorNode(params Node[] children)
         {
             _children.AddRange(children);
         }
 
+        // 构造函数：带权重选择
+        public RandomSelectorNode(params (Node node, int weight)[] weightedNodes)
+        {
+            foreach (var (node, weight) in weightedNodes)
+            {
+                _children.Add(node);
+                _weights.Add(weight);
+            }
+            _useWeights = true;
+        }
+
         public override NodeState Evaluate()
         {
-            int index = _random.Next(_children.Count);
-            return _children[index].Evaluate();
+            if (_children.Count == 0)
+                return NodeState.Failure;
+
+            if (!_useWeights || _weights.All(w => w == 1))
+            {
+                // 等概率选择
+                int index = _random.Next(_children.Count);
+                return _children[index].Evaluate();
+            }
+            else
+            {
+                // 按权重选择
+                int totalWeight = _weights.Sum();
+                if (totalWeight <= 0)
+                    return NodeState.Failure;
+
+                int selectedWeight = _random.Next(totalWeight);
+                int cumulative = 0;
+
+                for (int i = 0; i < _children.Count; i++)
+                {
+                    cumulative += _weights[i];
+                    if (selectedWeight < cumulative)
+                    {
+                        return _children[i].Evaluate();
+                    }
+                }
+
+                return _children.Last().Evaluate(); // fallback
+            }
         }
 
         public override void Reset()
@@ -417,16 +365,21 @@ namespace AshenVoid.Core.BehaviorTree
         public static ParallelNode Parallel(params Node[] nodes) =>
             new ParallelNode(nodes);
 
+        public static RandomSelectorNode Random(params Node[] nodes) =>
+            new RandomSelectorNode(nodes);
+
+        public static RandomSelectorNode Weighted(params (Node node, int weight)[] weightedNodes) =>
+            new RandomSelectorNode(weightedNodes);
+        public static RepeatNode Repeat(Node node, int count = -1) =>
+            new RepeatNode(node, count);
         public static ConditionNode Condition(Func<bool> condition) =>
             new ConditionNode(condition);
 
         public static ActionNode Do(Func<NodeState> action) =>
             new ActionNode(action);
+
         public static ActionNode Do(Action action) =>
             new ActionNode(() => { action(); return NodeState.Success; });
-
-        public static RepeatNode Repeat(Node node, int count = -1) =>
-            new RepeatNode(node, count);
 
         public static OnceNode Once(Func<NodeState> action) =>
             new OnceNode(action);
@@ -434,22 +387,25 @@ namespace AshenVoid.Core.BehaviorTree
         public static OnceNode Once(Action action) =>
             new OnceNode(() => { action(); return NodeState.Success; });
 
-        public static RepeatNode Interval(Node node, float seconds, int count = -1) =>
-            new RepeatNode(new SequenceNode(node, new WaitFramesNode((int)(seconds * 60))), count);
-
         public static WaitUntilNode WaitUntil(Func<bool> condition) =>
             new WaitUntilNode(condition);
 
         public static WaitFramesNode WaitFrames(int frames) =>
             new WaitFramesNode(frames);
 
-        public static DoUntilNode DoUntil(Node node, Func<bool> condition) =>
-            new DoUntilNode(node, condition);
+        public static WaitFramesNode WaitSeconds(float seconds) =>
+            new WaitFramesNode((int)(seconds * 60));
 
-        public static DoSecondsNode DoSeconds(Node node, float timeoutSeconds) =>
-            new DoSecondsNode(node, timeoutSeconds);
+        public static RepeatNode Interval(Node node, float seconds, int count = -1) =>
+            Repeat(Sequence(node, WaitSeconds(seconds)), count);
 
-        public static DoWhenNode DoWhen(Func<bool> condition, Node node) =>
-            new DoWhenNode(condition, node);
+        public static RepeatNode Interval(Node mainNode, Node intervalNode, int count = -1) =>
+            Repeat(Sequence(mainNode, intervalNode), count);
+
+        public static RepeatNode DoUntil(Node node, Func<bool> condition) =>
+            Repeat(Sequence(Condition(condition), node));
+
+        public static ParallelNode DoSeconds(Node node, float timeoutSeconds) =>
+            Parallel(node, WaitFrames((int)(timeoutSeconds * 60)));
     }
 }
