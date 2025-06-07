@@ -171,28 +171,34 @@ namespace AshenVoid.Core.BehaviorTree
 
     public class OnceNode : Node
     {
-        private Func<NodeState> _action;
-        private bool _executed = false;
+        private Node _child;
+        private bool _hasBeenCalled = false;
 
-        public OnceNode(Func<NodeState> action)
+        public OnceNode(Node child)
         {
-            _action = action;
+            _child = child;
         }
 
         public override NodeState Evaluate()
         {
-            if (!_executed)
+            if (_hasBeenCalled)
             {
-                _executed = true;
-                // Main.NewText("_executed");
-                return _action();
+                return NodeState.Success;
             }
-            return NodeState.Success;
-        }
 
+            var state = _child.Evaluate();
+
+            if (state != NodeState.Running)
+            {
+                _hasBeenCalled = true;
+            }
+
+            return state;
+        }
         public override void Reset()
         {
-            _executed = false;
+            _hasBeenCalled = false;
+            _child.Reset();
             base.Reset();
         }
     }
@@ -243,14 +249,15 @@ namespace AshenVoid.Core.BehaviorTree
         private readonly List<int> _weights = new List<int>();
         private readonly Random _random = new Random();
         private bool _useWeights;
+        private int? _currentChildIndex = null;
 
-        // 构造函数：等概率选择
+        // 构造函数 1：等概率选择
         public RandomSelectorNode(params Node[] children)
         {
             _children.AddRange(children);
         }
 
-        // 构造函数：带权重选择
+        // 构造函数 2：带权重选择
         public RandomSelectorNode(params (Node node, int weight)[] weightedNodes)
         {
             foreach (var (node, weight) in weightedNodes)
@@ -266,37 +273,55 @@ namespace AshenVoid.Core.BehaviorTree
             if (_children.Count == 0)
                 return NodeState.Failure;
 
-            if (!_useWeights || _weights.All(w => w == 1))
+            // 如果尚未选择子节点，则根据权重或随机选择一个
+            if (!_currentChildIndex.HasValue)
             {
-                // 等概率选择
-                int index = _random.Next(_children.Count);
-                return _children[index].Evaluate();
-            }
-            else
-            {
-                // 按权重选择
-                int totalWeight = _weights.Sum();
-                if (totalWeight <= 0)
-                    return NodeState.Failure;
-
-                int selectedWeight = _random.Next(totalWeight);
-                int cumulative = 0;
-
-                for (int i = 0; i < _children.Count; i++)
+                if (!_useWeights || _weights.All(w => w == 1))
                 {
-                    cumulative += _weights[i];
-                    if (selectedWeight < cumulative)
-                    {
-                        return _children[i].Evaluate();
-                    }
+                    // 等概率选择
+                    _currentChildIndex = _random.Next(_children.Count);
                 }
+                else
+                {
+                    // 按权重选择
+                    int totalWeight = _weights.Sum();
+                    if (totalWeight <= 0)
+                        return NodeState.Failure;
 
-                return _children.Last().Evaluate(); // fallback
+                    int selectedWeight = _random.Next(totalWeight);
+                    int cumulative = 0;
+
+                    for (int i = 0; i < _children.Count; i++)
+                    {
+                        cumulative += _weights[i];
+                        if (selectedWeight < cumulative)
+                        {
+                            _currentChildIndex = i;
+                            break;
+                        }
+                    }
+
+                    // fallback: 如果未找到（理论上不会发生）
+                    if (!_currentChildIndex.HasValue)
+                        _currentChildIndex = _children.Count - 1;
+                }
             }
+
+            // 执行当前选中的子节点
+            var result = _children[_currentChildIndex.Value].Evaluate();
+
+            // 如果子节点完成，则重置以备下次重新选择
+            if (result != NodeState.Running)
+            {
+                _currentChildIndex = null;
+            }
+
+            return result;
         }
 
         public override void Reset()
         {
+            _currentChildIndex = null;
             foreach (var child in _children)
                 child.Reset();
             base.Reset();
@@ -381,11 +406,14 @@ namespace AshenVoid.Core.BehaviorTree
         public static ActionNode Do(Action action) =>
             new ActionNode(() => { action(); return NodeState.Success; });
 
+        public static OnceNode Once(Node node) =>
+            new OnceNode(node);
+
         public static OnceNode Once(Func<NodeState> action) =>
-            new OnceNode(action);
+            new OnceNode(Do(action));
 
         public static OnceNode Once(Action action) =>
-            new OnceNode(() => { action(); return NodeState.Success; });
+            new OnceNode(Do(() => { action(); return NodeState.Success; }));
 
         public static WaitUntilNode WaitUntil(Func<bool> condition) =>
             new WaitUntilNode(condition);

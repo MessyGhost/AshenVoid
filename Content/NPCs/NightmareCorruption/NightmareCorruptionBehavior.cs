@@ -28,23 +28,17 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private Node CreateSpawnBehavior()
         {
-            NPC.alpha = 255;
-
             return new SequenceNode(
                 Once(() =>
                 {
                     PlaySound(new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionSpawn"));
                 }),
-                // 淡入动画
-                new ActionNode(() =>
-                {
-                    if (NPC.alpha > 0)
-                    {
-                        NPC.alpha -= 5;
-                        return NodeState.Running;
-                    }
-                    return NodeState.Success;
-                }),
+                Parallel(
+                    FadeIn(1f),
+                    Breathe(1.5f),
+                    Shake(1.5f),
+                    OnceApproach(() => TargetPlayer.Center + new Vector2(0, -300))
+                    ),
                 Once(() =>
                 {
                     ChangePhase(1);
@@ -58,21 +52,26 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         {
             return Fallback(
                 DoUntil(
-                    RushTowards(() => TargetPlayer.Center),
+                    Chase(() => TargetPlayer.Center),
                     () => Vector2.Distance(NPC.Center, TargetPlayer.Center) > 800f
                     ),
                 Parallel(
                     Interval(
                         Sequence(
-                            Interval(RandomWander(() => TargetPlayer.Center + new Vector2(0, -200)), 1f, 4),
-                            CautiousApproach(() => TargetPlayer.Center + new Vector2(0, -100), 100)
-                        ), 2),
+                            Sequence(
+                                OnceRandomApproach(() => TargetPlayer.Center + new Vector2(0, -300)),
+                                DoSeconds(OrbitAround(() => TargetPlayer.Center), 3f)
+                            ),
+                            Random(
+                                RushTowardsWithBuildUp(() => 1.5f * TargetPlayer.Center - 0.5f * NPC.Center),
+                                DoSeconds(Approach(() => TargetPlayer.Center), 3f)
+                            )
+                        ),
+                        DoSeconds(Approach(() => TargetPlayer.Center), 2f)
+                        ),
                     Interval(
-                        Interval(
-                            Breathing(0.2f)
-                            , Parallel(ShootTowardPlayer(), Breathing(0.2f)), 4
-                        )
-                        , Breathing(2)
+                        Interval(ShootTowardPlayer(), Main.rand.NextFloat(0.1f, 0.2f), Main.rand.Next(3, 6)),
+                        2
                     )
                 )
             );
@@ -80,11 +79,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private Node CreatePhase2Behavior()
         {
-            return Parallel(
-                Sequence(
-                    Do(() => SummonMinions(ModContent.NPCType<NightmarePhantom>(), 2))
-                )
-            );
+            return Chase(() => TargetPlayer.Center);
         }
 
         private Node ShootTowardPlayer()

@@ -21,23 +21,6 @@ namespace AshenVoid.Content.NPCs
             }
         }
 
-        // 行为树
-        protected Node BehaviorTree;
-
-        public override void AI()
-        {
-            // 初始化行为树（每个NPC子类需重写）
-            if (BehaviorTree == null)
-                InitializeBehaviorTree();
-
-            // 更新行为树
-            BehaviorTree?.Evaluate();
-        }
-
-        // 子类需重写此方法以定义行为树
-        protected abstract void InitializeBehaviorTree();
-
-
         // 确保有目标
         public void TargetIfRequired(bool faceTarget = false)
         {
