@@ -98,51 +98,51 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             });
         }
 
-        private void TriggerGraspOfTrance()
-        {
-            if (Main.netMode == NetmodeID.MultiplayerClient) return;
+        // private void TriggerGraspOfTrance()
+        // {
+        //     if (Main.netMode == NetmodeID.MultiplayerClient) return;
 
-            for (int i = 0; i < 2; i++)
-            {  // 双召唤增强
-                Vector2 spawnPos = TargetPlayer.Center + new Vector2(
-                    Main.rand.Next(-100, 100), 1000);
+        //     for (int i = 0; i < 2; i++)
+        //     {  // 双召唤增强
+        //         Vector2 spawnPos = TargetPlayer.Center + new Vector2(
+        //             Main.rand.Next(-100, 100), 1000);
 
-                int npcID = NPC.NewNPC(NPC.GetSource_FromAI(),
-                    (int)spawnPos.X, (int)spawnPos.Y,
-                    ModContent.NPCType<GraspOfTrance>());
+        //         int npcID = NPC.NewNPC(NPC.GetSource_FromAI(),
+        //             (int)spawnPos.X, (int)spawnPos.Y,
+        //             ModContent.NPCType<GraspOfTrance>());
 
-                NPC graspNpc = Main.npc[npcID];
-                graspNpc.ai[0] = TargetPlayer.whoAmI;
-                graspNpc.ai[1] = NPC.whoAmI;
-            }
-        }
-        public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
-        {
-            damageTaken += damageDone;
-            // 每损失10%生命值触发
-            int currentThreshold = NPC.lifeMax - NPC.life;
-            if (currentThreshold - healthThreshold >= NPC.lifeMax / 10)
-            {
-                healthThreshold = currentThreshold;
-                TriggerGraspOfTrance();
-            }
-            base.OnHitByItem(player, item, hit, damageDone);
-            SoundEngine.PlaySound(new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionHurt"), NPC.Center);
-        }
+        //         NPC graspNpc = Main.npc[npcID];
+        //         graspNpc.ai[0] = TargetPlayer.whoAmI;
+        //         graspNpc.ai[1] = NPC.whoAmI;
+        //     }
+        // }
+        // public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
+        // {
+        //     damageTaken += damageDone;
+        //     // 每损失10%生命值触发
+        //     int currentThreshold = NPC.lifeMax - NPC.life;
+        //     if (currentThreshold - healthThreshold >= NPC.lifeMax / 10)
+        //     {
+        //         healthThreshold = currentThreshold;
+        //         TriggerGraspOfTrance();
+        //     }
+        //     base.OnHitByItem(player, item, hit, damageDone);
+        //     SoundEngine.PlaySound(new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionHurt"), NPC.Center);
+        // }
 
-        public override void OnHitByProjectile(Projectile projectile, NPC.HitInfo hit, int damageDone)
-        {
-            damageTaken += damageDone;
-            // 每损失10%生命值触发
-            int currentThreshold = NPC.lifeMax - NPC.life;
-            if (currentThreshold - healthThreshold >= NPC.lifeMax / 10)
-            {
-                healthThreshold = currentThreshold;
-                TriggerGraspOfTrance();
-            }
-            base.OnHitByProjectile(projectile, hit, damageDone);
-            SoundEngine.PlaySound(new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionHurt"), NPC.Center);
-        }
+        // public override void OnHitByProjectile(Projectile projectile, NPC.HitInfo hit, int damageDone)
+        // {
+        //     damageTaken += damageDone;
+        //     // 每损失10%生命值触发
+        //     int currentThreshold = NPC.lifeMax - NPC.life;
+        //     if (currentThreshold - healthThreshold >= NPC.lifeMax / 10)
+        //     {
+        //         healthThreshold = currentThreshold;
+        //         TriggerGraspOfTrance();
+        //     }
+        //     base.OnHitByProjectile(projectile, hit, damageDone);
+        //     SoundEngine.PlaySound(new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionHurt"), NPC.Center);
+        // }
 
         public override void OnKill()
         {

@@ -70,7 +70,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             }
         }
 
-        public override void ActivateBoss()
+        protected override void ActivateBoss()
         {
             NPC.Center = TargetPlayer.position + new Vector2(0, -200);
             base.ActivateBoss();

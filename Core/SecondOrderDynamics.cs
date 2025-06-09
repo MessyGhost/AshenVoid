@@ -13,7 +13,7 @@ namespace AshenVoid.Core.BehaviorTree
         private float _k1, _k2, _k3;
         private float _criticalStep;
 
-        public SecondOrderDynamics(float frequency, float dampingRatio, float responseScale)
+        public SecondOrderDynamics(float frequency = 2f, float dampingRatio = 1f, float responseScale = 0f)
         {
             SetConstants(frequency, dampingRatio, responseScale);
         }

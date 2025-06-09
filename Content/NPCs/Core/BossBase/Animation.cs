@@ -5,6 +5,7 @@ using AshenVoid.Core.Animation;
 using Microsoft.Xna.Framework;
 using static AshenVoid.Core.BehaviorTree.NodeBuilder;
 using Steamworks;
+using AshenVoid.Core.Processor.AshenVoid.Core.FX;
 
 namespace AshenVoid.Content.NPCs
 {
@@ -55,19 +56,24 @@ namespace AshenVoid.Content.NPCs
 
         protected Node Shake(float duration = 2f, float intensity = 2f)
         {
-            return Animate(
+            Transformer shakeFX = null;
+
+            return Sequence(
+                Once(() =>
+                {
+                    // Main.NewText($"{_chain}");
+                    shakeFX = _chain.GetEffect<Transformer>();
+                }),
+                Animate(
                     duration,
                     progress =>
                     {
-                        // 生成随机方向的扰动向量
                         Vector2 shake = Main.rand.NextVector2Circular(intensity, intensity);
-                        _shakeOffset = shake; // 应用到 _shakeOffset
+                        shakeFX.PositionOffset = shake;
                     },
-                    () =>
-                    {
-                        _shakeOffset = Vector2.Zero; // 动画结束后重置偏移
-                    }
-                );
+                    () => shakeFX.PositionOffset = Vector2.Zero
+                )
+            );
         }
 
         protected Node Animate(float to, float duration, float from, AnimationCurve curve, Action<float> onUpdate, Action onComplete = null)
