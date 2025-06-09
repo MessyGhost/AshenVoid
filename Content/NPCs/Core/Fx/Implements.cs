@@ -44,35 +44,35 @@ namespace AshenVoid.Core.Processor
     /// </summary>
     public class Tilter : Processor
     {
-        public Vector2 velocity;
-        public Tilter(Vector2 v)
+        // 改为使用函数获取最新速度
+        private readonly Func<Vector2> _getVelocity;
+
+        public Tilter(Func<Vector2> getVelocity)
         {
-            velocity = v;
+            _getVelocity = getVelocity;
         }
+
         public override void OnFindFrame(NPC npc)
         {
-            // 使用低通滤波平滑旋转角度
+            Vector2 velocity = _getVelocity(); // 获取实时速度
             float maxTiltAngle = MathHelper.ToRadians(30);
             float tiltFactor = 0.001f;
-            float smoothingFactor = 0.1f; // 平滑因子，值越大过渡越平滑
+            float smoothingFactor = 0.1f;
 
-            if (velocity.X != 0)
+            if (Math.Abs(velocity.X) > 0.1f) // 添加阈值检测
             {
                 float tiltDirection = Math.Sign(velocity.X);
                 float tiltMagnitude = Math.Min(Math.Abs(velocity.X) * tiltFactor, 1f);
                 float targetRotation = tiltDirection * MathHelper.Lerp(0, maxTiltAngle, tiltMagnitude);
 
-                // 使用线性插值平滑过渡
                 npc.rotation = MathHelper.Lerp(npc.rotation, targetRotation, smoothingFactor);
             }
             else
             {
-                // 平滑回归到0度
                 npc.rotation = MathHelper.Lerp(npc.rotation, 0f, smoothingFactor);
             }
 
             npc.spriteDirection = velocity.X > 0 ? 1 : -1;
-
         }
     }
 }

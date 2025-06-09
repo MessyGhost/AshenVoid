@@ -43,7 +43,7 @@ namespace AshenVoid.Content.NPCs
             // 添加通用的FX (帧动画、倾斜)
             _chain.Add(new Transformer());
             _chain.Add(new Framer());
-            _chain.Add(new Tilter(velocity));
+            _chain.Add(new Tilter(() => velocity));
         }
 
         // 切换Boss阶段
