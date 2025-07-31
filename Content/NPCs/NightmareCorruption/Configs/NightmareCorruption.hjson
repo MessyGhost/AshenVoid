@@ -1,0 +1,28 @@
+{
+    // 第一阶段配置
+  "phase1": {
+        // 移动参数
+    "movement": {
+      "frequency": 1.2, // PID控制器频率
+      "dampingRatio": 0.8, // 阻尼比
+      "responseScale": 0.5, // 响应缩放
+      "chaseDistanceFar": 800, // 追击距离
+      "chaseStopDistance": 400, // 停止距离
+      "orbitRadius": 300, // 环绕半径
+      "thinkIntervalMin": 2, // 最小思考间隔
+      "thinkIntervalMax": 4 // 最大思考间隔
+    },
+        
+        // 攻击参数
+    "attacks": {
+      "basicShot": {
+        "projectileId": 270, // ProjectileID.DemonScythe
+        "cooldown": 2.5, // 冷却时间
+        "damage": 35, // 伤害
+        "speed": 12, // 弹幕速度
+        "isChanneled": false, // 是否为持续性攻击
+        "duration": 0 // 持续时间（瞬时攻击为0）
+      }
+    }
+  }
+}

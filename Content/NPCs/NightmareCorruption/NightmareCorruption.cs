@@ -1,18 +1,38 @@
-using System.Configuration;
+using AshenVoid.Core.ECS;
+using AshenVoid.Content.Items.Drops;
+using AshenVoid.Content.NPCs.NightmareCorruption.States;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Terraria;
 using Terraria.Audio;
 using Terraria.ID;
-using Terraria.Localization;
 using Terraria.ModLoader;
+using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
+using AshenVoid.Core.Configuration;
+using AshenVoid.Core.DI;
+using AshenVoid.Core.ECS.Interfaces;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
     [AutoloadBossHead]
-    public partial class NightmareCorruption : BossBase
+    public partial class NightmareCorruption : ModNPC
     {
+        protected ComponentController Components { get; private set; }
+        private BossConfig _config;
+        private ServiceContainer _serviceContainer;
+
+        public override void SetStaticDefaults()
+        {
+            Main.npcFrameCount[Type] = 4;
+        }
+
         public override void SetDefaults()
         {
+            _config = ConfigLoader.Load<BossConfig>("NightmareCorruption.hjson");
+
+            _serviceContainer = new ServiceContainer();
+            RegisterServices();
+
             NPC.width = 242;
             NPC.height = 192;
             NPC.lifeMax = 13100;
@@ -29,93 +49,77 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.HitSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionHurt");
             NPC.DeathSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionDead");
 
-            Main.npcFrameCount[NPC.type] = 4;
-
             Music = MusicLoader.GetMusicSlot(Mod, "Assets/Music/FoulAbyssEcho");
         }
 
+        private void RegisterServices()
+        {
+            _serviceContainer.RegisterSingleton<IMovementComponent, MovementComponent>();
+            _serviceContainer.RegisterSingleton<IAttackComponent, AttackComponent>();
+            _serviceContainer.RegisterSingleton<IAnimationComponent, AnimationComponent>();
+            _serviceContainer.RegisterSingleton<IVFXComponent, VFXComponent>();
+            _serviceContainer.RegisterSingleton<AIComponent, AIComponent>();
+
+            _serviceContainer.RegisterInstance(_config);
+            _serviceContainer.RegisterInstance(NPC);
+            _serviceContainer.RegisterInstance(_config.Phase1.Movement);
+            _serviceContainer.RegisterInstance(_config.Phase1.Attacks);
+        }
 
         public override void AI()
         {
-            if (NPC.life <= 1 && !NPC.dontTakeDamage)
+            if (Components == null)
             {
-                NPC.dontTakeDamage = true;
-                HandleDeathAnimation();
-            }
-            // 确保有目标玩家
-            if (NPC.target < 0 || NPC.target >= Main.maxPlayers || !Main.player[NPC.target].active || Main.player[NPC.target].dead)
-            {
-                NPC.TargetClosest(true);
+                InitializeComponents();
             }
 
-            // 首次激活检查
-            if (!isActive && Main.netMode != NetmodeID.MultiplayerClient)
-            {
-                ActivateBoss();
-            }
-
-            base.AI(); // 执行行为树
-
-            // 阶段切换：当血量低于50%时进入二阶段
-            if (NPC.life <= NPC.lifeMax * 0.5f && currentPhase != 2)
-            {
-                ChangePhase(2);
-
-                // 提示文本
-                string message = Language.GetTextValue("Mods.AshenVoid.Content.NPCs.NightmareCorruption.Dialogue.Phase2");
-                Main.NewText(message, Color.Purple);
-
-                NPC.noGravity = false; // 二阶段受重力影响
-                NPC.noTileCollide = false; // 二阶段有碰撞
-            }
+            if (Main.netMode == NetmodeID.MultiplayerClient) return;
+            Components.Update();
         }
 
-        protected override void ActivateBoss()
+        private void InitializeComponents()
         {
-            NPC.Center = TargetPlayer.position + new Vector2(0, -200);
-            base.ActivateBoss();
+            Components = new ComponentController(NPC);
+
+            // AIComponent is now the root of all behaviors, created via DI.
+            var aiComponent = _serviceContainer.GetService<AIComponent>();
+            aiComponent.Initialize();
+
+            aiComponent.SetInitialState(new Phase1State(aiComponent, _config.Phase1));
+
+            Components.AddComponent(aiComponent);
+
+            // We still need to add other components so their Update methods are called.
+            Components.AddComponent(_serviceContainer.GetService<IMovementComponent>());
+            Components.AddComponent(_serviceContainer.GetService<IAttackComponent>());
+            Components.AddComponent(_serviceContainer.GetService<IAnimationComponent>());
+            Components.AddComponent(_serviceContainer.GetService<IVFXComponent>());
         }
 
-        private void HandleDeathAnimation()
+        public override void FindFrame(int frameHeight)
         {
-            // 死亡动画逻辑
-            if (NPC.position.Y < Main.worldSurface * 16)
+            // Animation is now handled by the AnimationComponent
+        }
+
+        public override void PostDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
+        {
+            var vfx = Components.GetComponent<IVFXComponent>() as VFXComponent;
+            vfx?.PostDraw(spriteBatch);
+            base.PostDraw(spriteBatch, screenPos, drawColor);
+        }
+
+        public override bool PreDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
+        {
+            var vfx = Components.GetComponent<IVFXComponent>() as VFXComponent;
+            vfx?.PreDraw(spriteBatch);
+            return base.PreDraw(spriteBatch, screenPos, drawColor);
+        }
+
+        public override void OnKill()
+        {
+            if (Main.netMode != NetmodeID.MultiplayerClient)
             {
-                // 自由落体至地面
-                NPC.velocity.Y += 0.5f;
-                if (NPC.collideY)
-                {
-                    // 触发爆炸效果
-                    for (int i = 0; i < 20; i++)
-                    {
-                        Dust.NewDust(NPC.position, NPC.width, NPC.height, DustID.Corruption,
-                            Main.rand.NextFloat(-5, 5), Main.rand.NextFloat(-5, 5), 0, default, 3f);
-                    }
-
-                    // 播放死亡音效
-                    PlaySound(SoundID.NPCDeath1);
-
-                    // 生成尸体
-                    if (Main.netMode != NetmodeID.MultiplayerClient)
-                    {
-                        NPC.NewNPC(NPC.GetSource_FromAI(), (int)NPC.Center.X, (int)NPC.Center.Y,
-                            ModContent.NPCType<NightmareCorruptionCorpse>());
-                    }
-                }
-            }
-            else
-            {
-                // 虚影抖动
-                NPC.position.X += Main.rand.NextFloat(-5, 5);
-                NPC.position.Y += Main.rand.NextFloat(-5, 5);
-
-                // 明度降低
-                NPC.alpha += 5;
-                if (NPC.alpha >= 255)
-                {
-                    // 本体消失
-                    NPC.active = false;
-                }
+                Item.NewItem(NPC.GetSource_Loot(), NPC.getRect(), ModContent.ItemType<NightmareEssence>(), 10);
             }
         }
     }

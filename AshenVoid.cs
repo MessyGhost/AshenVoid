@@ -12,5 +12,12 @@ namespace AshenVoid
 {
     public class AshenVoid : Mod
     {
+        public static string ModSourcePath { get; private set; }
+
+        public override void Load()
+        {
+            // 使用您提供的正确方法 SourceFolder 来获取源路径
+            ModSourcePath = SourceFolder;
+        }
     }
 }

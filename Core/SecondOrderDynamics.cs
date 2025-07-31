@@ -1,6 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
-namespace AshenVoid.Core.BehaviorTree
+namespace AshenVoid.Core
 {
     public class SecondOrderDynamics
     {

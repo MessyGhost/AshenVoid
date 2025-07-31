@@ -7,6 +7,9 @@
 	<PropertyGroup>
 		
 	</PropertyGroup>
+	<ItemGroup>
+	  <PackageReference Include="Hjson" Version="3.0.0" />
+	</ItemGroup>
 
 	<!-- References -->
 
