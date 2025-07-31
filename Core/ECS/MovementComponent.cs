@@ -6,7 +6,7 @@ using AshenVoid.Core.ECS.Intents;
 
 namespace AshenVoid.Core.ECS
 {
-    public class MovementComponent : IMovementComponent
+    public class MovementComponent : IMovementComponent, IComponent
     {
         public IMovementIntent CurrentIntent { get; set; }
         public readonly SecondOrderDynamics Dynamics;
@@ -24,6 +24,11 @@ namespace AshenVoid.Core.ECS
         public bool IsMoving()
         {
             return CurrentIntent != null && CurrentIntent is not IdleIntent;
+        }
+
+        public void Update()
+        {
+            // Logic is in MovementSystem
         }
     }
 }

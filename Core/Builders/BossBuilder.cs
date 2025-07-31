@@ -1,9 +1,9 @@
-using AshenVoid.Core.DI;
+using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
+using AshenVoid.Core.Configuration;
 using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Systems;
-using System;
-using System.Collections.Generic;
+using AshenVoid.Core.Events;
 using Terraria.ModLoader;
 
 namespace AshenVoid.Core.Builders
@@ -11,20 +11,12 @@ namespace AshenVoid.Core.Builders
     public class BossBuilder
     {
         private readonly ModNPC _npc;
-        private readonly ServiceContainer _serviceContainer = new();
-        private readonly List<Action<ServiceContainer>> _registrationActions = new();
         private IState _initialState;
+        private BossConfig _bossConfig;
 
         public BossBuilder(ModNPC npc)
         {
             _npc = npc;
-            _serviceContainer.RegisterInstance(npc);
-        }
-
-        public BossBuilder WithServices(Action<ServiceContainer> registrationAction)
-        {
-            _registrationActions.Add(registrationAction);
-            return this;
         }
 
         public BossBuilder WithInitialState(IState state)
@@ -33,35 +25,49 @@ namespace AshenVoid.Core.Builders
             return this;
         }
 
-        public T GetService<T>() where T : class
+        public BossBuilder WithConfig(BossConfig config)
         {
-            return _serviceContainer.GetService<T>();
+            _bossConfig = config;
+            return this;
         }
 
         public ComponentController Build()
         {
-            foreach (var action in _registrationActions)
-            {
-                action(_serviceContainer);
-            }
+            // Manual Dependency Injection
+            var eventBus = new EventBus();
+            var controller = new ComponentController();
 
-            _serviceContainer.RegisterSingleton<ComponentController, ComponentController>();
-            var controller = _serviceContainer.GetService<ComponentController>();
+            // Create and Register Components
+            var movementComponent = new MovementComponent(_npc.NPC, _bossConfig.Phase1.Movement);
+            var attackComponent = new AttackComponent();
+            var animationComponent = new AnimationComponent(_npc.NPC);
+            var vfxComponent = new VFXComponent();
+            var statSheetComponent = new StatSheetComponent(_npc.NPC, _bossConfig);
+            var aiStateComponent = new AIStateComponent(_npc.NPC, controller, eventBus);
+
+            controller.RegisterComponent(movementComponent);
+            controller.RegisterComponent(attackComponent);
+            controller.RegisterComponent(animationComponent);
+            controller.RegisterComponent(vfxComponent);
+            controller.RegisterComponent(statSheetComponent);
+            controller.RegisterComponent(aiStateComponent);
+
+            // Initialize components that need it
+            eventBus.Subscribe<NPCDamagedEvent>(aiStateComponent.OnDamaged);
+            eventBus.Subscribe<NPCHealthLossEvent>(aiStateComponent.OnHealthLoss);
 
             // Register systems
             controller.RegisterSystem(new MovementSystem());
             controller.RegisterSystem(new AttackSystem());
 
-            controller.Initialize();
-
-            var aiState = controller.GetComponent<AIStateComponent>();
-            if (aiState != null && _initialState != null)
+            // Set initial state
+            if (_initialState != null)
             {
-                aiState.SetInitialState(_initialState);
+                aiStateComponent.SetInitialState(_initialState);
             }
-            else if (_initialState != null)
+            else
             {
-                ModContent.GetInstance<AshenVoid>().Logger.Warn("提供了初始状态，但未找到AIStateComponent来管理它。");
+                ModContent.GetInstance<AshenVoid>().Logger.Warn("No initial state provided for the boss.");
             }
 
             return controller;

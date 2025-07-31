@@ -9,7 +9,7 @@ namespace AshenVoid.Core.ECS
     /// <summary>
     /// Manages the AI's state machine and high-level behavior triggers.
     /// </summary>
-    public class AIStateComponent : IComponent, IInitializable
+    public class AIStateComponent : IComponent
     {
         public readonly NPC NPC;
         public Player Target { get; private set; }
@@ -36,13 +36,8 @@ namespace AshenVoid.Core.ECS
             _lastSummonHealthPercent = 1f;
         }
 
-        public void Initialize()
-        {
-            EventBus.Subscribe<NPCDamagedEvent>(OnDamaged);
-            EventBus.Subscribe<NPCHealthLossEvent>(OnHealthLoss);
-        }
 
-        private void OnDamaged(NPCDamagedEvent e)
+        public void OnDamaged(NPCDamagedEvent e)
         {
             _damageTakenSinceLastDash += e.Hit.Damage;
             // This logic needs to be tied to the config value.
@@ -59,7 +54,7 @@ namespace AshenVoid.Core.ECS
             _damageTakenSinceLastDash = 0;
         }
 
-        private void OnHealthLoss(NPCHealthLossEvent e)
+        public void OnHealthLoss(NPCHealthLossEvent e)
         {
             // Summon check
             if (e.PreviousHealthPercentage - e.HealthPercentage >= 0.1f)

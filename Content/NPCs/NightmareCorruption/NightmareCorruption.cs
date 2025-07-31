@@ -9,7 +9,6 @@ using Terraria.ID;
 using Terraria.ModLoader;
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.Configuration;
-using AshenVoid.Core.DI;
 using AshenVoid.Core.ECS.Interfaces;
 using AshenVoid.Core.Events;
 using AshenVoid.Core.Systems;
@@ -80,39 +79,23 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private void SetupECS()
         {
-            var builder = new Core.Builders.BossBuilder(this);
+            var configLoader = new ConfigLoader();
+            var bossConfig = configLoader.LoadForBoss<BossConfig>(FullName);
 
-            Components = builder
-                .WithServices(services =>
-                {
-                    // 注册通用的、可重用的服务
-                    services.RegisterSingleton<IConfigLoader, ConfigLoader>();
-                    services.RegisterSingleton<EventBus, EventBus>();
+            NPC.damage = bossConfig.Damage;
+            NPC.defense = bossConfig.Defense;
 
-                    // 加载并注册此Boss特有的配置
-                    var configLoader = services.GetService<IConfigLoader>();
-                    var bossConfig = configLoader.Load<BossConfig>("Content/NPCs/NightmareCorruption/Configs/NightmareCorruption.hjson");
-                    services.RegisterInstance(bossConfig);
-                    services.RegisterInstance(bossConfig.Phase1.Movement);
-                    services.RegisterInstance(bossConfig.Phase1.Attacks);
-
-                    // 根据配置设置NPC属性
-                    NPC.damage = bossConfig.Damage;
-                    NPC.defense = bossConfig.Defense;
-
-                    // 注册此Boss所需的组件
-                    services.RegisterSingleton<IMovementComponent, MovementComponent>();
-                    services.RegisterSingleton<IAttackComponent, AttackComponent>();
-                    services.RegisterSingleton<IAnimationComponent, AnimationComponent>();
-                    services.RegisterSingleton<IVFXComponent, VFXComponent>();
-                    services.RegisterSingleton<IStatSheetComponent, StatSheetComponent>();
-                    services.RegisterSingleton<AIStateComponent, AIStateComponent>();
-                })
-                .WithInitialState(new SpawnState(builder.GetService<BossConfig>())) // 从构建器中获取依赖
+            Components = new Core.Builders.BossBuilder(this)
+                .WithConfig(bossConfig)
+                .WithInitialState(new SpawnState(bossConfig))
                 .Build();
 
-            // 从完全配置好的组件中获取服务
-            _eventBus = Components.GetComponent<AIStateComponent>().EventBus;
+            // EventBus is now internal to the AIStateComponent and managed by the builder
+            var aiState = Components.GetComponent<AIStateComponent>();
+            if (aiState != null)
+            {
+                _eventBus = aiState.EventBus;
+            }
             _lastHealth = NPC.life;
         }
 

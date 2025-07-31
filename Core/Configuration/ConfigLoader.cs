@@ -25,25 +25,33 @@ namespace AshenVoid.Core.Configuration
         }
 
         /// <inheritdoc/>
-        public T Load<T>(string configPath) where T : class, new()
+        public T LoadForBoss<T>(string bossFullName) where T : class, new()
         {
-            if (_configCache.TryGetValue(configPath, out var cached))
+            if (_configCache.TryGetValue(bossFullName, out var cached))
                 return (T)cached;
 
             if (string.IsNullOrEmpty(_modSourcePath))
             {
-                ModContent.GetInstance<AshenVoid>().Logger.Error($"由于Mod源路径无效，无法加载配置: {configPath}");
+                ModContent.GetInstance<AshenVoid>().Logger.Error($"由于Mod源路径无效，无法加载Boss配置: {bossFullName}");
                 return new T();
             }
+
+            var bossNameParts = bossFullName.Split('/');
+            if (bossNameParts.Length < 2)
+            {
+                ModContent.GetInstance<AshenVoid>().Logger.Error($"无效的Boss FullName格式: {bossFullName}");
+                return new T();
+            }
+            var bossInternalName = bossNameParts[^1];
+            var configPath = Path.Combine("Content", "NPCs", bossInternalName, "Configs", $"{bossInternalName}.hjson");
 
             var fullPath = Path.Combine(_modSourcePath, configPath);
 
             if (!File.Exists(fullPath))
             {
-                ModContent.GetInstance<AshenVoid>().Logger.Warn($"配置文件不存在: {fullPath}，将使用默认配置。");
+                ModContent.GetInstance<AshenVoid>().Logger.Warn($"Boss配置文件不存在: {fullPath}，将使用默认配置。");
                 var defaultConfig = new T();
-                // 将默认配置也缓存起来，避免重复的文件检查
-                _configCache[configPath] = defaultConfig;
+                _configCache[bossFullName] = defaultConfig;
                 return defaultConfig;
             }
 
@@ -54,20 +62,20 @@ namespace AshenVoid.Core.Configuration
                 var jsonText = hjsonValue.ToString(Stringify.Plain);
                 var config = JsonConvert.DeserializeObject<T>(jsonText);
 
-                _configCache[configPath] = config;
+                _configCache[bossFullName] = config;
                 return config;
             }
             catch (Exception ex)
             {
-                ModContent.GetInstance<AshenVoid>().Logger.Error($"加载或解析配置失败: {configPath}", ex);
+                ModContent.GetInstance<AshenVoid>().Logger.Error($"加载或解析Boss配置失败: {bossFullName} ({configPath})", ex);
                 return new T();
             }
         }
 
         /// <inheritdoc/>
-        public void ReloadConfig(string configPath)
+        public void ReloadBossConfig(string bossFullName)
         {
-            _configCache.Remove(configPath);
+            _configCache.Remove(bossFullName);
         }
     }
 }
