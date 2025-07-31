@@ -42,11 +42,26 @@ namespace AshenVoid.Core.ECS
             {
                 case ShootProjectileIntent shoot:
                     ExecuteShootProjectile(shoot);
-                    _cooldownTimer = shoot.Stats.Cooldown * _statSheet.AttackCooldownMultiplier.Value; // Set cooldown from stats, modified by stat sheet
+                    _cooldownTimer = shoot.Stats.Cooldown * _statSheet.AttackCooldownMultiplier.Value;
+                    break;
+
+                case SpawnNpcIntent spawn:
+                    ExecuteSpawnNpc(spawn);
+                    _cooldownTimer = spawn.Cooldown * _statSheet.AttackCooldownMultiplier.Value;
                     break;
             }
 
             _currentIntent = null; // Consume the intent
+        }
+
+        private void ExecuteSpawnNpc(SpawnNpcIntent intent)
+        {
+            if (Main.netMode == NetmodeID.MultiplayerClient) return;
+
+            for (int i = 0; i < intent.Count; i++)
+            {
+                NPC.NewNPC(_npc.GetSource_FromAI(), (int)intent.SpawnPosition.X, (int)intent.SpawnPosition.Y, intent.NpcId);
+            }
         }
 
         private void ExecuteShootProjectile(ShootProjectileIntent intent)

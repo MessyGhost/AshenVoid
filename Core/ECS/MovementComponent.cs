@@ -66,6 +66,12 @@ namespace AshenVoid.Core.ECS
                     destination = _npc.Center + fleeDirection * 200f; // Flee to a point 200px away
                     break;
 
+                case TeleportIntent teleport:
+                    _npc.Center = teleport.TargetPosition;
+                    _npc.velocity = Vector2.Zero;
+                    _currentIntent = null; // Consume the intent
+                    return; // Bypass PID controller for instant movement
+
                 case IdleIntent _:
                 case null:
                     // No intent, so we just apply damping to the current velocity.

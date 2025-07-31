@@ -90,5 +90,27 @@ namespace AshenVoid.Core.ECS.BehaviorTree
                 return attackComponent != null && attackComponent.IsAttacking();
             });
         }
+
+        public static Node SetTeleport(AIComponent ai, Func<Vector2> targetPosition)
+        {
+            return new ActionNode(() =>
+            {
+                ai.Controller.GetComponent<IMovementComponent>().SetIntent(new TeleportIntent(targetPosition()));
+                return NodeState.Success;
+            });
+        }
+
+        public static Node SetSpawnNpc(AIComponent ai, int npcId, Func<Vector2> spawnPosition, int count = 1, float cooldown = 0f)
+        {
+            return new ActionNode(() =>
+            {
+                var attackComponent = ai.Controller.GetComponent<IAttackComponent>();
+                if (attackComponent == null || !attackComponent.IsReady())
+                    return NodeState.Failure;
+
+                attackComponent.SetIntent(new SpawnNpcIntent(npcId, spawnPosition(), count, cooldown));
+                return NodeState.Success;
+            });
+        }
     }
 }

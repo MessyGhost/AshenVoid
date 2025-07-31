@@ -57,4 +57,17 @@ namespace AshenVoid.Core.ECS.Intents
     /// Intent to do nothing, allowing inertia to take over or to simply stop.
     /// </summary>
     public class IdleIntent : IMovementIntent { }
+
+    /// <summary>
+    /// Intent to instantly move to a specific position.
+    /// </summary>
+    public class TeleportIntent : IMovementIntent
+    {
+        public Vector2 TargetPosition { get; }
+
+        public TeleportIntent(Vector2 targetPosition)
+        {
+            TargetPosition = targetPosition;
+        }
+    }
 }

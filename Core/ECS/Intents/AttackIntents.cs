@@ -23,4 +23,23 @@ namespace AshenVoid.Core.ECS.Intents
             Stats = stats;
         }
     }
+
+    /// <summary>
+    /// An intent to spawn one or more NPCs.
+    /// </summary>
+    public class SpawnNpcIntent : IAttackIntent
+    {
+        public int NpcId { get; }
+        public int Count { get; }
+        public Vector2 SpawnPosition { get; }
+        public float Cooldown { get; }
+
+        public SpawnNpcIntent(int npcId, Vector2 spawnPosition, int count = 1, float cooldown = 0f)
+        {
+            NpcId = npcId;
+            SpawnPosition = spawnPosition;
+            Count = count;
+            Cooldown = cooldown;
+        }
+    }
 }
