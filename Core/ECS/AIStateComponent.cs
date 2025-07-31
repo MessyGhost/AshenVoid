@@ -7,10 +7,9 @@ using Terraria;
 namespace AshenVoid.Core.ECS
 {
     /// <summary>
-    /// 唯一职责是持有并更新状态机 (StateMachine)。
-    /// 不再管理或直接引用其他组件。
+    /// Manages the AI's state machine and high-level behavior triggers.
     /// </summary>
-    public class AIComponent : IComponent, IInitializable
+    public class AIStateComponent : IComponent, IInitializable
     {
         public readonly NPC NPC;
         public Player Target { get; private set; }
@@ -27,12 +26,12 @@ namespace AshenVoid.Core.ECS
         private float _damageTakenSinceLastDash;
         private float _lastSummonHealthPercent;
 
-        public AIComponent(NPC npc, ComponentController controller, EventBus eventBus)
+        public AIStateComponent(NPC npc, ComponentController controller, EventBus eventBus)
         {
             NPC = npc;
             Controller = controller;
             EventBus = eventBus;
-            _stateMachine = new StateMachine(this);
+            _stateMachine = new StateMachine();
             _isEnraged = false;
             _lastSummonHealthPercent = 1f;
         }
@@ -90,12 +89,12 @@ namespace AshenVoid.Core.ECS
 
         public void SetInitialState(IState initialState)
         {
-            _stateMachine.ChangeState(initialState);
+            _stateMachine.ChangeState(initialState, Controller, NPC);
         }
 
         public void ChangeState(IState newState)
         {
-            _stateMachine.ChangeState(newState);
+            _stateMachine.ChangeState(newState, Controller, NPC);
         }
 
         public void Update()
@@ -108,7 +107,7 @@ namespace AshenVoid.Core.ECS
             Target = Main.player[NPC.target];
 
             // Update the state machine
-            _stateMachine.Update();
+            _stateMachine.Update(Controller, NPC, Target);
         }
     }
 }

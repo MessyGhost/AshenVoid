@@ -1,4 +1,6 @@
 using AshenVoid.Core.ECS;
+using Terraria;
+using Terraria;
 
 namespace AshenVoid.Core.ECS.FSM
 {
@@ -12,14 +14,13 @@ namespace AshenVoid.Core.ECS.FSM
         /// Called once when the state machine transitions into this state.
         /// Use for initialization and setting up the state's behavior tree.
         /// </summary>
-        /// <param name="ai">The AI component that owns this state machine.</param>
-        void Enter(AIComponent ai);
+        void Enter(ComponentController controller, NPC npc);
 
         /// <summary>
         /// Called every frame while this state is active.
         /// This is where the state's logic, such as updating its behavior tree, is executed.
         /// </summary>
-        void Update();
+        void Update(ComponentController controller, NPC npc, Player target);
 
         /// <summary>
         /// Called once when the state machine transitions out of this state.

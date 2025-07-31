@@ -106,13 +106,13 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     services.RegisterSingleton<IAnimationComponent, AnimationComponent>();
                     services.RegisterSingleton<IVFXComponent, VFXComponent>();
                     services.RegisterSingleton<IStatSheetComponent, StatSheetComponent>();
-                    services.RegisterSingleton<AIComponent, AIComponent>();
+                    services.RegisterSingleton<AIStateComponent, AIStateComponent>();
                 })
                 .WithInitialState(new SpawnState(builder.GetService<BossConfig>())) // 从构建器中获取依赖
                 .Build();
 
             // 从完全配置好的组件中获取服务
-            _eventBus = Components.GetComponent<AIComponent>().EventBus;
+            _eventBus = Components.GetComponent<AIStateComponent>().EventBus;
             _lastHealth = NPC.life;
         }
 

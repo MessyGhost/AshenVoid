@@ -1,4 +1,4 @@
-using AshenVoid.Core.ECS;
+using Terraria;
 
 namespace AshenVoid.Core.ECS.FSM
 {
@@ -8,30 +8,26 @@ namespace AshenVoid.Core.ECS.FSM
     public class StateMachine
     {
         public IState CurrentState { get; private set; }
-        private readonly AIComponent _owner;
 
-        public StateMachine(AIComponent owner)
-        {
-            _owner = owner;
-        }
+        public StateMachine() { }
 
         /// <summary>
         /// Transitions to a new state.
         /// </summary>
         /// <param name="newState">The state to transition to.</param>
-        public void ChangeState(IState newState)
+        public void ChangeState(IState newState, ComponentController controller, NPC npc)
         {
             CurrentState?.Exit();
             CurrentState = newState;
-            CurrentState?.Enter(_owner);
+            CurrentState?.Enter(controller, npc);
         }
 
         /// <summary>
         /// Updates the current state.
         /// </summary>
-        public void Update()
+        public void Update(ComponentController controller, NPC npc, Player target)
         {
-            CurrentState?.Update();
+            CurrentState?.Update(controller, npc, target);
         }
     }
 }

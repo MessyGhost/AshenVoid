@@ -1,89 +1,35 @@
-using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.ECS.Intents;
 using AshenVoid.Core.ECS.Interfaces;
-using Terraria;
-using Terraria.ID;
-using Microsoft.Xna.Framework;
-using Terraria.ModLoader;
 
 namespace AshenVoid.Core.ECS
 {
     public class AttackComponent : IAttackComponent
     {
-        private readonly NPC _npc;
-        private readonly IStatSheetComponent _statSheet;
-        private IAttackIntent _currentIntent;
-        private float _cooldownTimer; // Timer to track cooldown
+        public IAttackIntent CurrentIntent { get; set; }
+        public float CooldownTimer { get; set; }
 
-        public AttackComponent(NPC npc, IStatSheetComponent statSheet)
+        public AttackComponent()
         {
-            _npc = npc;
-            _statSheet = statSheet;
         }
 
         public void SetIntent(IAttackIntent intent)
         {
             if (IsReady())
-                _currentIntent = intent;
+                CurrentIntent = intent;
         }
 
-        public bool IsReady() => _cooldownTimer <= 0;
-        public bool IsAttacking() => _currentIntent != null; // True while an attack is being executed
+        public bool IsReady() => CooldownTimer <= 0;
+        public bool IsAttacking() => CurrentIntent != null;
 
         public void Update()
         {
-            if (_cooldownTimer > 0)
-                _cooldownTimer -= 1f / 60f; // Decrement by frame time
-
-            if (_currentIntent == null) return;
-
-            // Execute the attack based on intent type
-            switch (_currentIntent)
-            {
-                case ShootProjectileIntent shoot:
-                    ExecuteShootProjectile(shoot);
-                    _cooldownTimer = shoot.Stats.Cooldown * _statSheet.AttackCooldownMultiplier.Value;
-                    break;
-
-                case SpawnNpcIntent spawn:
-                    ExecuteSpawnNpc(spawn);
-                    _cooldownTimer = spawn.Cooldown * _statSheet.AttackCooldownMultiplier.Value;
-                    break;
-            }
-
-            _currentIntent = null; // Consume the intent
-        }
-
-        private void ExecuteSpawnNpc(SpawnNpcIntent intent)
-        {
-            if (Main.netMode == NetmodeID.MultiplayerClient) return;
-
-            for (int i = 0; i < intent.Count; i++)
-            {
-                NPC.NewNPC(_npc.GetSource_FromAI(), (int)intent.SpawnPosition.X, (int)intent.SpawnPosition.Y, intent.NpcId);
-            }
-        }
-
-        private void ExecuteShootProjectile(ShootProjectileIntent intent)
-        {
-            if (Main.netMode == NetmodeID.MultiplayerClient) return;
-
-            Vector2 velocity = Vector2.Normalize(intent.TargetPosition - _npc.Center) * intent.Stats.Speed;
-            Projectile.NewProjectile(
-                _npc.GetSource_FromAI(),
-                _npc.Center,
-                velocity,
-                intent.Stats.ProjectileId,
-                _npc.damage, // Use the NPC's final damage, which is managed by the StatSheetComponent
-                0f,
-                Main.myPlayer
-            );
+            // All logic is moved to AttackSystem.
         }
 
         public void Reset()
         {
-            _currentIntent = null;
-            _cooldownTimer = 0;
+            CurrentIntent = null;
+            CooldownTimer = 0;
         }
     }
 }

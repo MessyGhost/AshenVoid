@@ -15,22 +15,32 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
     {
         private readonly PhaseConfig _config;
         private Node _behaviorTree;
-        private AIComponent _ai;
         private int _patrolDirection = 1;
+
+        // Context fields, populated by Enter/Update
+        private ComponentController _controller;
+        private NPC _npc;
+        private Player _target;
+        private AIStateComponent _aiState; // For properties like ShouldSummon
 
         public Phase1State(PhaseConfig config)
         {
             _config = config;
         }
 
-        public void Enter(AIComponent ai)
+        public void Enter(ComponentController controller, NPC npc)
         {
-            _ai = ai;
+            _controller = controller;
+            _npc = npc;
+            _aiState = controller.GetComponent<AIStateComponent>();
             _behaviorTree = BuildBehaviorTree();
         }
 
-        public void Update()
+        public void Update(ComponentController controller, NPC npc, Player target)
         {
+            _controller = controller;
+            _npc = npc;
+            _target = target;
             _behaviorTree?.Evaluate();
         }
 
@@ -41,39 +51,42 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         private Node BuildBehaviorTree()
         {
+            // A helper function to ensure target is not null before accessing it
+            Func<Vector2> safeTargetCenter = () => _target != null ? _target.Center : _npc.Center;
+
             return Fallback(
                 // Highest priority: Transition to Phase 2
                 Sequence(
-                    new ConditionNode(() => _ai.NPC.life < _ai.NPC.lifeMax * 0.5f),
+                    new ConditionNode(() => _npc.life < _npc.lifeMax * 0.5f),
                     new ActionNode(() =>
                     {
-                        _ai.ChangeState(new Phase2State()); // Placeholder for now
+                        _aiState.ChangeState(new Phase2State()); // Placeholder for now
                         return NodeState.Success;
                     })
                 ),
 
                 // High priority: Chase player if too far
                 Sequence(
-                    new ConditionNode(() => _ai.Target != null && _ai.NPC.Distance(_ai.Target.Center) > 650f),
-                    BT.SetChase(_ai, () => _ai.Target.Center, 320f)
+                    new ConditionNode(() => _target != null && _npc.Distance(_target.Center) > 650f),
+                    AIBehaviorFactory.SetChase(_controller, safeTargetCenter, 320f)
                 ),
 
                 // Summon logic
                 Sequence(
-                    new ConditionNode(() => _ai.ShouldSummon),
-                    BT.SetSpawnNpc(_ai, _config.Summon.NpcId, () => _ai.Target.Center + new Vector2(0, 1000)),
-                    new ActionNode(() => { _ai.ShouldSummon = false; return NodeState.Success; })
+                    new ConditionNode(() => _aiState.ShouldSummon),
+                    AIBehaviorFactory.SetSpawnNpc(_controller, _config.Summon.NpcId, () => safeTargetCenter() + new Vector2(0, 1000)),
+                    new ActionNode(() => { _aiState.ShouldSummon = false; return NodeState.Success; })
                 ),
 
                 // Dash logic
                 Sequence(
-                    new ConditionNode(() => _ai.ShouldDash),
+                    new ConditionNode(() => _aiState.ShouldDash),
                     // Charge up
-                    BT.SetChase(_ai, () => _ai.NPC.Center + (_ai.NPC.Center - _ai.Target.Center).SafeNormalize(Vector2.UnitX) * 100, 0),
+                    AIBehaviorFactory.SetChase(_controller, () => _npc.Center + (_npc.Center - safeTargetCenter()).SafeNormalize(Vector2.UnitX) * 100, 0),
                     Wait(_config.Dash.ChargeTime),
                     // Dash
-                    BT.SetChase(_ai, () => _ai.Target.Center, 0), // This should be a high-speed chase
-                    new ActionNode(() => { _ai.ResetDashTrigger(); return NodeState.Success; })
+                    AIBehaviorFactory.SetChase(_controller, safeTargetCenter, 0), // This should be a high-speed chase
+                    new ActionNode(() => { _aiState.ResetDashTrigger(); return NodeState.Success; })
                 ),
 
                 // Default patrol and attack logic
@@ -87,22 +100,22 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
                 // Move left and right above the player
                 new ActionNode(() =>
                 {
-                    var targetPos = _ai.Target.Center + new Vector2(300 * _patrolDirection, -300);
-                    _ai.Controller.GetComponent<IMovementComponent>().SetIntent(new ChaseIntent(targetPos, 50f));
+                    if (_target == null) return NodeState.Failure;
+
+                    var targetPos = _target.Center + new Vector2(300 * _patrolDirection, -300);
+                    _controller.GetComponent<IMovementComponent>().SetIntent(new ChaseIntent(targetPos, 50f));
 
                     // Check for turnaround
-                    if (Math.Abs(_ai.NPC.Center.X - targetPos.X) < 100f)
+                    if (Math.Abs(_npc.Center.X - targetPos.X) < 100f)
                     {
                         _patrolDirection *= -1; // Reverse direction
 
                         // Fire projectile on turnaround
-                        var attackComponent = _ai.Controller.GetComponent<IAttackComponent>();
+                        var attackComponent = _controller.GetComponent<IAttackComponent>();
                         if (attackComponent.IsReady())
                         {
-                            attackComponent.SetIntent(new ShootProjectileIntent(_ai.Target.Center, _config.Attacks.BasicShot));
+                            attackComponent.SetIntent(new ShootProjectileIntent(_target.Center, _config.Attacks.BasicShot));
                         }
-
-                        // 50% chance to dash is now handled by damage accumulation
                     }
                     return NodeState.Success;
                 })

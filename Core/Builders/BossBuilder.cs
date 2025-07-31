@@ -50,17 +50,18 @@ namespace AshenVoid.Core.Builders
 
             // Register systems
             controller.RegisterSystem(new MovementSystem());
+            controller.RegisterSystem(new AttackSystem());
 
             controller.Initialize();
 
-            var ai = controller.GetComponent<AIComponent>();
-            if (ai != null && _initialState != null)
+            var aiState = controller.GetComponent<AIStateComponent>();
+            if (aiState != null && _initialState != null)
             {
-                ai.SetInitialState(_initialState);
+                aiState.SetInitialState(_initialState);
             }
             else if (_initialState != null)
             {
-                ModContent.GetInstance<AshenVoid>().Logger.Warn("提供了初始状态，但未找到AIComponent来管理它。");
+                ModContent.GetInstance<AshenVoid>().Logger.Warn("提供了初始状态，但未找到AIStateComponent来管理它。");
             }
 
             return controller;
