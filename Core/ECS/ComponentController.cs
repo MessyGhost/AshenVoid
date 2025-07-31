@@ -37,6 +37,15 @@ namespace AshenVoid.Core.ECS
             // into the container before resolving AIComponent to break the circular dependency.
             _serviceContainer.RegisterInstance(this);
             _components.Add(_serviceContainer.GetService<AIComponent>());
+
+            // After all components are created, initialize them.
+            foreach (var component in _components)
+            {
+                if (component is IInitializable initializable)
+                {
+                    initializable.Initialize();
+                }
+            }
         }
 
         /// <summary>

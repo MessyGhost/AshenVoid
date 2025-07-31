@@ -11,6 +11,7 @@ using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.Configuration;
 using AshenVoid.Core.DI;
 using AshenVoid.Core.ECS.Interfaces;
+using AshenVoid.Core.Events;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
@@ -20,6 +21,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         protected ComponentController Components { get; private set; }
         private BossConfig _config;
         private ServiceContainer _serviceContainer;
+        private EventBus _eventBus;
+        private int _lastHealth;
 
         public override void SetStaticDefaults()
         {
@@ -54,6 +57,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private void RegisterServices()
         {
+            _serviceContainer.RegisterSingleton<EventBus, EventBus>();
             _serviceContainer.RegisterSingleton<IMovementComponent, MovementComponent>();
             _serviceContainer.RegisterSingleton<IAttackComponent, AttackComponent>();
             _serviceContainer.RegisterSingleton<IAnimationComponent, AnimationComponent>();
@@ -66,6 +70,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             _serviceContainer.RegisterInstance(_config.Phase1.Attacks);
         }
 
+        public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
+        {
+            _eventBus?.Publish(new NPCDamagedEvent(NPC, hit));
+        }
+
+        public override void OnHitByProjectile(Projectile projectile, NPC.HitInfo hit, int damageDone)
+        {
+            _eventBus?.Publish(new NPCDamagedEvent(NPC, hit));
+        }
+
         public override void AI()
         {
             if (Components == null)
@@ -74,6 +88,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             }
 
             if (Main.netMode == NetmodeID.MultiplayerClient) return;
+
+            // Publish health loss event if health has changed
+            if (NPC.life != _lastHealth)
+            {
+                float lastHealthPercent = (float)_lastHealth / NPC.lifeMax;
+                float currentHealthPercent = (float)NPC.life / NPC.lifeMax;
+                _eventBus?.Publish(new NPCHealthLossEvent(NPC, currentHealthPercent, lastHealthPercent));
+                _lastHealth = NPC.life;
+            }
+
             Components.Update();
         }
 
@@ -85,11 +109,15 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             // 2. Let the controller create all components
             Components.Initialize();
 
-            // 3. Get the AIComponent from the controller
+            // 3. Get services from the container
             var ai = Components.GetComponent<AIComponent>();
+            _eventBus = _serviceContainer.GetService<EventBus>();
 
             // 4. Set the initial state for the AI
             ai.SetInitialState(new Phase1State(_config.Phase1));
+
+            // 5. Initialize last health
+            _lastHealth = NPC.life;
         }
 
         public override void FindFrame(int frameHeight)
