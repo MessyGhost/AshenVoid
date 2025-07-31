@@ -1,4 +1,6 @@
 {
+  "damage": 52,
+  "defense": 10,
     // 第一阶段配置
   "phase1": {
         // 移动参数
@@ -10,7 +12,8 @@
       "chaseStopDistance": 400, // 停止距离
       "orbitRadius": 300, // 环绕半径
       "thinkIntervalMin": 2, // 最小思考间隔
-      "thinkIntervalMax": 4 // 最大思考间隔
+      "thinkIntervalMax": 4, // 最大思考间隔
+      "maxSpeed": 15 // 最大移动速度
     },
         
         // 攻击参数

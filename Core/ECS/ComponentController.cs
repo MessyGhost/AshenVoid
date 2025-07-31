@@ -32,6 +32,7 @@ namespace AshenVoid.Core.ECS
             _components.Add(_serviceContainer.GetService<IAttackComponent>());
             _components.Add(_serviceContainer.GetService<IAnimationComponent>());
             _components.Add(_serviceContainer.GetService<IVFXComponent>());
+            _components.Add(_serviceContainer.GetService<IStatSheetComponent>());
 
             // AIComponent has a dependency on ComponentController, so we register this instance
             // into the container before resolving AIComponent to break the circular dependency.

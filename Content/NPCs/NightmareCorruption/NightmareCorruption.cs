@@ -39,8 +39,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.width = 242;
             NPC.height = 192;
             NPC.lifeMax = 13100;
-            NPC.damage = 52;
-            NPC.defense = 10;
+            NPC.damage = _config.Damage;
+            NPC.defense = _config.Defense;
             NPC.knockBackResist = 0f;
             NPC.value = Item.buyPrice(0, 3, 0, 0);
             NPC.boss = true;
@@ -62,6 +62,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             _serviceContainer.RegisterSingleton<IAttackComponent, AttackComponent>();
             _serviceContainer.RegisterSingleton<IAnimationComponent, AnimationComponent>();
             _serviceContainer.RegisterSingleton<IVFXComponent, VFXComponent>();
+            _serviceContainer.RegisterSingleton<IStatSheetComponent, StatSheetComponent>();
             _serviceContainer.RegisterSingleton<AIComponent, AIComponent>();
 
             _serviceContainer.RegisterInstance(_config);

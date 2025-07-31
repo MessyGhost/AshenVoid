@@ -11,10 +11,15 @@ namespace AshenVoid.Core.ECS
     public class AttackComponent : IAttackComponent
     {
         private readonly NPC _npc;
+        private readonly IStatSheetComponent _statSheet;
         private IAttackIntent _currentIntent;
         private float _cooldownTimer; // Timer to track cooldown
 
-        public AttackComponent(NPC npc) { _npc = npc; }
+        public AttackComponent(NPC npc, IStatSheetComponent statSheet)
+        {
+            _npc = npc;
+            _statSheet = statSheet;
+        }
 
         public void SetIntent(IAttackIntent intent)
         {
@@ -37,7 +42,7 @@ namespace AshenVoid.Core.ECS
             {
                 case ShootProjectileIntent shoot:
                     ExecuteShootProjectile(shoot);
-                    _cooldownTimer = shoot.Stats.Cooldown; // Set cooldown from stats
+                    _cooldownTimer = shoot.Stats.Cooldown * _statSheet.AttackCooldownMultiplier.Value; // Set cooldown from stats, modified by stat sheet
                     break;
             }
 
@@ -54,7 +59,7 @@ namespace AshenVoid.Core.ECS
                 _npc.Center,
                 velocity,
                 intent.Stats.ProjectileId,
-                (int)intent.Stats.Damage,
+                _npc.damage, // Use the NPC's final damage, which is managed by the StatSheetComponent
                 0f,
                 Main.myPlayer
             );

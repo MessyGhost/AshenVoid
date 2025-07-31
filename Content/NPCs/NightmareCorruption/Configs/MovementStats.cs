@@ -14,5 +14,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.Configs
         public float OrbitRadius { get; set; } // 环绕玩家的半径
         public float ThinkIntervalMin { get; set; } // 思考间隔（秒）
         public float ThinkIntervalMax { get; set; } // 思考间隔（秒）
+        public float MaxSpeed { get; set; } // 移动速度
     }
 }
