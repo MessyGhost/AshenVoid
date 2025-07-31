@@ -5,5 +5,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.Configs
     {
         public MovementStats Movement { get; set; }
         public AttackStats Attacks { get; set; }
+        public DashStats Dash { get; set; }
+        public SummonStats Summon { get; set; }
     }
 }

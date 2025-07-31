@@ -115,7 +115,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             _eventBus = _serviceContainer.GetService<EventBus>();
 
             // 4. Set the initial state for the AI
-            ai.SetInitialState(new Phase1State(_config.Phase1));
+            ai.SetInitialState(new SpawnState(_config));
 
             // 5. Initialize last health
             _lastHealth = NPC.life;

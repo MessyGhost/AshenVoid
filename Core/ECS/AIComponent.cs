@@ -21,6 +21,12 @@ namespace AshenVoid.Core.ECS
         private bool _isEnraged;
         private const string RAGE_SOURCE = "Rage";
 
+        // Behavior Triggers
+        public bool ShouldDash { get; private set; }
+        public bool ShouldSummon { get; set; }
+        private float _damageTakenSinceLastDash;
+        private float _lastSummonHealthPercent;
+
         public AIComponent(NPC npc, ComponentController controller, EventBus eventBus)
         {
             NPC = npc;
@@ -28,6 +34,7 @@ namespace AshenVoid.Core.ECS
             _eventBus = eventBus;
             _stateMachine = new StateMachine(this);
             _isEnraged = false;
+            _lastSummonHealthPercent = 1f;
         }
 
         public void Initialize()
@@ -38,11 +45,31 @@ namespace AshenVoid.Core.ECS
 
         private void OnDamaged(NPCDamagedEvent e)
         {
-            // Placeholder for future logic, e.g., triggering a counter-attack.
+            _damageTakenSinceLastDash += e.Hit.Damage;
+            // This logic needs to be tied to the config value.
+            // For now, we hardcode it. A proper solution would involve the StatSheet.
+            if (_damageTakenSinceLastDash >= 300)
+            {
+                ShouldDash = true;
+            }
+        }
+
+        public void ResetDashTrigger()
+        {
+            ShouldDash = false;
+            _damageTakenSinceLastDash = 0;
         }
 
         private void OnHealthLoss(NPCHealthLossEvent e)
         {
+            // Summon check
+            if (e.PreviousHealthPercentage - e.HealthPercentage >= 0.1f)
+            {
+                ShouldSummon = true;
+                _lastSummonHealthPercent = e.HealthPercentage;
+            }
+
+            // Enrage check
             if (e.HealthPercentage < 0.5f && !_isEnraged)
             {
                 _isEnraged = true;

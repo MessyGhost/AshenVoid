@@ -1,10 +1,12 @@
 {
+  "spawnDuration": 3, // 出生动画时长
   "damage": 52,
   "defense": 10,
     // 第一阶段配置
   "phase1": {
         // 移动参数
     "movement": {
+      "patrolSpeed": 8, // 徘徊速度
       "frequency": 1.2, // PID控制器频率
       "dampingRatio": 0.8, // 阻尼比
       "responseScale": 0.5, // 响应缩放
@@ -26,6 +28,16 @@
         "isChanneled": false, // 是否为持续性攻击
         "duration": 0 // 持续时间（瞬时攻击为0）
       }
+    },
+    "dash": {
+      "triggerDamage": 300,
+      "rangeMinimum": 320,
+      "chargeTime": 1.5,
+      "speed": 25
+    },
+    "summon": {
+      "healthThreshold": 0.1, // 10%
+      "npcId": 517 // Example: Creeper, replace with actual "Grasp of Trance" ID
     }
   }
 }
