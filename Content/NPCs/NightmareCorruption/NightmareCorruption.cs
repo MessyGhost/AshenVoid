@@ -19,8 +19,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
     public partial class NightmareCorruption : ModNPC
     {
         protected ComponentController Components { get; private set; }
-        private BossConfig _config;
-        private ServiceContainer _serviceContainer;
         private EventBus _eventBus;
         private int _lastHealth;
 
@@ -31,16 +29,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         public override void SetDefaults()
         {
-            _config = ConfigLoader.Load<BossConfig>("NightmareCorruption.hjson");
-
-            _serviceContainer = new ServiceContainer();
-            RegisterServices();
-
             NPC.width = 242;
             NPC.height = 192;
             NPC.lifeMax = 13100;
-            NPC.damage = _config.Damage;
-            NPC.defense = _config.Defense;
             NPC.knockBackResist = 0f;
             NPC.value = Item.buyPrice(0, 3, 0, 0);
             NPC.boss = true;
@@ -53,22 +44,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.DeathSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionDead");
 
             Music = MusicLoader.GetMusicSlot(Mod, "Assets/Music/FoulAbyssEcho");
-        }
-
-        private void RegisterServices()
-        {
-            _serviceContainer.RegisterSingleton<EventBus, EventBus>();
-            _serviceContainer.RegisterSingleton<IMovementComponent, MovementComponent>();
-            _serviceContainer.RegisterSingleton<IAttackComponent, AttackComponent>();
-            _serviceContainer.RegisterSingleton<IAnimationComponent, AnimationComponent>();
-            _serviceContainer.RegisterSingleton<IVFXComponent, VFXComponent>();
-            _serviceContainer.RegisterSingleton<IStatSheetComponent, StatSheetComponent>();
-            _serviceContainer.RegisterSingleton<AIComponent, AIComponent>();
-
-            _serviceContainer.RegisterInstance(_config);
-            _serviceContainer.RegisterInstance(NPC);
-            _serviceContainer.RegisterInstance(_config.Phase1.Movement);
-            _serviceContainer.RegisterInstance(_config.Phase1.Attacks);
         }
 
         public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
@@ -104,20 +79,39 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private void SetupECS()
         {
-            // 1. Create a ComponentController instance
-            Components = new ComponentController(NPC, _serviceContainer);
+            var builder = new Core.Builders.BossBuilder(this);
 
-            // 2. Let the controller create all components
-            Components.Initialize();
+            Components = builder
+                .WithServices(services =>
+                {
+                    // 注册通用的、可重用的服务
+                    services.RegisterSingleton<IConfigLoader, ConfigLoader>();
+                    services.RegisterSingleton<EventBus, EventBus>();
 
-            // 3. Get services from the container
-            var ai = Components.GetComponent<AIComponent>();
-            _eventBus = _serviceContainer.GetService<EventBus>();
+                    // 加载并注册此Boss特有的配置
+                    var configLoader = services.GetService<IConfigLoader>();
+                    var bossConfig = configLoader.Load<BossConfig>("Content/NPCs/NightmareCorruption/Configs/NightmareCorruption.hjson");
+                    services.RegisterInstance(bossConfig);
+                    services.RegisterInstance(bossConfig.Phase1.Movement);
+                    services.RegisterInstance(bossConfig.Phase1.Attacks);
 
-            // 4. Set the initial state for the AI
-            ai.SetInitialState(new SpawnState(_config));
+                    // 根据配置设置NPC属性
+                    NPC.damage = bossConfig.Damage;
+                    NPC.defense = bossConfig.Defense;
 
-            // 5. Initialize last health
+                    // 注册此Boss所需的组件
+                    services.RegisterSingleton<IMovementComponent, MovementComponent>();
+                    services.RegisterSingleton<IAttackComponent, AttackComponent>();
+                    services.RegisterSingleton<IAnimationComponent, AnimationComponent>();
+                    services.RegisterSingleton<IVFXComponent, VFXComponent>();
+                    services.RegisterSingleton<IStatSheetComponent, StatSheetComponent>();
+                    services.RegisterSingleton<AIComponent, AIComponent>();
+                })
+                .WithInitialState(new SpawnState(builder.GetService<BossConfig>())) // 从构建器中获取依赖
+                .Build();
+
+            // 从完全配置好的组件中获取服务
+            _eventBus = Components.GetComponent<AIComponent>().EventBus;
             _lastHealth = NPC.life;
         }
 

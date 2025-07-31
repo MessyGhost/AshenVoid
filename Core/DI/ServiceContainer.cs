@@ -26,6 +26,7 @@ namespace AshenVoid.Core.DI
     {
         private readonly Dictionary<Type, ServiceDescriptor> _services = new();
         private readonly Dictionary<Type, object> _singletonInstances = new();
+        private readonly HashSet<Type> _resolvingTypes = new(); // 用于循环依赖检测
 
         public void RegisterSingleton<TInterface, TImplementation>()
             where TImplementation : class, TInterface
@@ -74,10 +75,8 @@ namespace AshenVoid.Core.DI
         {
             if (!_services.TryGetValue(serviceType, out var descriptor))
             {
-                // A special case for registering the NPC instance itself
                 if (_singletonInstances.TryGetValue(serviceType, out var instance))
                     return instance;
-
                 throw new ServiceNotFoundException($"服务未注册: {serviceType.Name}");
             }
 
@@ -86,24 +85,43 @@ namespace AshenVoid.Core.DI
                 if (_singletonInstances.TryGetValue(serviceType, out var instance))
                     return instance;
 
-                instance = CreateInstance(descriptor.ImplementationType);
-                _singletonInstances[serviceType] = instance;
-                return instance;
+                var singletonInstance = CreateInstance(descriptor.ImplementationType);
+                _singletonInstances[serviceType] = singletonInstance;
+                return singletonInstance;
             }
 
             return CreateInstance(descriptor.ImplementationType);
         }
 
+        public IEnumerable<ServiceDescriptor> GetAllServiceDescriptors()
+        {
+            return _services.Values;
+        }
+
         private object CreateInstance(Type type)
         {
-            var constructors = type.GetConstructors();
-            var constructor = constructors.OrderByDescending(c => c.GetParameters().Length).First();
+            if (_resolvingTypes.Contains(type))
+                throw new InvalidOperationException($"检测到循环依赖: {type.Name}");
 
-            var parameters = constructor.GetParameters()
-                .Select(p => GetService(p.ParameterType))
-                .ToArray();
+            _resolvingTypes.Add(type);
 
-            return Activator.CreateInstance(type, parameters);
+            try
+            {
+                // 优化：可以缓存构造函数信息以提高性能，但对于tModLoader的场景，这通常不是瓶颈
+                var constructor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).FirstOrDefault();
+                if (constructor == null)
+                    throw new InvalidOperationException($"类型 {type.Name} 没有公共构造函数。");
+
+                var parameters = constructor.GetParameters()
+                    .Select(p => GetService(p.ParameterType))
+                    .ToArray();
+
+                return Activator.CreateInstance(type, parameters);
+            }
+            finally
+            {
+                _resolvingTypes.Remove(type);
+            }
         }
     }
 }

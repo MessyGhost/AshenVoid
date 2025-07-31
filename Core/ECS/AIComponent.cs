@@ -15,9 +15,9 @@ namespace AshenVoid.Core.ECS
         public readonly NPC NPC;
         public Player Target { get; private set; }
         public ComponentController Controller { get; }
+        public EventBus EventBus { get; }
 
         private readonly StateMachine _stateMachine;
-        private readonly EventBus _eventBus;
         private bool _isEnraged;
         private const string RAGE_SOURCE = "Rage";
 
@@ -31,7 +31,7 @@ namespace AshenVoid.Core.ECS
         {
             NPC = npc;
             Controller = controller;
-            _eventBus = eventBus;
+            EventBus = eventBus;
             _stateMachine = new StateMachine(this);
             _isEnraged = false;
             _lastSummonHealthPercent = 1f;
@@ -39,8 +39,8 @@ namespace AshenVoid.Core.ECS
 
         public void Initialize()
         {
-            _eventBus.Subscribe<NPCDamagedEvent>(OnDamaged);
-            _eventBus.Subscribe<NPCHealthLossEvent>(OnHealthLoss);
+            EventBus.Subscribe<NPCDamagedEvent>(OnDamaged);
+            EventBus.Subscribe<NPCHealthLossEvent>(OnHealthLoss);
         }
 
         private void OnDamaged(NPCDamagedEvent e)

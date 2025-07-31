@@ -2,44 +2,42 @@ using AshenVoid.Core.DI;
 using AshenVoid.Core.ECS.Interfaces;
 using System.Collections.Generic;
 using System.Linq;
-using Terraria;
 
 namespace AshenVoid.Core.ECS
 {
     /// <summary>
     /// 唯一的组件管理者和依赖提供者。
-    /// 负责创建、初始化和提供对所有组件的访问。
+    /// 负责动态发现、初始化和更新所有已注册的组件。
     /// </summary>
     public class ComponentController
     {
         private readonly List<IComponent> _components = new List<IComponent>();
         private readonly ServiceContainer _serviceContainer;
-        private readonly NPC _npc;
 
-        public ComponentController(NPC npc, ServiceContainer serviceContainer)
+        public ComponentController(ServiceContainer serviceContainer)
         {
-            _npc = npc;
             _serviceContainer = serviceContainer;
         }
 
         /// <summary>
-        /// 创建所有已注册的组件实例。
+        /// 动态发现并初始化所有已注册的IComponent。
         /// </summary>
         public void Initialize()
         {
-            // The controller is now responsible for creating components.
-            _components.Add(_serviceContainer.GetService<IMovementComponent>());
-            _components.Add(_serviceContainer.GetService<IAttackComponent>());
-            _components.Add(_serviceContainer.GetService<IAnimationComponent>());
-            _components.Add(_serviceContainer.GetService<IVFXComponent>());
-            _components.Add(_serviceContainer.GetService<IStatSheetComponent>());
+            // 动态地从DI容器中发现所有注册的IComponent服务
+            var componentServices = _serviceContainer.GetAllServiceDescriptors()
+                .Where(sd => typeof(IComponent).IsAssignableFrom(sd.ServiceType));
 
-            // AIComponent has a dependency on ComponentController, so we register this instance
-            // into the container before resolving AIComponent to break the circular dependency.
+            foreach (var descriptor in componentServices)
+            {
+                var component = (IComponent)_serviceContainer.GetService(descriptor.ServiceType);
+                _components.Add(component);
+            }
+
+            // 在解析完所有其他组件后，手动处理对自身的依赖
             _serviceContainer.RegisterInstance(this);
-            _components.Add(_serviceContainer.GetService<AIComponent>());
 
-            // After all components are created, initialize them.
+            // 初始化所有组件
             foreach (var component in _components)
             {
                 if (component is IInitializable initializable)
@@ -52,9 +50,9 @@ namespace AshenVoid.Core.ECS
         /// <summary>
         /// 按接口类型 T 从列表中查找并返回组件实例。
         /// </summary>
-        public T GetComponent<T>() where T : class, IComponent
+        public T GetComponent<T>() where T : IComponent
         {
-            // Search for a component that implements the interface T.
+            // 查找实现了接口T的组件。
             return _components.OfType<T>().FirstOrDefault();
         }
 
