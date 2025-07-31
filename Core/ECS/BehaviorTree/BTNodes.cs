@@ -4,6 +4,7 @@ using System;
 using Terraria;
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Content.NPCs.NightmareCorruption.Intents;
+using AshenVoid.Core.ECS.Interfaces;
 
 namespace AshenVoid.Core.ECS.BehaviorTree
 {
@@ -17,7 +18,7 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         {
             return new ActionNode(() =>
             {
-                ai.GetMovementComponent().SetIntent(new IdleIntent());
+                ai.Controller.GetComponent<IMovementComponent>().SetIntent(new IdleIntent());
                 return NodeState.Success;
             });
         }
@@ -26,7 +27,7 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         {
             return new ActionNode(() =>
             {
-                ai.GetMovementComponent().SetIntent(new ChaseIntent(targetPosition(), stopDistance));
+                ai.Controller.GetComponent<IMovementComponent>().SetIntent(new ChaseIntent(targetPosition(), stopDistance));
                 return NodeState.Success;
             });
         }
@@ -35,7 +36,7 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         {
             return new ActionNode(() =>
             {
-                ai.GetMovementComponent().SetIntent(new OrbitIntent(center(), radius, direction));
+                ai.Controller.GetComponent<IMovementComponent>().SetIntent(new OrbitIntent(center(), radius, direction));
                 return NodeState.Success;
             });
         }
@@ -44,7 +45,7 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         {
             return new ActionNode(() =>
             {
-                ai.GetMovementComponent().SetIntent(new FleeIntent(fleeFromPosition()));
+                ai.Controller.GetComponent<IMovementComponent>().SetIntent(new FleeIntent(fleeFromPosition()));
                 return NodeState.Success;
             });
         }
@@ -63,7 +64,7 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         {
             return new ActionNode(() =>
             {
-                var attackComponent = ai.GetAttackComponent();
+                var attackComponent = ai.Controller.GetComponent<IAttackComponent>();
                 if (attackComponent == null || !attackComponent.IsReady())
                     return NodeState.Failure;
 
@@ -76,7 +77,7 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         {
             return new ConditionNode(() =>
             {
-                var attackComponent = ai.GetAttackComponent();
+                var attackComponent = ai.Controller.GetComponent<IAttackComponent>();
                 return attackComponent != null && attackComponent.IsReady();
             });
         }
@@ -85,7 +86,7 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         {
             return new ConditionNode(() =>
             {
-                var attackComponent = ai.GetAttackComponent();
+                var attackComponent = ai.Controller.GetComponent<IAttackComponent>();
                 return attackComponent != null && attackComponent.IsAttacking();
             });
         }

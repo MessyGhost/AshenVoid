@@ -9,13 +9,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class Phase1State : IState
     {
-        private readonly AIComponent _ai;
         private readonly PhaseConfig _config;
         private Node _behaviorTree;
 
-        public Phase1State(AIComponent ai, PhaseConfig config)
+        public Phase1State(PhaseConfig config)
         {
-            _ai = ai;
             _config = config;
         }
 
@@ -25,20 +23,20 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             _behaviorTree = Fallback(
                 // High-priority: Chase player if too far
                 Sequence(
-                    Inverter(BT.IsPlayerInRange(_ai, _config.Movement.ChaseDistanceFar)),
-                    BT.SetChase(_ai, () => _ai.Target.Center, _config.Movement.ChaseStopDistance)
+                    Inverter(BT.IsPlayerInRange(ai, _config.Movement.ChaseDistanceFar)),
+                    BT.SetChase(ai, () => ai.Target.Center, _config.Movement.ChaseStopDistance)
                 ),
                 // Attack logic: If ready, shoot at the player
                 Sequence(
-                    BT.IsAttackReady(_ai), // Check cooldown
-                    BT.SetShootProjectile(_ai, () => _ai.Target.Center, _config.Attacks.BasicShot)
+                    BT.IsAttackReady(ai), // Check cooldown
+                    BT.SetShootProjectile(ai, () => ai.Target.Center, _config.Attacks.BasicShot)
                 ),
                 // Main combat loop
                 Sequence(
                     // Alternate between orbiting and chasing
                     Weighted(
-                        (node: BT.SetOrbit(_ai, () => _ai.Target.Center, _config.Movement.OrbitRadius), weight: 3),
-                        (node: BT.SetChase(_ai, () => _ai.Target.Center, _config.Movement.ChaseStopDistance), weight: 2)
+                        (node: BT.SetOrbit(ai, () => ai.Target.Center, _config.Movement.OrbitRadius), weight: 3),
+                        (node: BT.SetChase(ai, () => ai.Target.Center, _config.Movement.ChaseStopDistance), weight: 2)
                     ),
                     Wait(Main.rand.NextFloat(_config.Movement.ThinkIntervalMin, _config.Movement.ThinkIntervalMax))
                 )

@@ -16,7 +16,6 @@ namespace AshenVoid
 
         public override void Load()
         {
-            // 使用您提供的正确方法 SourceFolder 来获取源路径
             ModSourcePath = SourceFolder;
         }
     }

@@ -70,30 +70,26 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         {
             if (Components == null)
             {
-                InitializeComponents();
+                SetupECS();
             }
 
             if (Main.netMode == NetmodeID.MultiplayerClient) return;
             Components.Update();
         }
 
-        private void InitializeComponents()
+        private void SetupECS()
         {
-            Components = new ComponentController(NPC);
+            // 1. Create a ComponentController instance
+            Components = new ComponentController(NPC, _serviceContainer);
 
-            // AIComponent is now the root of all behaviors, created via DI.
-            var aiComponent = _serviceContainer.GetService<AIComponent>();
-            aiComponent.Initialize();
+            // 2. Let the controller create all components
+            Components.Initialize();
 
-            aiComponent.SetInitialState(new Phase1State(aiComponent, _config.Phase1));
+            // 3. Get the AIComponent from the controller
+            var ai = Components.GetComponent<AIComponent>();
 
-            Components.AddComponent(aiComponent);
-
-            // We still need to add other components so their Update methods are called.
-            Components.AddComponent(_serviceContainer.GetService<IMovementComponent>());
-            Components.AddComponent(_serviceContainer.GetService<IAttackComponent>());
-            Components.AddComponent(_serviceContainer.GetService<IAnimationComponent>());
-            Components.AddComponent(_serviceContainer.GetService<IVFXComponent>());
+            // 4. Set the initial state for the AI
+            ai.SetInitialState(new Phase1State(_config.Phase1));
         }
 
         public override void FindFrame(int frameHeight)
@@ -103,14 +99,14 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         public override void PostDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
         {
-            var vfx = Components.GetComponent<IVFXComponent>() as VFXComponent;
+            var vfx = Components.GetComponent<VFXComponent>();
             vfx?.PostDraw(spriteBatch);
             base.PostDraw(spriteBatch, screenPos, drawColor);
         }
 
         public override bool PreDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
         {
-            var vfx = Components.GetComponent<IVFXComponent>() as VFXComponent;
+            var vfx = Components.GetComponent<VFXComponent>();
             vfx?.PreDraw(spriteBatch);
             return base.PreDraw(spriteBatch, screenPos, drawColor);
         }
