@@ -4,7 +4,10 @@ using AshenVoid.Content.NPCs.NightmareCorruption.States;
 using AshenVoid.Core.Builders;
 using AshenVoid.Core.Configuration;
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.FSM;
+using AshenVoid.Core.ECS.Systems;
 using AshenVoid.Core.Events;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Terraria;
@@ -16,7 +19,7 @@ using Terraria.ModLoader;
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
     [AutoloadBossHead]
-    public class NightmareCorruption : ModNPC
+    public class NightmareCorruption : ModNPC, IComponentProvider
     {
         public ComponentController ComponentController { get; private set; }
         private EventBus _eventBus;
@@ -62,16 +65,40 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.damage = bossConfig.Damage;
             NPC.defense = bossConfig.Defense;
 
-            ComponentController = new BossBuilder(this)
-                .WithConfig(bossConfig)
-                .WithInitialState(new SpawnState(bossConfig))
+            var eventBus = new EventBus();
+
+            var states = new List<IState>
+            {
+                new SpawnState(bossConfig),
+                new Phase1State(bossConfig.Phase1),
+                new Phase2State(bossConfig.Phase1), // Assuming Phase2 uses Phase1 config for now
+                new DeathState()
+            };
+            var stateFactory = new StateFactory(states);
+
+            ComponentController = new BossBuilder()
+                .AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement))
+                .AddComponent(() => new AttackComponent())
+                .AddComponent(() => new AnimationComponent(NPC))
+                .AddComponent(() => new VFXComponent())
+                .AddComponent(() => new StatSheetComponent(NPC, bossConfig))
+                .AddComponent(() =>
+                {
+                    // AIStateComponent now requires the state factory
+                    var aiState = new AIStateComponent(NPC, ComponentController, eventBus, stateFactory);
+                    eventBus.Subscribe<NPCDamagedEvent>(aiState.OnDamaged);
+                    eventBus.Subscribe<NPCHealthLossEvent>(aiState.OnHealthLoss);
+                    return aiState;
+                })
+                .AddSystem(new MovementSystem())
+                .AddSystem(new AttackSystem())
+                .AddSystem(new AIStateSystem())
+                .AddSystem(new AnimationSystem())
+                .AddSystem(new StatSystem())
+                .WithInitialState(typeof(SpawnState))
                 .Build();
 
-            var aiState = ComponentController.GetComponent<AIStateComponent>();
-            if (aiState != null)
-            {
-                _eventBus = aiState.EventBus;
-            }
+            _eventBus = eventBus;
             _lastHealth = NPC.life;
         }
 
@@ -101,10 +128,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             ComponentController.Update(Main.gameTimeCache, NPC);
         }
 
-        public override void FindFrame(int frameHeight)
-        {
-            // Animation is now handled by the AnimationComponent and its corresponding system.
-        }
+        public override void FindFrame(int frameHeight) { }
 
         public override void PostDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
         {

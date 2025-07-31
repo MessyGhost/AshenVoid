@@ -1,19 +1,15 @@
 using AshenVoid.Core.ECS.Systems;
 using Microsoft.Xna.Framework;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using Terraria;
 
 namespace AshenVoid.Core.ECS
 {
     public class ComponentController
     {
-        private readonly List<IComponent> _components = new List<IComponent>();
+        private readonly Dictionary<Type, IComponent> _components = new Dictionary<Type, IComponent>();
         private readonly SystemManager _systemManager = new SystemManager();
-
-        public ComponentController()
-        {
-        }
 
         public void RegisterSystem(ISystem system)
         {
@@ -22,20 +18,22 @@ namespace AshenVoid.Core.ECS
 
         public void RegisterComponent(IComponent component)
         {
-            _components.Add(component);
+            _components[component.GetType()] = component;
         }
 
-        public T GetComponent<T>() where T : class
+        public T GetComponent<T>() where T : class, IComponent
         {
-            return _components.OfType<T>().FirstOrDefault();
+            if (_components.TryGetValue(typeof(T), out var component))
+            {
+                return component as T;
+            }
+            return null;
         }
 
         public void Update(GameTime gameTime, NPC npc)
         {
-            foreach (var component in _components)
-            {
-                component.Update();
-            }
+            // Components no longer have their own Update logic.
+            // All logic is handled by Systems.
             _systemManager.Update(gameTime, npc);
         }
     }

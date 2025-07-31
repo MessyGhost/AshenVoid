@@ -1,5 +1,6 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Interfaces;
@@ -14,119 +15,118 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
         private readonly PhaseConfig _config;
         private Node _behaviorTree;
         private int _patrolDirection = 1;
-
-        // Context
-        private ComponentController _controller;
-        private NPC _npc;
-        private Player _target;
-        private AIStateComponent _aiState;
+        private Blackboard _blackboard;
 
         public Phase1State(PhaseConfig config)
         {
             _config = config;
         }
 
-        public void Enter(ComponentController controller, NPC npc)
+        public void Enter(Blackboard blackboard)
         {
-            _controller = controller;
-            _npc = npc;
-            _aiState = controller.GetComponent<AIStateComponent>();
+            _blackboard = blackboard;
             _behaviorTree = BuildBehaviorTree();
         }
 
-        public void Update(ComponentController controller, NPC npc, Player target)
+        public void Update(Blackboard blackboard)
         {
-            // Update context
-            _controller = controller;
-            _npc = npc;
-            _target = target;
-
+            _blackboard = blackboard;
             _behaviorTree?.Evaluate();
         }
 
-        public void Exit()
+        public void Exit(Blackboard blackboard)
         {
             _behaviorTree = null;
+            _blackboard = null;
         }
 
         private Node BuildBehaviorTree()
         {
-            Func<Vector2> safeTargetCenter = () => _target != null && _target.active ? _target.Center : _npc.Center;
-
             return new FallbackNode(
                 // Highest priority: Transition to Phase 2
                 new SequenceNode(
-                    new ConditionNode(() => _npc.life < _npc.lifeMax * _config.PhaseTransitionHealth),
+                    new ConditionNode(() => _blackboard.Get<NPC>(BlackboardKeys.NPC).life < _blackboard.Get<NPC>(BlackboardKeys.NPC).lifeMax * _config.PhaseTransitionHealth),
                     new ActionNode(() =>
                     {
-                        _aiState.ChangeState(new Phase2State(_config)); // Pass config to next phase
+                        _blackboard.Get<AIStateComponent>(BlackboardKeys.AIState).ChangeState<Phase2State>();
                         return NodeState.Success;
                     })
                 ),
 
                 // Summon logic
                 new SequenceNode(
-                    new ConditionNode(() => _aiState.ShouldSummon),
-                    AIBehaviorFactory.SetSpawnNpc(_controller, _config.Summon.NpcId, () => safeTargetCenter() + new Vector2(0, 1000), _config.Summon.Count, _config.Summon.Cooldown),
-                    new ActionNode(() => { _aiState.ShouldSummon = false; return NodeState.Success; })
+                    new ConditionNode(() => _blackboard.Get<bool>("ShouldSummon")),
+                    new ActionNode(() =>
+                    {
+                        Terraria.ModLoader.ModContent.GetInstance<AshenVoid>().Logger.Info("Summoning minions would happen here.");
+                        return NodeState.Success;
+                    }),
+                    new ActionNode(() => { _blackboard.Set("ShouldSummon", false); return NodeState.Success; })
                 ),
 
                 // Dash logic
-                BuildDashBehavior(safeTargetCenter),
+                BuildDashBehavior(),
 
                 // Default patrol and attack logic
-                BuildPatrolBehavior(safeTargetCenter)
+                BuildPatrolBehavior()
             );
         }
 
-        private Node BuildDashBehavior(Func<Vector2> target)
+        private Node BuildDashBehavior()
         {
             return new SequenceNode(
-                new ConditionNode(() => _aiState.ShouldDash),
+                new ConditionNode(() => _blackboard.Get<float>("DamageTakenSinceLastDash") >= _config.Dash.DamageThreshold),
                 // Charge up phase
                 new ActionNode(() =>
                 {
-                    // Move back slightly to telegraph the dash
-                    var chargeDirection = (_npc.Center - target()).SafeNormalize(Vector2.UnitX);
-                    _controller.GetComponent<IMovementComponent>().SetIntent(new Core.ECS.Intents.ChaseIntent(_npc.Center + chargeDirection * 150f, 0f));
+                    var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
+                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
+                    var controller = _blackboard.Get<ComponentController>(BlackboardKeys.Controller);
+
+                    var chargeDirection = (npc.Center - target.Center).SafeNormalize(Vector2.UnitX);
+                    controller.GetComponent<IMovementComponent>().SetIntent(new Core.ECS.Intents.ChaseIntent(npc.Center + chargeDirection * 150f, 0f));
                     return NodeState.Success;
                 }),
                 new WaitNode(_config.Dash.ChargeTime),
                 // Dash action
                 new ActionNode(() =>
                 {
-                    // Set a high-speed chase intent
-                    _controller.GetComponent<IMovementComponent>().SetIntent(new Core.ECS.Intents.ChaseIntent(target(), 0f, 25f)); // Using high speed override
+                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
+                    var controller = _blackboard.Get<ComponentController>(BlackboardKeys.Controller);
+                    controller.GetComponent<IMovementComponent>().SetIntent(new Core.ECS.Intents.ChaseIntent(target.Center, 0f, 25f));
                     return NodeState.Success;
                 }),
                 new WaitNode(0.5f), // Duration of the dash
                 new ActionNode(() =>
                 {
-                    _aiState.ResetDashTrigger();
+                    _blackboard.Set("DamageTakenSinceLastDash", 0f);
                     return NodeState.Success;
                 })
             );
         }
 
-        private Node BuildPatrolBehavior(Func<Vector2> target)
+        private Node BuildPatrolBehavior()
         {
             return new SequenceNode(
                 new ActionNode(() =>
                 {
-                    if (_target == null || !_target.active)
+                    var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
+                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
+                    var controller = _blackboard.Get<ComponentController>(BlackboardKeys.Controller);
+
+                    if (target == null || !target.active)
                     {
-                        AIBehaviorFactory.SetIdle(_controller);
+                        controller.GetComponent<IMovementComponent>()?.SetIntent(new Core.ECS.Intents.IdleIntent());
                         return NodeState.Failure;
                     }
 
-                    var patrolTargetPosition = target() + new Vector2(400 * _patrolDirection, -300);
-                    AIBehaviorFactory.SetChase(_controller, () => patrolTargetPosition, 80f);
+                    var patrolTargetPosition = target.Center + new Vector2(400 * _patrolDirection, -300);
+                    controller.GetComponent<IMovementComponent>()?.SetIntent(new Core.ECS.Intents.ChaseIntent(patrolTargetPosition, 80f));
 
-                    // Check for turnaround and shoot
-                    if (Vector2.Distance(_npc.Center, patrolTargetPosition) < 100f)
+                    if (Vector2.Distance(npc.Center, patrolTargetPosition) < 100f)
                     {
                         _patrolDirection *= -1;
-                        AIBehaviorFactory.SetShootProjectile(_controller, target, _config.Attacks.BasicShot);
+                        Terraria.ModLoader.ModContent.GetInstance<AshenVoid>().Logger.Info("Shooting projectile would happen here.");
                     }
                     return NodeState.Success;
                 })

@@ -10,7 +10,7 @@ namespace AshenVoid.Core.ECS.Systems
     {
         public void Update(GameTime gameTime, NPC npc)
         {
-            var controller = (npc.ModNPC as Content.NPCs.NightmareCorruption.NightmareCorruption)?.ComponentController;
+            var controller = (npc.ModNPC as IComponentProvider)?.ComponentController;
             if (controller == null) return;
 
             var movementComponent = controller.GetComponent<MovementComponent>();

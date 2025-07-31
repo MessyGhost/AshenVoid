@@ -1,30 +1,30 @@
-using AshenVoid.Core.ECS;
-using Terraria;
+using AshenVoid.Core.ECS.AI;
 
 namespace AshenVoid.Core.ECS.FSM
 {
     /// <summary>
     /// Defines a state for a Finite State Machine (FSM).
     /// Each state represents a major phase or behavior of an NPC.
+    /// States are stateless and operate on data provided by a Blackboard.
     /// </summary>
     public interface IState
     {
         /// <summary>
         /// Called once when the state machine transitions into this state.
-        /// Use for initialization and setting up the state's behavior tree.
+        /// Use for initialization.
         /// </summary>
-        void Enter(ComponentController controller, NPC npc);
+        void Enter(Blackboard blackboard);
 
         /// <summary>
         /// Called every frame while this state is active.
-        /// This is where the state's logic, such as updating its behavior tree, is executed.
+        /// This is where the state's logic is executed.
         /// </summary>
-        void Update(ComponentController controller, NPC npc, Player target);
+        void Update(Blackboard blackboard);
 
         /// <summary>
         /// Called once when the state machine transitions out of this state.
-        /// Use for cleanup, such as stopping sounds or resetting variables.
+        /// Use for cleanup.
         /// </summary>
-        void Exit();
+        void Exit(Blackboard blackboard);
     }
 }

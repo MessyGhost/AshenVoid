@@ -24,10 +24,5 @@ namespace AshenVoid.Core.ECS
             MovementSpeed = new ModifiableStat(config.Phase1.Movement.MaxSpeed);
             AttackCooldownMultiplier = new ModifiableStat(1f); // Default to 1 (no modification)
         }
-
-        public void Update()
-        {
-            // All logic is moved to StatSystem.
-        }
     }
 }

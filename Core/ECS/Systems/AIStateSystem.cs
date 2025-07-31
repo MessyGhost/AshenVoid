@@ -1,4 +1,4 @@
-using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.AI;
 using Microsoft.Xna.Framework;
 using Terraria;
 
@@ -8,7 +8,7 @@ namespace AshenVoid.Core.ECS.Systems
     {
         public void Update(GameTime gameTime, NPC npc)
         {
-            var controller = (npc.ModNPC as Content.NPCs.NightmareCorruption.NightmareCorruption)?.ComponentController;
+            var controller = (npc.ModNPC as IComponentProvider)?.ComponentController;
             if (controller == null) return;
 
             var aiState = controller.GetComponent<AIStateComponent>();
@@ -19,10 +19,18 @@ namespace AshenVoid.Core.ECS.Systems
             {
                 npc.TargetClosest(true);
             }
-            aiState.Target = Main.player[npc.target];
+            Player target = Main.player[npc.target];
 
-            // Update the state machine
-            aiState.StateMachine.Update(controller, npc, aiState.Target);
+            // Populate the blackboard with this frame's context
+            var blackboard = aiState.Blackboard;
+            blackboard.Set(BlackboardKeys.NPC, npc);
+            blackboard.Set(BlackboardKeys.Target, target);
+            blackboard.Set(BlackboardKeys.Controller, controller);
+            blackboard.Set(BlackboardKeys.GameTime, gameTime);
+            blackboard.Set(BlackboardKeys.AIState, aiState);
+
+            // Update the state machine with the blackboard
+            aiState.StateMachine.Update(blackboard);
         }
     }
 }

@@ -1,4 +1,4 @@
-using Terraria;
+using AshenVoid.Core.ECS.AI;
 
 namespace AshenVoid.Core.ECS.FSM
 {
@@ -9,25 +9,25 @@ namespace AshenVoid.Core.ECS.FSM
     {
         public IState CurrentState { get; private set; }
 
-        public StateMachine() { }
-
         /// <summary>
         /// Transitions to a new state.
         /// </summary>
         /// <param name="newState">The state to transition to.</param>
-        public void ChangeState(IState newState, ComponentController controller, NPC npc)
+        /// <param name="blackboard">The AI's blackboard containing all context.</param>
+        public void ChangeState(IState newState, Blackboard blackboard)
         {
-            CurrentState?.Exit();
+            CurrentState?.Exit(blackboard);
             CurrentState = newState;
-            CurrentState?.Enter(controller, npc);
+            CurrentState?.Enter(blackboard);
         }
 
         /// <summary>
         /// Updates the current state.
         /// </summary>
-        public void Update(ComponentController controller, NPC npc, Player target)
+        /// <param name="blackboard">The AI's blackboard containing all context.</param>
+        public void Update(Blackboard blackboard)
         {
-            CurrentState?.Update(controller, npc, target);
+            CurrentState?.Update(blackboard);
         }
     }
 }

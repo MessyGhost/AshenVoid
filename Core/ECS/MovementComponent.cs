@@ -25,10 +25,5 @@ namespace AshenVoid.Core.ECS
         {
             return CurrentIntent != null && CurrentIntent is not IdleIntent;
         }
-
-        public void Update()
-        {
-            // Logic is in MovementSystem
-        }
     }
 }

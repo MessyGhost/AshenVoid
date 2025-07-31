@@ -1,9 +1,9 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.FSM;
 using Microsoft.Xna.Framework;
 using Terraria;
-using Terraria.ModLoader;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
@@ -11,20 +11,18 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
     {
         private readonly BossConfig _config;
         private float _timer;
-        private AIStateComponent _aiState;
 
         public SpawnState(BossConfig config)
         {
             _config = config;
         }
 
-        public void Enter(ComponentController controller, NPC npc)
+        public void Enter(Blackboard blackboard)
         {
             _timer = 0f;
-            _aiState = controller.GetComponent<AIStateComponent>();
+            var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
+            var target = blackboard.Get<Player>(BlackboardKeys.Target);
 
-            npc.TargetClosest(true);
-            Player target = Main.player[npc.target];
             if (target != null && target.active)
             {
                 npc.Center = target.Center - new Vector2(0, 300);
@@ -32,23 +30,27 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             npc.alpha = 255;
         }
 
-        public void Update(ComponentController controller, NPC npc, Player target)
+        public void Update(Blackboard blackboard)
         {
             _timer += 1f / 60f; // Assuming 60 FPS
 
+            var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
             npc.alpha = (int)MathHelper.Lerp(255, 0, _timer / _config.SpawnDuration);
 
             if (_timer >= _config.SpawnDuration)
             {
-                // Transition to Phase1, passing the specific config for that phase.
-                _aiState?.ChangeState(new Phase1State(_config.Phase1));
+                var aiState = blackboard.Get<AIStateComponent>(BlackboardKeys.AIState);
+                aiState?.ChangeState<Phase1State>();
             }
         }
 
-        public void Exit()
+        public void Exit(Blackboard blackboard)
         {
-            // Alpha should be 0 when exiting this state.
-            // The responsibility for setting alpha is now on the state itself.
+            var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
+            if (npc != null)
+            {
+                npc.alpha = 0;
+            }
         }
     }
 }

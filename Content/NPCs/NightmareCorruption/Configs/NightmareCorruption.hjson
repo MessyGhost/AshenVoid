@@ -21,6 +21,7 @@
         // 攻击参数
     "attacks": {
       "basicShot": {
+        "DamageThreshold": 300,
         "projectileId": 270, // ProjectileID.DemonScythe
         "cooldown": 2.5, // 冷却时间
         "damage": 35, // 伤害

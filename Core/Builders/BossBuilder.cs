@@ -1,76 +1,68 @@
-using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Core.Configuration;
 using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Systems;
-using AshenVoid.Core.Events;
+using System;
+using System.Collections.Generic;
 using Terraria.ModLoader;
 
 namespace AshenVoid.Core.Builders
 {
     public class BossBuilder
     {
-        private readonly ModNPC _npc;
-        private IState _initialState;
-        private BossConfig _bossConfig;
+        private readonly List<Func<IComponent>> _componentFactories = new List<Func<IComponent>>();
+        private readonly List<ISystem> _systems = new List<ISystem>();
+        private Type _initialStateType;
 
-        public BossBuilder(ModNPC npc)
-        {
-            _npc = npc;
-        }
+        // Constructor is still needed to pass context to the component factories if they need it.
+        public BossBuilder() { }
 
-        public BossBuilder WithInitialState(IState state)
+        public BossBuilder WithInitialState(Type stateType)
         {
-            _initialState = state;
+            if (!typeof(IState).IsAssignableFrom(stateType))
+            {
+                throw new ArgumentException($"{stateType.Name} does not implement IState.", nameof(stateType));
+            }
+            _initialStateType = stateType;
             return this;
         }
 
-        public BossBuilder WithConfig(BossConfig config)
+        public BossBuilder AddComponent(Func<IComponent> factory)
         {
-            _bossConfig = config;
+            _componentFactories.Add(factory);
+            return this;
+        }
+
+        public BossBuilder AddSystem(ISystem system)
+        {
+            _systems.Add(system);
             return this;
         }
 
         public ComponentController Build()
         {
-            // Manual Dependency Injection
-            var eventBus = new EventBus();
             var controller = new ComponentController();
 
-            // Create and Register Components
-            var movementComponent = new MovementComponent(_npc.NPC, _bossConfig.Phase1.Movement);
-            var attackComponent = new AttackComponent();
-            var animationComponent = new AnimationComponent(_npc.NPC);
-            var vfxComponent = new VFXComponent();
-            var statSheetComponent = new StatSheetComponent(_npc.NPC, _bossConfig);
-            var aiStateComponent = new AIStateComponent(_npc.NPC, controller, eventBus);
-
-            controller.RegisterComponent(movementComponent);
-            controller.RegisterComponent(attackComponent);
-            controller.RegisterComponent(animationComponent);
-            controller.RegisterComponent(vfxComponent);
-            controller.RegisterComponent(statSheetComponent);
-            controller.RegisterComponent(aiStateComponent);
-
-            // Initialize components that need it
-            eventBus.Subscribe<NPCDamagedEvent>(aiStateComponent.OnDamaged);
-            eventBus.Subscribe<NPCHealthLossEvent>(aiStateComponent.OnHealthLoss);
-
-            // Register systems
-            controller.RegisterSystem(new MovementSystem());
-            controller.RegisterSystem(new AttackSystem());
-            controller.RegisterSystem(new AIStateSystem());
-            controller.RegisterSystem(new AnimationSystem());
-            controller.RegisterSystem(new StatSystem());
-
-            // Set initial state
-            if (_initialState != null)
+            foreach (var factory in _componentFactories)
             {
-                aiStateComponent.SetInitialState(_initialState);
+                controller.RegisterComponent(factory());
             }
-            else
+
+            foreach (var system in _systems)
             {
-                ModContent.GetInstance<AshenVoid>().Logger.Warn("No initial state provided for the boss.");
+                controller.RegisterSystem(system);
+            }
+
+            var aiState = controller.GetComponent<AIStateComponent>();
+            if (aiState != null)
+            {
+                if (_initialStateType != null)
+                {
+                    aiState.SetInitialState(_initialStateType);
+                }
+                else
+                {
+                    ModContent.GetInstance<AshenVoid>().Logger.Warn("No initial state provided for the boss.");
+                }
             }
 
             return controller;
