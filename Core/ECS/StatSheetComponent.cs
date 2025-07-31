@@ -27,10 +27,7 @@ namespace AshenVoid.Core.ECS
 
         public void Update()
         {
-            // Apply the final calculated stats to the NPC instance
-            // This ensures that Terraria's internal logic uses our modified values.
-            _npc.damage = (int)Damage.Value;
-            _npc.defense = (int)Defense.Value;
+            // All logic is moved to StatSystem.
         }
     }
 }

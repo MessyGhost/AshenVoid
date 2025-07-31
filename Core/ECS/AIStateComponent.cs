@@ -12,11 +12,11 @@ namespace AshenVoid.Core.ECS
     public class AIStateComponent : IComponent
     {
         public readonly NPC NPC;
-        public Player Target { get; private set; }
+        public Player Target { get; set; }
         public ComponentController Controller { get; }
         public EventBus EventBus { get; }
 
-        private readonly StateMachine _stateMachine;
+        public StateMachine StateMachine { get; }
         private bool _isEnraged;
         private const string RAGE_SOURCE = "Rage";
 
@@ -31,7 +31,7 @@ namespace AshenVoid.Core.ECS
             NPC = npc;
             Controller = controller;
             EventBus = eventBus;
-            _stateMachine = new StateMachine();
+            StateMachine = new StateMachine();
             _isEnraged = false;
             _lastSummonHealthPercent = 1f;
         }
@@ -84,25 +84,17 @@ namespace AshenVoid.Core.ECS
 
         public void SetInitialState(IState initialState)
         {
-            _stateMachine.ChangeState(initialState, Controller, NPC);
+            StateMachine.ChangeState(initialState, Controller, NPC);
         }
 
         public void ChangeState(IState newState)
         {
-            _stateMachine.ChangeState(newState, Controller, NPC);
+            StateMachine.ChangeState(newState, Controller, NPC);
         }
 
         public void Update()
         {
-            // Update target
-            if (NPC.target < 0 || NPC.target == 255 || Main.player[NPC.target].dead || !Main.player[NPC.target].active)
-            {
-                NPC.TargetClosest(true);
-            }
-            Target = Main.player[NPC.target];
-
-            // Update the state machine
-            _stateMachine.Update(Controller, NPC, Target);
+            // All logic is moved to AIStateSystem.
         }
     }
 }

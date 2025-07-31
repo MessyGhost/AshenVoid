@@ -59,6 +59,9 @@ namespace AshenVoid.Core.Builders
             // Register systems
             controller.RegisterSystem(new MovementSystem());
             controller.RegisterSystem(new AttackSystem());
+            controller.RegisterSystem(new AIStateSystem());
+            controller.RegisterSystem(new AnimationSystem());
+            controller.RegisterSystem(new StatSystem());
 
             // Set initial state
             if (_initialState != null)

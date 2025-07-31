@@ -1,13 +1,11 @@
+using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
-using Terraria;
-using static AshenVoid.Core.ECS.BehaviorTree.NodeBuilder;
-using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Core.ECS.Intents;
 using AshenVoid.Core.ECS.Interfaces;
 using Microsoft.Xna.Framework;
 using System;
+using Terraria;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
@@ -17,11 +15,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
         private Node _behaviorTree;
         private int _patrolDirection = 1;
 
-        // Context fields, populated by Enter/Update
+        // Context
         private ComponentController _controller;
         private NPC _npc;
         private Player _target;
-        private AIStateComponent _aiState; // For properties like ShouldSummon
+        private AIStateComponent _aiState;
 
         public Phase1State(PhaseConfig config)
         {
@@ -38,9 +36,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public void Update(ComponentController controller, NPC npc, Player target)
         {
+            // Update context
             _controller = controller;
             _npc = npc;
             _target = target;
+
             _behaviorTree?.Evaluate();
         }
 
@@ -51,71 +51,82 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         private Node BuildBehaviorTree()
         {
-            // A helper function to ensure target is not null before accessing it
-            Func<Vector2> safeTargetCenter = () => _target != null ? _target.Center : _npc.Center;
+            Func<Vector2> safeTargetCenter = () => _target != null && _target.active ? _target.Center : _npc.Center;
 
-            return Fallback(
+            return new FallbackNode(
                 // Highest priority: Transition to Phase 2
-                Sequence(
-                    new ConditionNode(() => _npc.life < _npc.lifeMax * 0.5f),
+                new SequenceNode(
+                    new ConditionNode(() => _npc.life < _npc.lifeMax * _config.PhaseTransitionHealth),
                     new ActionNode(() =>
                     {
-                        _aiState.ChangeState(new Phase2State()); // Placeholder for now
+                        _aiState.ChangeState(new Phase2State(_config)); // Pass config to next phase
                         return NodeState.Success;
                     })
                 ),
 
-                // High priority: Chase player if too far
-                Sequence(
-                    new ConditionNode(() => _target != null && _npc.Distance(_target.Center) > 650f),
-                    AIBehaviorFactory.SetChase(_controller, safeTargetCenter, 320f)
-                ),
-
                 // Summon logic
-                Sequence(
+                new SequenceNode(
                     new ConditionNode(() => _aiState.ShouldSummon),
-                    AIBehaviorFactory.SetSpawnNpc(_controller, _config.Summon.NpcId, () => safeTargetCenter() + new Vector2(0, 1000)),
+                    AIBehaviorFactory.SetSpawnNpc(_controller, _config.Summon.NpcId, () => safeTargetCenter() + new Vector2(0, 1000), _config.Summon.Count, _config.Summon.Cooldown),
                     new ActionNode(() => { _aiState.ShouldSummon = false; return NodeState.Success; })
                 ),
 
                 // Dash logic
-                Sequence(
-                    new ConditionNode(() => _aiState.ShouldDash),
-                    // Charge up
-                    AIBehaviorFactory.SetChase(_controller, () => _npc.Center + (_npc.Center - safeTargetCenter()).SafeNormalize(Vector2.UnitX) * 100, 0),
-                    Wait(_config.Dash.ChargeTime),
-                    // Dash
-                    AIBehaviorFactory.SetChase(_controller, safeTargetCenter, 0), // This should be a high-speed chase
-                    new ActionNode(() => { _aiState.ResetDashTrigger(); return NodeState.Success; })
-                ),
+                BuildDashBehavior(safeTargetCenter),
 
                 // Default patrol and attack logic
-                PatrolBehavior()
+                BuildPatrolBehavior(safeTargetCenter)
             );
         }
 
-        private Node PatrolBehavior()
+        private Node BuildDashBehavior(Func<Vector2> target)
         {
-            return Sequence(
-                // Move left and right above the player
+            return new SequenceNode(
+                new ConditionNode(() => _aiState.ShouldDash),
+                // Charge up phase
                 new ActionNode(() =>
                 {
-                    if (_target == null) return NodeState.Failure;
+                    // Move back slightly to telegraph the dash
+                    var chargeDirection = (_npc.Center - target()).SafeNormalize(Vector2.UnitX);
+                    _controller.GetComponent<IMovementComponent>().SetIntent(new Core.ECS.Intents.ChaseIntent(_npc.Center + chargeDirection * 150f, 0f));
+                    return NodeState.Success;
+                }),
+                new WaitNode(_config.Dash.ChargeTime),
+                // Dash action
+                new ActionNode(() =>
+                {
+                    // Set a high-speed chase intent
+                    _controller.GetComponent<IMovementComponent>().SetIntent(new Core.ECS.Intents.ChaseIntent(target(), 0f, 25f)); // Using high speed override
+                    return NodeState.Success;
+                }),
+                new WaitNode(0.5f), // Duration of the dash
+                new ActionNode(() =>
+                {
+                    _aiState.ResetDashTrigger();
+                    return NodeState.Success;
+                })
+            );
+        }
 
-                    var targetPos = _target.Center + new Vector2(300 * _patrolDirection, -300);
-                    _controller.GetComponent<IMovementComponent>().SetIntent(new ChaseIntent(targetPos, 50f));
-
-                    // Check for turnaround
-                    if (Math.Abs(_npc.Center.X - targetPos.X) < 100f)
+        private Node BuildPatrolBehavior(Func<Vector2> target)
+        {
+            return new SequenceNode(
+                new ActionNode(() =>
+                {
+                    if (_target == null || !_target.active)
                     {
-                        _patrolDirection *= -1; // Reverse direction
+                        AIBehaviorFactory.SetIdle(_controller);
+                        return NodeState.Failure;
+                    }
 
-                        // Fire projectile on turnaround
-                        var attackComponent = _controller.GetComponent<IAttackComponent>();
-                        if (attackComponent.IsReady())
-                        {
-                            attackComponent.SetIntent(new ShootProjectileIntent(_target.Center, _config.Attacks.BasicShot));
-                        }
+                    var patrolTargetPosition = target() + new Vector2(400 * _patrolDirection, -300);
+                    AIBehaviorFactory.SetChase(_controller, () => patrolTargetPosition, 80f);
+
+                    // Check for turnaround and shoot
+                    if (Vector2.Distance(_npc.Center, patrolTargetPosition) < 100f)
+                    {
+                        _patrolDirection *= -1;
+                        AIBehaviorFactory.SetShootProjectile(_controller, target, _config.Attacks.BasicShot);
                     }
                     return NodeState.Success;
                 })

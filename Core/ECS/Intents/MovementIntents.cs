@@ -15,11 +15,13 @@ namespace AshenVoid.Core.ECS.Intents
     {
         public Vector2 TargetPosition { get; }
         public float StopDistance { get; }
+        public float? SpeedOverride { get; }
 
-        public ChaseIntent(Vector2 targetPosition, float stopDistance = 0f)
+        public ChaseIntent(Vector2 targetPosition, float stopDistance = 0f, float? speedOverride = null)
         {
             TargetPosition = targetPosition;
             StopDistance = stopDistance;
+            SpeedOverride = speedOverride;
         }
     }
 

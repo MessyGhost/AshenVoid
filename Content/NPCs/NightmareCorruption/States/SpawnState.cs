@@ -3,6 +3,7 @@ using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.FSM;
 using Microsoft.Xna.Framework;
 using Terraria;
+using Terraria.ModLoader;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
@@ -10,7 +11,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
     {
         private readonly BossConfig _config;
         private float _timer;
-        private AIStateComponent _aiState; // For ChangeState
+        private AIStateComponent _aiState;
 
         public SpawnState(BossConfig config)
         {
@@ -23,7 +24,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             _aiState = controller.GetComponent<AIStateComponent>();
 
             npc.TargetClosest(true);
-            var target = Main.player[npc.target];
+            Player target = Main.player[npc.target];
             if (target != null && target.active)
             {
                 npc.Center = target.Center - new Vector2(0, 300);
@@ -33,24 +34,21 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public void Update(ComponentController controller, NPC npc, Player target)
         {
-            _timer += 1f / 60f;
+            _timer += 1f / 60f; // Assuming 60 FPS
 
-            if (_config != null)
-            {
-                npc.alpha = (int)MathHelper.Lerp(255, 0, _timer / _config.SpawnDuration);
-            }
+            npc.alpha = (int)MathHelper.Lerp(255, 0, _timer / _config.SpawnDuration);
 
-            if (_timer >= _config?.SpawnDuration)
+            if (_timer >= _config.SpawnDuration)
             {
+                // Transition to Phase1, passing the specific config for that phase.
                 _aiState?.ChangeState(new Phase1State(_config.Phase1));
             }
         }
 
         public void Exit()
         {
-            // The NPC alpha is reset by the next state or by default game logic.
-            // If we need to guarantee it, we'd need the NPC instance here,
-            // but Exit() doesn't receive context. For now, we assume it's handled.
+            // Alpha should be 0 when exiting this state.
+            // The responsibility for setting alpha is now on the state itself.
         }
     }
 }

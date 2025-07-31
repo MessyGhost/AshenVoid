@@ -1,6 +1,5 @@
 using AshenVoid.Core.ECS;
 using Terraria;
-using Terraria;
 
 namespace AshenVoid.Core.ECS.FSM
 {
