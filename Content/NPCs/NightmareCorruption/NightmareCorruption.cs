@@ -12,13 +12,14 @@ using AshenVoid.Core.Configuration;
 using AshenVoid.Core.DI;
 using AshenVoid.Core.ECS.Interfaces;
 using AshenVoid.Core.Events;
+using AshenVoid.Core.Systems;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
     [AutoloadBossHead]
     public partial class NightmareCorruption : ModNPC
     {
-        protected ComponentController Components { get; private set; }
+        public ComponentController Components { get; private set; }
         private EventBus _eventBus;
         private int _lastHealth;
 
@@ -74,7 +75,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 _lastHealth = NPC.life;
             }
 
-            Components.Update();
+            Components.Update(GameTimeSystem.LastGameTime, NPC);
         }
 
         private void SetupECS()
