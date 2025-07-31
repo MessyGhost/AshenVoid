@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
 
-namespace AshenVoid.Core.ECS
+namespace AshenVoid.Core.ECS.Intents
 {
     /// <summary>
     /// Represents the AI's desire for movement.

@@ -1,5 +1,5 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Content.NPCs.NightmareCorruption.Intents;
+using AshenVoid.Core.ECS.Intents;
 using AshenVoid.Core.ECS.Interfaces;
 using Terraria;
 using Terraria.ID;
@@ -8,8 +8,6 @@ using Terraria.ModLoader;
 
 namespace AshenVoid.Core.ECS
 {
-    public interface IAttackIntent { }
-
     public class AttackComponent : IAttackComponent
     {
         private readonly NPC _npc;

@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework;
 using System;
 using Terraria;
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Content.NPCs.NightmareCorruption.Intents;
+using AshenVoid.Core.ECS.Intents;
 using AshenVoid.Core.ECS.Interfaces;
 
 namespace AshenVoid.Core.ECS.BehaviorTree

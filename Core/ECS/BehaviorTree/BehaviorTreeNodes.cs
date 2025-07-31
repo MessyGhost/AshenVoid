@@ -130,6 +130,43 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         public override void Reset() => _child.Reset();
     }
 
+    public class WaitNode : Node
+    {
+        private readonly float _durationInSeconds;
+        private int _timerInFrames;
+
+        public WaitNode(float durationInSeconds)
+        {
+            _durationInSeconds = durationInSeconds;
+            _timerInFrames = 0;
+        }
+
+        public override NodeState Evaluate()
+        {
+            _timerInFrames++;
+            if (_timerInFrames / 60f >= _durationInSeconds)
+            {
+                return NodeState.Success;
+            }
+            return NodeState.Running;
+        }
+
+        public override void Reset()
+        {
+            _timerInFrames = 0;
+        }
+    }
+
+    public static class NodeBuilder
+    {
+        public static SequenceNode Sequence(params Node[] nodes) => new SequenceNode(nodes);
+        public static FallbackNode Fallback(params Node[] nodes) => new FallbackNode(nodes);
+        public static InverterNode Inverter(Node node) => new InverterNode(node);
+        public static ActionNode Do(Action action) => new ActionNode(() => { action(); return NodeState.Success; });
+        public static WaitNode Wait(float seconds) => new WaitNode(seconds);
+        public static RandomSelectorNode Weighted(params (Node node, int weight)[] weightedNodes) => new RandomSelectorNode(weightedNodes);
+    }
+
     public class RandomSelectorNode : Node
     {
         private readonly List<Node> _children;
@@ -137,12 +174,6 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         private readonly Random _random = new Random();
         private readonly bool _useWeights;
         private int? _currentChildIndex;
-
-        public RandomSelectorNode(params Node[] children)
-        {
-            _children = children.ToList();
-            _useWeights = false;
-        }
 
         public RandomSelectorNode(params (Node node, int weight)[] weightedNodes)
         {
@@ -168,7 +199,7 @@ namespace AshenVoid.Core.ECS.BehaviorTree
             var result = _children[_currentChildIndex.Value].Evaluate();
             if (result != NodeState.Running)
             {
-                _currentChildIndex = null;
+                Reset();
             }
             return result;
         }
@@ -204,47 +235,5 @@ namespace AshenVoid.Core.ECS.BehaviorTree
             foreach (var child in _children)
                 child.Reset();
         }
-    }
-
-    /// <summary>
-    /// A non-blocking wait node. Returns Running until the specified duration has passed.
-    /// </summary>
-    public class WaitNode : Node
-    {
-        private readonly float _duration;
-        private float _timer;
-
-        public WaitNode(float duration)
-        {
-            _duration = duration;
-            _timer = 0f;
-        }
-
-        public override NodeState Evaluate()
-        {
-            if (_timer >= _duration)
-            {
-                return NodeState.Success;
-            }
-
-            _timer += 1f / 60f; // Assuming 60 TPS
-            return NodeState.Running;
-        }
-
-        public override void Reset()
-        {
-            _timer = 0f;
-        }
-    }
-
-    public static class NodeBuilder
-    {
-        public static SequenceNode Sequence(params Node[] nodes) => new SequenceNode(nodes);
-        public static FallbackNode Fallback(params Node[] nodes) => new FallbackNode(nodes);
-        public static InverterNode Inverter(Node node) => new InverterNode(node);
-        public static RandomSelectorNode Random(params Node[] nodes) => new RandomSelectorNode(nodes);
-        public static RandomSelectorNode Weighted(params (Node node, int weight)[] weightedNodes) => new RandomSelectorNode(weightedNodes);
-        public static ActionNode Do(Action action) => new ActionNode(() => { action(); return NodeState.Success; });
-        public static WaitNode Wait(float seconds) => new WaitNode(seconds);
     }
 }

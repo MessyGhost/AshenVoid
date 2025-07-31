@@ -4,6 +4,7 @@ using System;
 using AshenVoid.Core;
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.ECS.Interfaces;
+using AshenVoid.Core.ECS.Intents;
 
 namespace AshenVoid.Core.ECS
 {

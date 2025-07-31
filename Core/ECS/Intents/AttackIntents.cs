@@ -1,10 +1,17 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Core.ECS;
 using Microsoft.Xna.Framework;
 
-namespace AshenVoid.Content.NPCs.NightmareCorruption.Intents
+namespace AshenVoid.Core.ECS.Intents
 {
-    // An intent to shoot a projectile. It carries all necessary data.
+    /// <summary>
+    /// Represents the AI's desire to perform an attack.
+    /// This is a data container, holding no logic itself.
+    /// </summary>
+    public interface IAttackIntent { }
+
+    /// <summary>
+    /// An intent to shoot a projectile. It carries all necessary data.
+    /// </summary>
     public class ShootProjectileIntent : IAttackIntent
     {
         public Vector2 TargetPosition { get; }
