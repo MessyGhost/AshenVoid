@@ -19,11 +19,8 @@ namespace AshenVoid.Core.Abilities
         {
             _abilityCreators[typeName] = (config) =>
             {
-                // This is a simplified creation process.
-                // A more robust solution would use reflection or a proper deserializer
-                // to map config.Parameters to the properties of the ability instance.
                 var ability = new T();
-                // (ability as IConfigurableAbility)?.Configure(config.Parameters);
+                ability.Initialize(config); // Pass config to the new Initialize method
                 return ability;
             };
         }

@@ -6,12 +6,12 @@ using System.Collections.Generic;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class BehaviorTreeSystem : IComponentSystem
+    public class BehaviorTreeSystem : CachedComponentSystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(AIStateComponent) };
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+        public override IEnumerable<Type> RequiredComponents => new[] { typeof(AIStateComponent) };
+        public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var aiState = world.GetComponent<AIStateComponent>(entityId);
             aiState?.CurrentState?.BehaviorTree?.Tick(entityId, world);

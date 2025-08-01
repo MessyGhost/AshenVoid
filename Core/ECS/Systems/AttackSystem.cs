@@ -9,12 +9,12 @@ using AshenVoid.Core.ECS.AI;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class AttackSystem : IComponentSystem
+    public class AttackSystem : CachedComponentSystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(AttackComponent) };
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+        public override IEnumerable<Type> RequiredComponents => new[] { typeof(AttackComponent) };
+        public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var attack = world.GetComponent<AttackComponent>(entityId);
             attack?.UpdateCooldowns((float)gameTime.ElapsedGameTime.TotalSeconds);
@@ -22,29 +22,25 @@ namespace AshenVoid.Core.ECS.Systems
 
         public AttackSystem()
         {
-            // This subscription should ideally be in Load() or a similar setup method,
-            // but for now, we'll keep it here.
-            // A better approach would be to have the EcsSystem manage subscriptions.
-            EcsSystem.Instance.EventBus.Subscribe<AttackPerformedNetworkEvent>(HandleAttack);
+            EcsSystem.Instance.EventBus.Subscribe<RequestAttackExecutionEvent>(HandleAttack);
         }
 
-        private void HandleAttack(AttackPerformedNetworkEvent e)
+        private void HandleAttack(RequestAttackExecutionEvent e)
         {
-            // Critical fix: Ensure projectile creation only happens on the server.
             if (Main.netMode == NetmodeID.MultiplayerClient)
                 return;
 
             var world = EcsSystem.Instance.World;
             var statSheet = world.GetComponent<StatSheetComponent>(e.EntityId);
             var movement = world.GetComponent<MovementComponent>(e.EntityId);
-            var blackboard = world.GetComponent<AIBlackboardComponent>(e.EntityId);
+            var targetComponent = world.GetComponent<TargetComponent>(e.EntityId);
 
-            if (statSheet == null || movement == null || blackboard == null) return;
+            if (statSheet == null || movement == null || targetComponent == null) return;
 
-            var target = blackboard.Get<Player>(BlackboardKeys.Target);
+            var target = targetComponent.Target;
             if (target == null) return;
 
-            if (e.AttackName == "BasicShot")
+            if (e.AttackType == AttackType.BasicShot)
             {
                 var attackConfig = statSheet.Config.Phase1.Attacks.BasicShot;
                 Vector2 direction = Vector2.Normalize(target.Center - movement.Npc.Center);

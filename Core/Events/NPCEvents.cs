@@ -1,3 +1,4 @@
+using AshenVoid.Core.ECS;
 using System.IO;
 using Terraria;
 
@@ -90,21 +91,23 @@ namespace AshenVoid.Core.Events
     /// Network event to inform clients that an entity has performed an attack.
     /// This can be used to trigger VFX and SFX on the client.
     /// </summary>
-    public struct AttackPerformedNetworkEvent : INetworkEvent
+    public struct RequestAttackExecutionEvent : INetworkEvent
     {
         public int EntityId;
-        public string AttackName; // An identifier for the type of attack
+        public AttackType AttackType;
 
         public void Write(BinaryWriter writer)
         {
             writer.Write(EntityId);
-            writer.Write(AttackName);
+            writer.Write((byte)AttackType);
         }
+
+
 
         public void Read(BinaryReader reader)
         {
             EntityId = reader.ReadInt32();
-            AttackName = reader.ReadString();
+            AttackType = (AttackType)reader.ReadByte();
         }
     }
 }

@@ -115,6 +115,18 @@ namespace AshenVoid.Core.ECS
             return components;
         }
 
+        public void GetComponents(int entityId, List<IComponent> componentList)
+        {
+            if (!_entityIdToIndex.TryGetValue(entityId, out var index))
+                return;
+
+            componentList.Clear();
+            foreach (var chunk in _componentChunks.Values)
+            {
+                componentList.Add(chunk.GetComponent(index));
+            }
+        }
+
         public void MoveEntityTo(int entityId, Archetype newArchetype, IComponent newComponent = null)
         {
             if (!_entityIdToIndex.TryGetValue(entityId, out var fromIndex))

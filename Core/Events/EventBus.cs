@@ -9,6 +9,7 @@ namespace AshenVoid.Core.Events
         private interface IEventHandlerWrapper
         {
             void Invoke(IEvent e);
+            bool IsHandler(object handler);
         }
 
         // 泛型包装器，持有强类型委托
@@ -23,19 +24,12 @@ namespace AshenVoid.Core.Events
 
             public void Invoke(IEvent e)
             {
-                // 直接调用，类型在订阅时已确定
                 _handler((T)e);
             }
 
-            // 用于在 Unsubscribe 中比较
-            public override bool Equals(object obj)
+            public bool IsHandler(object handler)
             {
-                return obj is EventHandlerWrapper<T> other && _handler.Equals(other._handler);
-            }
-
-            public override int GetHashCode()
-            {
-                return _handler.GetHashCode();
+                return _handler.Equals(handler);
             }
         }
 
@@ -43,31 +37,55 @@ namespace AshenVoid.Core.Events
         private readonly Queue<IEvent> _eventQueue = new();
         private readonly object _lock = new();
 
+        private bool _isDispatching = false;
+        private readonly List<Action> _pendingModifications = new();
+
         public void Subscribe<T>(Action<T> handler) where T : IEvent
         {
-            var eventType = typeof(T);
-            var wrapper = new EventHandlerWrapper<T>(handler);
+            Action addAction = () =>
+            {
+                var eventType = typeof(T);
+                if (!_subscribers.TryGetValue(eventType, out var handlers))
+                {
+                    handlers = new List<IEventHandlerWrapper>();
+                    _subscribers[eventType] = handlers;
+                }
+                handlers.Add(new EventHandlerWrapper<T>(handler));
+            };
 
             lock (_lock)
             {
-                if (!_subscribers.ContainsKey(eventType))
+                if (_isDispatching)
                 {
-                    _subscribers[eventType] = new List<IEventHandlerWrapper>();
+                    _pendingModifications.Add(addAction);
                 }
-                _subscribers[eventType].Add(wrapper);
+                else
+                {
+                    addAction();
+                }
             }
         }
 
         public void Unsubscribe<T>(Action<T> handler) where T : IEvent
         {
-            var eventType = typeof(T);
-            var wrapper = new EventHandlerWrapper<T>(handler);
+            Action removeAction = () =>
+            {
+                var eventType = typeof(T);
+                if (_subscribers.TryGetValue(eventType, out var handlers))
+                {
+                    handlers.RemoveAll(wrapper => wrapper.IsHandler(handler));
+                }
+            };
 
             lock (_lock)
             {
-                if (_subscribers.TryGetValue(eventType, out var handlers))
+                if (_isDispatching)
                 {
-                    handlers.Remove(wrapper);
+                    _pendingModifications.Add(removeAction);
+                }
+                else
+                {
+                    removeAction();
                 }
             }
         }
@@ -96,27 +114,39 @@ namespace AshenVoid.Core.Events
             {
                 var e = queueSnapshot.Dequeue();
                 var eventType = e.GetType();
-                List<IEventHandlerWrapper> handlersSnapshot;
 
+                List<IEventHandlerWrapper> handlers;
                 lock (_lock)
                 {
-                    if (!_subscribers.TryGetValue(eventType, out var handlers))
+                    if (!_subscribers.TryGetValue(eventType, out handlers))
+                    {
                         continue;
-
-                    handlersSnapshot = new List<IEventHandlerWrapper>(handlers);
+                    }
+                    _isDispatching = true;
                 }
 
-                foreach (var handlerWrapper in handlersSnapshot)
+                // No snapshotting here, iterate over the original list
+                foreach (var handlerWrapper in handlers)
                 {
                     try
                     {
-                        // 无反射，直接调用
                         handlerWrapper.Invoke(e);
                     }
                     catch (Exception ex)
                     {
                         Terraria.ModLoader.ModContent.GetInstance<AshenVoid>().Logger.Error($"Error executing event handler for {eventType.Name}", ex);
                     }
+                }
+
+                lock (_lock)
+                {
+                    _isDispatching = false;
+                    // Process any modifications that were queued during dispatch
+                    foreach (var modification in _pendingModifications)
+                    {
+                        modification();
+                    }
+                    _pendingModifications.Clear();
                 }
             }
         }

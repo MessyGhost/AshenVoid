@@ -66,12 +66,14 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         protected override void BuildEntity(EcsWorld world, int entityId)
         {
             world.AddComponent(entityId, new StatSheetComponent(NPC, _config));
+            this.AiFactory = new AIBehaviorFactory(_config);
             world.AddComponent(entityId, new HealthComponent(NPC.lifeMax, NPC.lifeMax));
             world.AddComponent(entityId, new MovementComponent(NPC, _config.Phase1.Movement));
             world.AddComponent(entityId, new AnimationComponent(NPC));
             world.AddComponent(entityId, new AttackComponent());
             world.AddComponent(entityId, new ChildrenComponent());
             world.AddComponent(entityId, new AIStateComponent(typeof(SpawnState), EcsSystem.Instance.StateFactory));
+            world.AddComponent(entityId, new TargetComponent());
             world.AddComponent(entityId, new AIBlackboardComponent());
 
             var abilityComponent = new AbilityComponent();

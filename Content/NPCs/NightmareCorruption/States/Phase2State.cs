@@ -7,19 +7,19 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class Phase2State : IState
     {
-        // Constructor is now parameterless
-        public Phase2State() { }
+        public Core.ECS.BehaviorTree.Node BehaviorTree { get; private set; }
 
-        public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
+        public Phase2State()
+        {
+            BehaviorTree = null;
+        }
 
-        public void Enter(int entityId, EcsWorld world) { }
+        public void Enter(int entityId, EcsWorld world, AIBehaviorFactory factory)
+        {
+            // TODO: Implement Phase 2 behavior tree creation
+        }
 
         public void Exit(int entityId, EcsWorld world) { }
-
-        public void Update(int entityId, EcsWorld world)
-        {
-            // Phase 2 logic will be implemented in the behavior tree.
-        }
 
         public Type CheckTransitions(int entityId, EcsWorld world)
         {

@@ -1,7 +1,7 @@
 namespace AshenVoid.Core.ECS.AI
 {
-    public static class BlackboardKeys
+    public enum BlackboardKey
     {
-        public const string Target = "Target";
+        // Add blackboard keys here if needed in the future
     }
 }

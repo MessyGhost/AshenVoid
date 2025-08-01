@@ -1,6 +1,7 @@
 using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.Events;
+using AshenVoid.Content.NPCs.NightmareCorruption; // Added using for AIBehaviorFactory
 using Terraria;
 using Terraria.DataStructures;
 using Terraria.ModLoader;
@@ -18,6 +19,12 @@ namespace AshenVoid.Core.Builders
         /// It is -1 until synchronized from the server.
         /// </summary>
         public int EntityId { get; private set; } = -1;
+
+        /// <summary>
+        /// The factory for creating AI behaviors for this boss.
+        /// Initialized in the concrete boss class.
+        /// </summary>
+        public AIBehaviorFactory AiFactory { get; protected set; }
 
         /// <summary>
         /// Defines the components and systems for this boss entity.

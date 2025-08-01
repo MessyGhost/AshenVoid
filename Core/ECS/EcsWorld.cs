@@ -17,6 +17,8 @@ namespace AshenVoid.Core.ECS
         private readonly Dictionary<int, Archetype> _entityArchetypes = new();
         private int _nextEntityId = 0;
 
+        public bool IsDirty { get; private set; } = true;
+
         public EcsWorld(SystemManager systemManager, EventBus eventBus)
         {
             _systemManager = systemManager;
@@ -31,6 +33,7 @@ namespace AshenVoid.Core.ECS
             var emptyArchetype = _archetypes[""];
             emptyArchetype.AddEntity(entityId, Array.Empty<IComponent>());
             _entityArchetypes[entityId] = emptyArchetype;
+            IsDirty = true;
             return entityId;
         }
 
@@ -40,6 +43,7 @@ namespace AshenVoid.Core.ECS
             {
                 archetype.RemoveEntity(entityId);
                 _entityArchetypes.Remove(entityId);
+                IsDirty = true;
             }
         }
 
@@ -55,6 +59,7 @@ namespace AshenVoid.Core.ECS
 
             oldArchetype.MoveEntityTo(entityId, newArchetype, component);
             _entityArchetypes[entityId] = newArchetype;
+            IsDirty = true;
         }
 
         private Archetype FindOrCreateArchetype(HashSet<Type> componentTypes)
@@ -99,24 +104,23 @@ namespace AshenVoid.Core.ECS
         {
             var requiredSet = new HashSet<Type>(requiredComponents);
             if (!requiredSet.Any())
-                yield break;
+                return Enumerable.Empty<int>();
 
+            var matchingEntities = new List<int>();
             foreach (var archetype in _archetypes.Values)
             {
                 if (archetype.Matches(requiredSet))
                 {
-                    // Return a copy to prevent issues with collection modification during iteration
-                    foreach (var entityId in archetype.Entities)
-                    {
-                        yield return entityId;
-                    }
+                    matchingEntities.AddRange(archetype.Entities);
                 }
             }
+            return matchingEntities;
         }
 
         public void Update(GameTime gameTime)
         {
             _systemManager.Update(gameTime, this, _eventBus);
+            IsDirty = false;
         }
     }
 }

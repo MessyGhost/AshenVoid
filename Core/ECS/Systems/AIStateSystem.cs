@@ -6,15 +6,15 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class AIStateSystem : IComponentSystem
+    public class AIStateSystem : CachedComponentSystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(AIStateComponent) };
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+        public override IEnumerable<Type> RequiredComponents => new[] { typeof(AIStateComponent) };
+        public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var aiState = world.GetComponent<AIStateComponent>(entityId);
-            aiState?.Update(gameTime, world, entityId, eventBus);
+            aiState?.CheckTransitionsAndChangeState(world, entityId, eventBus);
         }
     }
 }

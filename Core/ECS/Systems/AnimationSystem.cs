@@ -6,17 +6,17 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class AnimationSystem : IComponentSystem
+    public class AnimationSystem : CachedComponentSystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(AnimationComponent) };
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;
+        public override IEnumerable<Type> RequiredComponents => new[] { typeof(AnimationComponent) };
+        public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;
 
         public AnimationSystem()
         {
-            EcsSystem.Instance.EventBus.Subscribe<AttackPerformedNetworkEvent>(HandleAttackAnimation);
+            EcsSystem.Instance.EventBus.Subscribe<RequestAttackExecutionEvent>(HandleAttackAnimation);
         }
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var animation = world.GetComponent<AnimationComponent>(entityId);
             if (animation == null) return;
@@ -34,17 +34,13 @@ namespace AshenVoid.Core.ECS.Systems
             animation.Npc.frame.Y = animation.CurrentFrame * animation.Npc.height;
         }
 
-        private void HandleAttackAnimation(AttackPerformedNetworkEvent e)
+        private void HandleAttackAnimation(RequestAttackExecutionEvent e)
         {
             var world = EcsSystem.Instance.World;
             var animation = world.GetComponent<AnimationComponent>(e.EntityId);
 
-            // Example: Play a specific animation for the basic attack
-            if (e.AttackName == "BasicShot")
+            if (e.AttackType == AttackType.BasicShot)
             {
-                // This is a placeholder. You would typically have a more robust
-                // animation controller within the AnimationComponent.
-                // For now, we can just manually set the frame.
                 if (animation != null)
                 {
                     animation.Npc.frameCounter = 0;

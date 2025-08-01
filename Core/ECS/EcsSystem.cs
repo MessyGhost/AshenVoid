@@ -62,7 +62,7 @@ namespace AshenVoid.Core.ECS
         {
             NetworkManager.RegisterEventType<EntityIdSyncEvent>();
             NetworkManager.RegisterEventType<StateChangedNetworkEvent>();
-            NetworkManager.RegisterEventType<AttackPerformedNetworkEvent>();
+            NetworkManager.RegisterEventType<RequestAttackExecutionEvent>();
         }
 
         private void RegisterAllBossStates()

@@ -1,4 +1,5 @@
 using AshenVoid.Core.ECS;
+using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 
 namespace AshenVoid.Core.Abilities
 {
@@ -12,8 +13,13 @@ namespace AshenVoid.Core.Abilities
 
     public interface IAbility
     {
-        string Name { get; }
+        AbilityType Type { get; }
         AbilityStatus Status { get; }
+
+        /// <summary>
+        /// Initializes the ability with its configuration.
+        /// </summary>
+        void Initialize(AbilityConfig config);
 
         /// <summary>
         /// Checks if the ability can be used (e.g., cooldown, resources, target range).

@@ -1,3 +1,4 @@
+using AshenVoid.Core.Builders;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
@@ -18,10 +19,8 @@ namespace AshenVoid.Core.ECS
             CurrentState = _stateFactory.CreateState(initialState);
         }
 
-        public void Update(GameTime gameTime, EcsWorld world, int entityId, EventBus eventBus)
+        public void CheckTransitionsAndChangeState(EcsWorld world, int entityId, EventBus eventBus)
         {
-            CurrentState?.Update(entityId, world);
-
             var nextStateType = CurrentState?.CheckTransitions(entityId, world);
             if (nextStateType != null)
             {
@@ -37,7 +36,10 @@ namespace AshenVoid.Core.ECS
         {
             CurrentState?.Exit(entityId, world);
             CurrentState = nextState;
-            CurrentState.Enter(entityId, world);
+
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            var boss = statSheet?.Npc.ModNPC as EcsBoss;
+            CurrentState.Enter(entityId, world, boss?.AiFactory);
 
             if (Main.netMode != Terraria.ID.NetmodeID.MultiplayerClient)
             {
@@ -49,9 +51,6 @@ namespace AshenVoid.Core.ECS
             }
         }
 
-        /// <summary>
-        /// Forcibly sets the current state. Used by the client to sync with the server.
-        /// </summary>
         public void ForceState(IState state)
         {
             CurrentState = state;

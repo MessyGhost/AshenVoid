@@ -4,14 +4,14 @@ namespace AshenVoid.Core.ECS.AI
 {
     public class AIBlackboardComponent : IComponent
     {
-        private readonly Dictionary<string, object> _data = new();
+        private readonly Dictionary<BlackboardKey, object> _data = new();
 
-        public void Set<T>(string key, T value)
+        public void Set<T>(BlackboardKey key, T value)
         {
             _data[key] = value;
         }
 
-        public T Get<T>(string key, T defaultValue = default)
+        public T Get<T>(BlackboardKey key, T defaultValue = default)
         {
             if (_data.TryGetValue(key, out var value) && value is T typedValue)
             {
@@ -20,7 +20,7 @@ namespace AshenVoid.Core.ECS.AI
             return defaultValue;
         }
 
-        public bool Has(string key)
+        public bool Has(BlackboardKey key)
         {
             return _data.ContainsKey(key);
         }

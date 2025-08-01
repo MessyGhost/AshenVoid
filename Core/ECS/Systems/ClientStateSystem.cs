@@ -38,7 +38,8 @@ namespace AshenVoid.Core.ECS.Systems
                     // We need to call Enter/Exit manually on the client for synchronization
                     aiState.CurrentState?.Exit(e.EntityId, world);
                     aiState.ForceState(nextState);
-                    aiState.CurrentState.Enter(e.EntityId, world);
+                    // Client does not have or need the factory, so pass null.
+                    aiState.CurrentState.Enter(e.EntityId, world, null);
                 }
             }
         }

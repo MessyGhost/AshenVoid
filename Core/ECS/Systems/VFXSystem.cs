@@ -5,12 +5,12 @@ using System.Collections.Generic;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class VFXSystem : IComponentSystem
+    public class VFXSystem : CachedComponentSystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(VFXComponent) };
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;
+        public override IEnumerable<Type> RequiredComponents => new[] { typeof(VFXComponent) };
+        public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var vfxComponent = world.GetComponent<VFXComponent>(entityId);
             if (vfxComponent == null) return;

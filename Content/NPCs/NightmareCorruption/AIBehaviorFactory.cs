@@ -14,27 +14,40 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
     public class AIBehaviorFactory
     {
         private readonly BossConfig _bossConfig;
-        private readonly Dictionary<string, Func<int, EcsWorld, NodeStatus>> _actionLookups;
+        private readonly Dictionary<AIActionType, Func<int, EcsWorld, NodeStatus>> _actionLookups;
+        private readonly Dictionary<string, Node> _treeCache = new();
 
         public AIBehaviorFactory(BossConfig bossConfig)
         {
             _bossConfig = bossConfig;
-            _actionLookups = new Dictionary<string, Func<int, EcsWorld, NodeStatus>>
+            _actionLookups = new Dictionary<AIActionType, Func<int, EcsWorld, NodeStatus>>
             {
-                { "FindAndTargetPlayer", FindAndTargetPlayer },
-                { "MoveToPlayer", MoveToPlayer },
-                { "TryBasicAttack", TryBasicAttack }
+                { AIActionType.FindAndTargetPlayer, FindAndTargetPlayer },
+                { AIActionType.MoveToPlayer, MoveToPlayer },
+                { AIActionType.TryBasicAttack, TryBasicAttack }
             };
         }
 
         public Node CreateBehaviorTree(string name)
         {
-            // For now, we assume the name corresponds to a phase in the config.
-            // A more robust solution might involve a dictionary of trees in the config.
+            if (_treeCache.TryGetValue(name, out var cachedTree))
+            {
+                return cachedTree;
+            }
+
+            BehaviorTreeConfig config = null;
             if (name == "NightmareCorruption_Phase1" && _bossConfig.Phase1.BehaviorTree != null)
             {
-                return ParseNode(_bossConfig.Phase1.BehaviorTree);
+                config = _bossConfig.Phase1.BehaviorTree;
             }
+
+            if (config != null)
+            {
+                var newTree = ParseNode(config);
+                _treeCache[name] = newTree;
+                return newTree;
+            }
+
             throw new ArgumentException($"Behavior tree '{name}' not found in config or factory.");
         }
 
@@ -52,13 +65,13 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     node = new Sequence();
                     break;
                 case "Action":
-                    if (!string.IsNullOrEmpty(nodeConfig.Name) && _actionLookups.TryGetValue(nodeConfig.Name, out var action))
+                    if (!string.IsNullOrEmpty(nodeConfig.Name) && Enum.TryParse(nodeConfig.Name, out AIActionType actionType) && _actionLookups.TryGetValue(actionType, out var action))
                     {
                         node = new ActionNode(action);
                     }
                     else
                     {
-                        throw new ArgumentException($"Unknown action name: {nodeConfig.Name}");
+                        throw new ArgumentException($"Unknown or invalid action name: {nodeConfig.Name}");
                     }
                     break;
                 default:
@@ -84,14 +97,10 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private NodeStatus FindAndTargetPlayer(int entityId, EcsWorld world)
         {
-            var blackboard = world.GetComponent<AIBlackboardComponent>(entityId);
-            if (blackboard == null)
-            {
-                ModContent.GetInstance<AshenVoid>().Logger.Warn($"Entity {entityId} is missing AIBlackboardComponent. Entity was not built correctly.");
-                return NodeStatus.Failure;
-            }
+            var targetComponent = world.GetComponent<TargetComponent>(entityId);
+            if (targetComponent == null) return NodeStatus.Failure;
 
-            Player target = null;
+            Player bestTarget = null;
             float minDistance = float.MaxValue;
             var statSheet = world.GetComponent<StatSheetComponent>(entityId);
             if (statSheet == null) return NodeStatus.Failure;
@@ -105,14 +114,14 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                     if (dist < minDistance)
                     {
                         minDistance = dist;
-                        target = p;
+                        bestTarget = p;
                     }
                 }
             }
 
-            if (target != null)
+            if (bestTarget != null)
             {
-                blackboard.Set(BlackboardKeys.Target, target);
+                targetComponent.Target = bestTarget;
                 return NodeStatus.Success;
             }
             return NodeStatus.Failure;
@@ -120,9 +129,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private NodeStatus MoveToPlayer(int entityId, EcsWorld world)
         {
-            var blackboard = world.GetComponent<AIBlackboardComponent>(entityId);
+            var targetComponent = world.GetComponent<TargetComponent>(entityId);
             var movement = world.GetComponent<MovementComponent>(entityId);
-            var target = blackboard?.Get<Player>(BlackboardKeys.Target);
+            var target = targetComponent?.Target;
 
             if (movement == null || target == null) return NodeStatus.Failure;
 
@@ -138,12 +147,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private NodeStatus TryBasicAttack(int entityId, EcsWorld world)
         {
-            const string attackName = "BasicShot";
             var attack = world.GetComponent<AttackComponent>(entityId);
-            if (attack == null || !attack.CanAttack(attackName)) return NodeStatus.Failure;
+            if (attack == null || !attack.CanAttack(AttackType.BasicShot)) return NodeStatus.Failure;
 
-            attack.UseAttack(attackName, _bossConfig.Phase1.Attacks.BasicShot.Cooldown);
-            EcsSystem.Instance.EventBus.Publish(new AttackPerformedNetworkEvent { EntityId = entityId, AttackName = attackName });
+            attack.UseAttack(AttackType.BasicShot, _bossConfig.Phase1.Attacks.BasicShot.Cooldown);
+            EcsSystem.Instance.EventBus.Publish(new RequestAttackExecutionEvent { EntityId = entityId, AttackType = AttackType.BasicShot });
             return NodeStatus.Success;
         }
     }

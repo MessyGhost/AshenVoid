@@ -5,17 +5,17 @@ namespace AshenVoid.Core.ECS
 {
     public class AbilityComponent : IComponent
     {
-        public readonly Dictionary<string, IAbility> Abilities = new();
+        public readonly Dictionary<AbilityType, IAbility> Abilities = new();
         public IAbility ActiveAbility { get; private set; }
 
         public void AddAbility(IAbility ability)
         {
-            Abilities[ability.Name] = ability;
+            Abilities[ability.Type] = ability;
         }
 
-        public IAbility GetAbility(string name)
+        public IAbility GetAbility(AbilityType type)
         {
-            Abilities.TryGetValue(name, out var ability);
+            Abilities.TryGetValue(type, out var ability);
             return ability;
         }
 

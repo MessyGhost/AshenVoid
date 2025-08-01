@@ -16,7 +16,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
 
-        public void Enter(int entityId, EcsWorld world)
+        public void Enter(int entityId, EcsWorld world, AIBehaviorFactory factory)
         {
             var statSheet = world.GetComponent<StatSheetComponent>(entityId);
             if (statSheet == null) return;
@@ -27,10 +27,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public void Exit(int entityId, EcsWorld world) { }
 
-        public void Update(int entityId, EcsWorld world)
+        public Type CheckTransitions(int entityId, EcsWorld world)
         {
+            // Update logic is now part of CheckTransitions
             var statSheet = world.GetComponent<StatSheetComponent>(entityId);
-            if (statSheet == null) return;
+            if (statSheet == null) return null;
             var npc = statSheet.Npc;
 
             _timer += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
@@ -38,15 +39,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             npc.alpha = (int)MathHelper.Lerp(0, 255, _timer / DeathDuration);
             npc.scale = MathHelper.Lerp(1f, 0f, _timer / DeathDuration);
             npc.rotation += 0.1f;
-        }
 
-        public Type CheckTransitions(int entityId, EcsWorld world)
-        {
             if (_timer >= DeathDuration)
             {
                 if (Main.netMode != NetmodeID.MultiplayerClient)
                 {
-                    var statSheet = world.GetComponent<StatSheetComponent>(entityId);
                     if (statSheet != null)
                     {
                         statSheet.Npc.life = 0;

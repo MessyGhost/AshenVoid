@@ -6,12 +6,12 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class MovementSystem : IComponentSystem
+    public class MovementSystem : CachedComponentSystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(MovementComponent) };
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+        public override IEnumerable<Type> RequiredComponents => new[] { typeof(MovementComponent) };
+        public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var movement = world.GetComponent<MovementComponent>(entityId);
             if (movement == null) return;

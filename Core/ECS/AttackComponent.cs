@@ -5,27 +5,27 @@ namespace AshenVoid.Core.ECS
 {
     public class AttackComponent : IComponent
     {
-        private readonly Dictionary<string, float> _attackCooldowns = new();
+        private readonly Dictionary<AttackType, float> _attackCooldowns = new();
 
         public AttackComponent()
         {
             // The constructor is now parameterless. Cooldowns are added dynamically.
         }
 
-        public bool CanAttack(string attackName)
+        public bool CanAttack(AttackType attackType)
         {
-            return !_attackCooldowns.TryGetValue(attackName, out var cooldown) || cooldown <= 0;
+            return !_attackCooldowns.TryGetValue(attackType, out var cooldown) || cooldown <= 0;
         }
 
-        public void UseAttack(string attackName, float cooldown)
+        public void UseAttack(AttackType attackType, float cooldown)
         {
-            _attackCooldowns[attackName] = cooldown;
+            _attackCooldowns[attackType] = cooldown;
         }
 
         public void UpdateCooldowns(float deltaTime)
         {
             // This needs to be called by a system (e.g., AttackSystem)
-            var keys = new List<string>(_attackCooldowns.Keys);
+            var keys = new List<AttackType>(_attackCooldowns.Keys);
             foreach (var key in keys)
             {
                 if (_attackCooldowns[key] > 0)

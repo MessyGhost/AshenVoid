@@ -12,12 +12,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
     {
         private float _timer;
 
-        // Constructor is now parameterless
         public SpawnState() { }
 
         public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
 
-        public void Enter(int entityId, EcsWorld world)
+        public void Enter(int entityId, EcsWorld world, AIBehaviorFactory factory)
         {
             var statSheet = world.GetComponent<StatSheetComponent>(entityId);
             if (statSheet == null) return;
@@ -36,22 +35,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             _timer = 0f;
         }
 
-        public void Update(int entityId, EcsWorld world)
+        public Type CheckTransitions(int entityId, EcsWorld world)
         {
+            // Update logic is now part of CheckTransitions
             var statSheet = world.GetComponent<StatSheetComponent>(entityId);
-            if (statSheet == null) return;
+            if (statSheet == null) return null;
             var npc = statSheet.Npc;
             var config = statSheet.Config;
 
             _timer += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
             npc.alpha = (int)MathHelper.Lerp(255, 0, _timer / config.SpawnDuration);
-        }
-
-        public Type CheckTransitions(int entityId, EcsWorld world)
-        {
-            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
-            if (statSheet == null) return null;
-            var config = statSheet.Config;
 
             if (_timer >= config.SpawnDuration)
             {

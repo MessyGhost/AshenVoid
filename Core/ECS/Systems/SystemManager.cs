@@ -19,15 +19,25 @@ namespace AshenVoid.Core.ECS.Systems
         {
             foreach (var system in _systems)
             {
-                if (system is IComponentSystem componentSystem)
+                // Check execution side first
+                if (system is IComponentSystem componentSystemBase)
                 {
-                    var side = componentSystem.ExecutionSide;
+                    var side = componentSystemBase.ExecutionSide;
                     if ((side == SystemExecutionSide.Server && Main.netMode == NetmodeID.MultiplayerClient) ||
                         (side == SystemExecutionSide.Client && Main.netMode == NetmodeID.Server))
                     {
                         continue;
                     }
+                }
 
+                // New logic for cached systems
+                if (system is CachedComponentSystem cachedSystem)
+                {
+                    cachedSystem.UpdateAll(gameTime, world, eventBus);
+                }
+                // Old logic for non-cached systems
+                else if (system is IComponentSystem componentSystem)
+                {
                     var entities = world.GetEntities(componentSystem.RequiredComponents);
                     foreach (var entityId in entities)
                     {
