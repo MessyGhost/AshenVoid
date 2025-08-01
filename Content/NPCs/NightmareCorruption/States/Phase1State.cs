@@ -5,26 +5,21 @@ using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Interfaces;
 using Microsoft.Xna.Framework;
-using System;
 using Terraria;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class Phase1State : IState
     {
-        private readonly PhaseConfig _config;
+        private PhaseConfig _config;
         private Node _behaviorTree;
         private int _patrolDirection = 1;
         private Blackboard _blackboard;
 
-        public Phase1State(PhaseConfig config)
-        {
-            _config = config;
-        }
-
         public void Enter(Blackboard blackboard)
         {
             _blackboard = blackboard;
+            _config = _blackboard.Get<BossConfig>("BossConfig").Phase1;
             _behaviorTree = BuildBehaviorTree();
         }
 
@@ -38,6 +33,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
         {
             _behaviorTree = null;
             _blackboard = null;
+            _config = null;
         }
 
         private Node BuildBehaviorTree()

@@ -2,20 +2,13 @@ using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using System;
 using Terraria;
-using Terraria.ModLoader;
 
 namespace AshenVoid.Core.ECS.Systems
 {
     public class MovementSystem : ISystem
     {
-        public void Update(GameTime gameTime, NPC npc)
+        public void Update(GameTime gameTime, NPC npc, MovementComponent movementComponent)
         {
-            var controller = (npc.ModNPC as IComponentProvider)?.ComponentController;
-            if (controller == null) return;
-
-            var movementComponent = controller.GetComponent<MovementComponent>();
-            if (movementComponent == null) return;
-
             Vector2 targetVelocity = npc.velocity;
             Vector2 destination = npc.Center;
 

@@ -9,17 +9,13 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class SpawnState : IState
     {
-        private readonly BossConfig _config;
         private float _timer;
-
-        public SpawnState(BossConfig config)
-        {
-            _config = config;
-        }
+        private BossConfig _config;
 
         public void Enter(Blackboard blackboard)
         {
             _timer = 0f;
+            _config = blackboard.Get<BossConfig>("BossConfig");
             var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
             var target = blackboard.Get<Player>(BlackboardKeys.Target);
 
@@ -51,6 +47,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             {
                 npc.alpha = 0;
             }
+            _config = null; // Release reference
         }
     }
 }

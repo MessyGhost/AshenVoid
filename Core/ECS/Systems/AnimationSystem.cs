@@ -1,4 +1,3 @@
-using AshenVoid.Core.ECS;
 using Microsoft.Xna.Framework;
 using Terraria;
 
@@ -6,14 +5,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class AnimationSystem : ISystem
     {
-        public void Update(GameTime gameTime, NPC npc)
+        public void Update(NPC npc, AnimationComponent animationComponent)
         {
-            var controller = (npc.ModNPC as Content.NPCs.NightmareCorruption.NightmareCorruption)?.ComponentController;
-            if (controller == null) return;
-
-            var animationComponent = controller.GetComponent<AnimationComponent>();
-            if (animationComponent == null) return;
-
             // This logic will be driven by states or animation requests in the future.
             // For now, we can keep the simple movement-based animation.
 

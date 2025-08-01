@@ -6,14 +6,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class AIStateSystem : ISystem
     {
-        public void Update(GameTime gameTime, NPC npc)
+        public void Update(GameTime gameTime, NPC npc, AIStateComponent aiState)
         {
-            var controller = (npc.ModNPC as IComponentProvider)?.ComponentController;
-            if (controller == null) return;
-
-            var aiState = controller.GetComponent<AIStateComponent>();
-            if (aiState == null) return;
-
             // Update target
             if (npc.target < 0 || npc.target == 255 || Main.player[npc.target].dead || !Main.player[npc.target].active)
             {
@@ -23,11 +17,11 @@ namespace AshenVoid.Core.ECS.Systems
 
             // Populate the blackboard with this frame's context
             var blackboard = aiState.Blackboard;
-            blackboard.Set(BlackboardKeys.NPC, npc);
             blackboard.Set(BlackboardKeys.Target, target);
-            blackboard.Set(BlackboardKeys.Controller, controller);
             blackboard.Set(BlackboardKeys.GameTime, gameTime);
-            blackboard.Set(BlackboardKeys.AIState, aiState);
+
+            // The rest of the keys (NPC, Controller, AIState) should already be set
+            // during initialization in AIStateComponent.
 
             // Update the state machine with the blackboard
             aiState.StateMachine.Update(blackboard);

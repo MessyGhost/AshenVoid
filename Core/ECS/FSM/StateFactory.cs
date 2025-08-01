@@ -4,29 +4,49 @@ using System.Collections.Generic;
 namespace AshenVoid.Core.ECS.FSM
 {
     /// <summary>
-    /// A factory responsible for creating and providing state instances.
-    /// This allows states to be decoupled from each other, as they can request a new state by type
-    /// instead of instantiating it directly with `new`.
+    /// A factory responsible for creating and providing state instances on demand.
+    /// It caches states after their first creation to avoid repeated instantiation.
     /// </summary>
     public class StateFactory
     {
-        private readonly Dictionary<Type, IState> _states = new Dictionary<Type, IState>();
+        private readonly Dictionary<Type, IState> _stateCache = new Dictionary<Type, IState>();
 
-        public StateFactory(IEnumerable<IState> states)
+        /// <summary>
+        /// Gets or creates an instance of the specified state type.
+        /// </summary>
+        public T GetState<T>() where T : class, IState, new()
         {
-            foreach (var state in states)
-            {
-                _states[state.GetType()] = state;
-            }
-        }
-
-        public T GetState<T>() where T : IState
-        {
-            if (_states.TryGetValue(typeof(T), out var state))
+            if (_stateCache.TryGetValue(typeof(T), out var state))
             {
                 return (T)state;
             }
-            throw new ArgumentException($"State of type {typeof(T).Name} is not registered in the factory.");
+
+            var newState = new T();
+            _stateCache[typeof(T)] = newState;
+            return newState;
+        }
+
+        /// <summary>
+        /// Gets or creates an instance of the specified state type.
+        /// This non-generic version is useful when the type is only known at runtime.
+        /// </summary>
+        public IState GetState(Type stateType)
+        {
+            if (!typeof(IState).IsAssignableFrom(stateType))
+            {
+                throw new ArgumentException($"Type {stateType.Name} does not implement IState.", nameof(stateType));
+            }
+
+            if (_stateCache.TryGetValue(stateType, out var state))
+            {
+                return state;
+            }
+
+            // This assumes states have a parameterless constructor.
+            // For states with dependencies, a proper DI container would be needed here.
+            var newState = (IState)Activator.CreateInstance(stateType);
+            _stateCache[stateType] = newState;
+            return newState;
         }
     }
 }

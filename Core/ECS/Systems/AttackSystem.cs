@@ -2,20 +2,13 @@ using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using Terraria;
 using Terraria.ID;
-using Terraria.ModLoader;
 
 namespace AshenVoid.Core.ECS.Systems
 {
     public class AttackSystem : ISystem
     {
-        public void Update(GameTime gameTime, NPC npc)
+        public void Update(GameTime gameTime, NPC npc, AttackComponent attackComponent, StatSheetComponent statSheet)
         {
-            var controller = (npc.ModNPC as Content.NPCs.NightmareCorruption.NightmareCorruption)?.ComponentController;
-            if (controller == null) return;
-
-            var attackComponent = controller.GetComponent<AttackComponent>();
-            if (attackComponent == null) return;
-
             // Update cooldown timer
             if (attackComponent.CooldownTimer > 0)
             {
@@ -24,9 +17,6 @@ namespace AshenVoid.Core.ECS.Systems
 
             // Check if there's an attack to execute
             if (attackComponent.CurrentIntent == null || !attackComponent.IsReady()) return;
-
-            var statSheet = controller.GetComponent<StatSheetComponent>();
-            if (statSheet == null) return; // Should not happen if AttackComponent exists
 
             // Execute the attack based on intent type
             switch (attackComponent.CurrentIntent)
@@ -66,7 +56,7 @@ namespace AshenVoid.Core.ECS.Systems
                 npc.Center,
                 velocity,
                 intent.Stats.ProjectileId,
-                npc.damage, // Use the NPC's final damage, which is managed by the StatSheetComponent
+                (int)npc.damage, // Use the NPC's final damage
                 0f,
                 Main.myPlayer
             );

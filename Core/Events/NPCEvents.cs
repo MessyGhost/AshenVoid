@@ -1,27 +1,32 @@
+using AshenVoid.Core.ECS;
 using Terraria;
 
 namespace AshenVoid.Core.Events
 {
-    public class NPCDamagedEvent : IEvent
+    public readonly struct NPCDamagedEvent : IEvent
     {
-        public NPC NPC { get; }
-        public NPC.HitInfo Hit { get; }
+        public readonly ComponentController Controller;
+        public readonly NPC NPC;
+        public readonly NPC.HitInfo Hit;
 
-        public NPCDamagedEvent(NPC npc, NPC.HitInfo hit)
+        public NPCDamagedEvent(ComponentController controller, NPC npc, NPC.HitInfo hit)
         {
+            Controller = controller;
             NPC = npc;
             Hit = hit;
         }
     }
 
-    public class NPCHealthLossEvent : IEvent
+    public readonly struct NPCHealthLossEvent : IEvent
     {
-        public NPC NPC { get; }
-        public float HealthPercentage { get; }
-        public float PreviousHealthPercentage { get; }
+        public readonly ComponentController Controller;
+        public readonly NPC NPC;
+        public readonly float HealthPercentage;
+        public readonly float PreviousHealthPercentage;
 
-        public NPCHealthLossEvent(NPC npc, float healthPercentage, float previousHealthPercentage)
+        public NPCHealthLossEvent(ComponentController controller, NPC npc, float healthPercentage, float previousHealthPercentage)
         {
+            Controller = controller;
             NPC = npc;
             HealthPercentage = healthPercentage;
             PreviousHealthPercentage = previousHealthPercentage;

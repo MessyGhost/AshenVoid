@@ -32,9 +32,8 @@ namespace AshenVoid.Core.ECS
 
         public void Update(GameTime gameTime, NPC npc)
         {
-            // Components no longer have their own Update logic.
-            // All logic is handled by Systems.
-            _systemManager.Update(gameTime, npc);
+            // Pass the component dictionary to the system manager
+            _systemManager.Update(gameTime, npc, _components);
         }
     }
 }
