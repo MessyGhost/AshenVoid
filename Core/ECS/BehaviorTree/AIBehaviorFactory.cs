@@ -1,116 +1,116 @@
-using AshenVoid.Core.ECS.BehaviorTree;
+using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
+using AshenVoid.Core.ECS.AI;
+using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using System;
+using System.Collections.Generic;
 using Terraria;
-using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Core.ECS.Intents;
-using AshenVoid.Core.ECS.Interfaces;
 
 namespace AshenVoid.Core.ECS.BehaviorTree
 {
-    /// <summary>
-    /// A builder class for creating Behavior Tree nodes that interact with the ECS.
-    /// It requires a ComponentController and context (NPC, Player) to be injected.
-    /// </summary>
-    public static class AIBehaviorFactory
+    public class AIBehaviorFactory
     {
-        public static Node SetIdle(ComponentController controller)
+        private readonly Blackboard _blackboard;
+
+        public AIBehaviorFactory(Blackboard blackboard)
         {
-            return new ActionNode(() =>
-            {
-                controller.GetComponent<IMovementComponent>().SetIntent(new IdleIntent());
-                return NodeState.Success;
-            });
+            _blackboard = blackboard;
         }
 
-        public static Node SetChase(ComponentController controller, Func<Vector2> targetPosition, float stopDistance = 100f)
+        public Node CreateBehaviorTree(string treeName)
         {
-            return new ActionNode(() =>
+            Node tree;
+            switch (treeName)
             {
-                controller.GetComponent<IMovementComponent>().SetIntent(new ChaseIntent(targetPosition(), stopDistance));
-                return NodeState.Success;
-            });
+                case "NightmareCorruption_Phase1":
+                    tree = BuildPhase1Tree();
+                    break;
+                // Add other phases or bosses here
+                // case "NightmareCorruption_Phase2":
+                //     tree = BuildPhase2Tree();
+                //     break;
+                default:
+                    throw new ArgumentException($"No behavior tree found with the name: {treeName}");
+            }
+            
+            // IMPORTANT: Set the blackboard for the entire tree
+            tree.SetBlackboard(_blackboard);
+            return tree;
         }
 
-        public static Node SetOrbit(ComponentController controller, Func<Vector2> center, float radius, int direction = 1)
+        private Node BuildPhase1Tree()
         {
-            return new ActionNode(() =>
-            {
-                controller.GetComponent<IMovementComponent>().SetIntent(new OrbitIntent(center(), radius, direction));
-                return NodeState.Success;
-            });
+            var config = _blackboard.Get<BossConfig>("BossConfig").Phase1;
+
+            return new FallbackNode(
+                // Dash logic
+                BuildDashBehavior(config.Dash),
+                // Default patrol and attack logic
+                BuildPatrolBehavior(config.Attacks.BasicShot)
+            );
         }
 
-        public static Node SetFlee(ComponentController controller, Func<Vector2> fleeFromPosition)
+        private Node BuildDashBehavior(DashStats dashConfig)
         {
-            return new ActionNode(() =>
-            {
-                controller.GetComponent<IMovementComponent>().SetIntent(new FleeIntent(fleeFromPosition()));
-                return NodeState.Success;
-            });
+            string damageTakenKey = "DamageTakenSinceLastDash";
+
+            return new SequenceNode(
+                new ConditionNode(() => _blackboard.Get<float>(damageTakenKey) >= dashConfig.DamageThreshold),
+                // Charge up phase
+                new ActionNode(() =>
+                {
+                    var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
+                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
+                    var chargeDirection = (npc.Center - target.Center).SafeNormalize(Vector2.UnitX);
+                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(npc.Center + chargeDirection * 150f, 0f));
+                    return NodeState.Success;
+                }),
+                new WaitNode(dashConfig.ChargeTime),
+                // Dash action
+                new SetMovementIntentNode(new ChaseIntent(_blackboard.Get<Player>(BlackboardKeys.Target).Center, 0f, 25f)),
+                new WaitNode(0.5f), // Duration of the dash
+                // Reset
+                new SetBlackboardValueNode<float>(damageTakenKey, 0f),
+                new SetMovementIntentNode(new IdleIntent())
+            );
         }
 
-        // Example for a condition node
-        public static Node IsPlayerInRange(NPC npc, Player target, float distance)
+        private Node BuildPatrolBehavior(ProjectileAttack attackStats)
         {
-            return new ConditionNode(() =>
-            {
-                if (target == null || !target.active) return false;
-                return Vector2.Distance(target.Center, npc.Center) < distance;
-            });
-        }
+            string patrolDirKey = "PatrolDirection";
 
-        public static Node SetShootProjectile(ComponentController controller, Func<Vector2> target, ProjectileAttack stats)
-        {
-            return new ActionNode(() =>
-            {
-                var attackComponent = controller.GetComponent<IAttackComponent>();
-                if (attackComponent == null || !attackComponent.IsReady())
-                    return NodeState.Failure;
+            return new SequenceNode(
+                new ActionNode(() =>
+                {
+                    var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
+                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
+                    
+                    if (target == null || !target.active)
+                    {
+                        _blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
+                        return NodeState.Failure;
+                    }
 
-                attackComponent.SetIntent(new ShootProjectileIntent(target(), stats));
-                return NodeState.Success;
-            });
-        }
+                    if (!_blackboard.Has(patrolDirKey))
+                    {
+                        _blackboard.Set(patrolDirKey, 1);
+                    }
+                    int patrolDirection = _blackboard.Get<int>(patrolDirKey);
 
-        public static Node IsAttackReady(ComponentController controller)
-        {
-            return new ConditionNode(() =>
-            {
-                var attackComponent = controller.GetComponent<IAttackComponent>();
-                return attackComponent != null && attackComponent.IsReady();
-            });
-        }
+                    var patrolTargetPosition = target.Center + new Vector2(400 * patrolDirection, -300);
+                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(patrolTargetPosition, 80f));
 
-        public static Node IsAttacking(ComponentController controller)
-        {
-            return new ConditionNode(() =>
-            {
-                var attackComponent = controller.GetComponent<IAttackComponent>();
-                return attackComponent != null && attackComponent.IsAttacking();
-            });
-        }
-
-        public static Node SetTeleport(ComponentController controller, Func<Vector2> targetPosition)
-        {
-            return new ActionNode(() =>
-            {
-                controller.GetComponent<IMovementComponent>().SetIntent(new TeleportIntent(targetPosition()));
-                return NodeState.Success;
-            });
-        }
-
-        public static Node SetSpawnNpc(ComponentController controller, int npcId, Func<Vector2> spawnPosition, int count = 1, float cooldown = 0f)
-        {
-            return new ActionNode(() =>
-            {
-                var attackComponent = controller.GetComponent<IAttackComponent>();
-                if (attackComponent == null || !attackComponent.IsReady())
-                    return NodeState.Failure;
-
-                attackComponent.SetIntent(new SpawnNpcIntent(npcId, spawnPosition(), count, cooldown));
-                return NodeState.Success;
-            });
+                    if (Vector2.Distance(npc.Center, patrolTargetPosition) < 100f)
+                    {
+                        _blackboard.Set(patrolDirKey, patrolDirection * -1);
+                        if (attackStats != null)
+                        {
+                            _blackboard.Set(BlackboardKeys.AttackIntent, new ShootProjectileIntent(target.Center, attackStats));
+                        }
+                    }
+                    return NodeState.Success;
+                })
+            );
         }
     }
 }

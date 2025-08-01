@@ -8,6 +8,8 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(AIStateSystem))]
     public class MovementSystem : IMovementSystem
     {
         private const float Friction = 0.95f; // Damping factor for idle movement.

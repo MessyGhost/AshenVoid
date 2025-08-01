@@ -1,8 +1,10 @@
+using AshenVoid.Core.ECS.Interfaces;
 using AshenVoid.Core.ECS.Systems;
 using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Terraria;
 
 namespace AshenVoid.Core.ECS
@@ -11,6 +13,9 @@ namespace AshenVoid.Core.ECS
     {
         private readonly Dictionary<Type, IComponent> _components = new Dictionary<Type, IComponent>();
         private readonly SystemManager _systemManager = new SystemManager();
+        
+        // NEW: Cache for networked components
+        private List<INetworkedComponent> _networkedComponentsCache;
 
         public void RegisterSystem(ISystem system)
         {
@@ -20,6 +25,9 @@ namespace AshenVoid.Core.ECS
         public void RegisterComponent(IComponent component)
         {
             _components[component.GetType()] = component;
+            
+            // Invalidate the networked components cache
+            _networkedComponentsCache = null;
         }
 
         public T GetComponent<T>() where T : class, IComponent
@@ -47,10 +55,19 @@ namespace AshenVoid.Core.ECS
             return false;
         }
 
-        // New method to allow iterating over all registered components.
         public IEnumerable<IComponent> GetAllComponents()
         {
             return _components.Values;
+        }
+
+        // NEW: Get only the components that need to be networked
+        public IEnumerable<INetworkedComponent> GetNetworkedComponents()
+        {
+            if (_networkedComponentsCache == null)
+            {
+                _networkedComponentsCache = _components.Values.OfType<INetworkedComponent>().ToList();
+            }
+            return _networkedComponentsCache;
         }
 
         public void Update(GameTime gameTime, NPC npc, EventBus eventBus)

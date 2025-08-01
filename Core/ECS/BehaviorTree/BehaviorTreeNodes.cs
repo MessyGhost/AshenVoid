@@ -1,6 +1,9 @@
+using AshenVoid.Core.ECS.AI;
+using AshenVoid.Core.ECS.Intents;
+using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using Terraria;
 
 namespace AshenVoid.Core.ECS.BehaviorTree
 {
@@ -13,227 +16,170 @@ namespace AshenVoid.Core.ECS.BehaviorTree
 
     public abstract class Node
     {
-        public virtual void Reset() { }
+        protected Blackboard Blackboard { get; private set; }
+
+        public void SetBlackboard(Blackboard blackboard)
+        {
+            Blackboard = blackboard;
+            foreach (var child in GetChildren())
+            {
+                child.SetBlackboard(blackboard);
+            }
+        }
+
         public abstract NodeState Evaluate();
+        public virtual IEnumerable<Node> GetChildren() => new List<Node>();
+    }
+
+    public abstract class CompositeNode : Node
+    {
+        protected readonly List<Node> Children = new List<Node>();
+        public CompositeNode(params Node[] children)
+        {
+            Children.AddRange(children);
+        }
+        public override IEnumerable<Node> GetChildren() => Children;
+    }
+
+    public class SequenceNode : CompositeNode
+    {
+        public SequenceNode(params Node[] children) : base(children) { }
+        public override NodeState Evaluate()
+        {
+            foreach (var node in Children)
+            {
+                switch (node.Evaluate())
+                {
+                    case NodeState.Failure:
+                        return NodeState.Failure;
+                    case NodeState.Running:
+                        return NodeState.Running;
+                    case NodeState.Success:
+                        continue;
+                }
+            }
+            return NodeState.Success;
+        }
+    }
+
+    public class FallbackNode : CompositeNode
+    {
+        public FallbackNode(params Node[] children) : base(children) { }
+        public override NodeState Evaluate()
+        {
+            foreach (var node in Children)
+            {
+                switch (node.Evaluate())
+                {
+                    case NodeState.Running:
+                        return NodeState.Running;
+                    case NodeState.Success:
+                        return NodeState.Success;
+                    case NodeState.Failure:
+                        continue;
+                }
+            }
+            return NodeState.Failure;
+        }
     }
 
     public class ActionNode : Node
     {
         private readonly Func<NodeState> _action;
-        public ActionNode(Func<NodeState> action)
-        {
-            _action = action ?? throw new ArgumentNullException(nameof(action));
-        }
+        public ActionNode(Func<NodeState> action) => _action = action;
         public override NodeState Evaluate() => _action();
     }
 
     public class ConditionNode : Node
     {
         private readonly Func<bool> _condition;
-        public ConditionNode(Func<bool> condition)
-        {
-            _condition = condition ?? throw new ArgumentNullException(nameof(condition));
-        }
+        public ConditionNode(Func<bool> condition) => _condition = condition;
         public override NodeState Evaluate() => _condition() ? NodeState.Success : NodeState.Failure;
-    }
-
-    public class SequenceNode : Node
-    {
-        private readonly List<Node> _children;
-        private int _currentChildIndex = 0;
-
-        public SequenceNode(params Node[] children) { _children = children.ToList(); }
-
-        public override NodeState Evaluate()
-        {
-            while (_currentChildIndex < _children.Count)
-            {
-                var child = _children[_currentChildIndex];
-                var result = child.Evaluate();
-
-                if (result == NodeState.Running)
-                    return NodeState.Running;
-
-                if (result == NodeState.Failure)
-                {
-                    Reset();
-                    return NodeState.Failure;
-                }
-
-                _currentChildIndex++;
-            }
-
-            Reset();
-            return NodeState.Success;
-        }
-
-        public override void Reset()
-        {
-            _currentChildIndex = 0;
-            foreach (var child in _children)
-                child.Reset();
-        }
-    }
-
-    public class FallbackNode : Node
-    {
-        private readonly List<Node> _children;
-        private int _currentChildIndex = 0;
-
-        public FallbackNode(params Node[] children) { _children = children.ToList(); }
-
-        public override NodeState Evaluate()
-        {
-            while (_currentChildIndex < _children.Count)
-            {
-                var child = _children[_currentChildIndex];
-                var result = child.Evaluate();
-
-                if (result == NodeState.Running)
-                    return NodeState.Running;
-
-                if (result == NodeState.Success)
-                {
-                    Reset();
-                    return NodeState.Success;
-                }
-
-                _currentChildIndex++;
-            }
-
-            Reset();
-            return NodeState.Failure;
-        }
-
-        public override void Reset()
-        {
-            _currentChildIndex = 0;
-            foreach (var child in _children)
-                child.Reset();
-        }
-    }
-
-    public class InverterNode : Node
-    {
-        private readonly Node _child;
-        public InverterNode(Node child) { _child = child; }
-        public override NodeState Evaluate()
-        {
-            var result = _child.Evaluate();
-            switch (result)
-            {
-                case NodeState.Success: return NodeState.Failure;
-                case NodeState.Failure: return NodeState.Success;
-                default: return result;
-            }
-        }
-        public override void Reset() => _child.Reset();
     }
 
     public class WaitNode : Node
     {
-        private readonly float _durationInSeconds;
-        private int _timerInFrames;
-
-        public WaitNode(float durationInSeconds)
-        {
-            _durationInSeconds = durationInSeconds;
-            _timerInFrames = 0;
-        }
+        private readonly float _duration;
+        private float _timer;
+        public WaitNode(float duration) => _duration = duration;
 
         public override NodeState Evaluate()
         {
-            _timerInFrames++;
-            if (_timerInFrames / 60f >= _durationInSeconds)
+            if (_timer == 0)
             {
+                _timer = _duration;
+            }
+
+            _timer -= (float)Blackboard.Get<GameTime>(BlackboardKeys.GameTime).ElapsedGameTime.TotalSeconds;
+
+            if (_timer <= 0)
+            {
+                _timer = 0;
                 return NodeState.Success;
             }
             return NodeState.Running;
         }
-
-        public override void Reset()
-        {
-            _timerInFrames = 0;
-        }
     }
 
-    public static class NodeBuilder
-    {
-        public static SequenceNode Sequence(params Node[] nodes) => new SequenceNode(nodes);
-        public static FallbackNode Fallback(params Node[] nodes) => new FallbackNode(nodes);
-        public static InverterNode Inverter(Node node) => new InverterNode(node);
-        public static ActionNode Do(Action action) => new ActionNode(() => { action(); return NodeState.Success; });
-        public static WaitNode Wait(float seconds) => new WaitNode(seconds);
-        public static RandomSelectorNode Weighted(params (Node node, int weight)[] weightedNodes) => new RandomSelectorNode(weightedNodes);
-    }
+    #region New Reusable Action Nodes
 
-    public class RandomSelectorNode : Node
+    /// <summary>
+    /// Sets a specific intent on the blackboard.
+    /// </summary>
+    public class SetIntentNode<T> : Node where T : class, IIntent
     {
-        private readonly List<Node> _children;
-        private readonly List<int> _weights;
-        private readonly Random _random = new Random();
-        private readonly bool _useWeights;
-        private int? _currentChildIndex;
+        private readonly string _intentKey;
+        private readonly T _intent;
 
-        public RandomSelectorNode(params (Node node, int weight)[] weightedNodes)
+        public SetIntentNode(string intentKey, T intent)
         {
-            _children = new List<Node>();
-            _weights = new List<int>();
-            foreach (var (node, weight) in weightedNodes)
-            {
-                _children.Add(node);
-                _weights.Add(weight);
-            }
-            _useWeights = true;
+            _intentKey = intentKey;
+            _intent = intent;
         }
 
         public override NodeState Evaluate()
         {
-            if (!_currentChildIndex.HasValue)
-            {
-                _currentChildIndex = SelectChildIndex();
-            }
-
-            if (!_currentChildIndex.HasValue) return NodeState.Failure;
-
-            var result = _children[_currentChildIndex.Value].Evaluate();
-            if (result != NodeState.Running)
-            {
-                Reset();
-            }
-            return result;
-        }
-
-        private int? SelectChildIndex()
-        {
-            if (_children.Count == 0) return null;
-
-            if (!_useWeights || _weights.All(w => w <= 0))
-            {
-                return _random.Next(_children.Count);
-            }
-
-            int totalWeight = _weights.Sum();
-            if (totalWeight <= 0) return null;
-
-            int randomWeight = _random.Next(totalWeight);
-            int cumulativeWeight = 0;
-            for (int i = 0; i < _children.Count; i++)
-            {
-                cumulativeWeight += _weights[i];
-                if (randomWeight < cumulativeWeight)
-                {
-                    return i;
-                }
-            }
-            return _children.Count - 1;
-        }
-
-        public override void Reset()
-        {
-            _currentChildIndex = null;
-            foreach (var child in _children)
-                child.Reset();
+            Blackboard.Set(_intentKey, _intent);
+            return NodeState.Success;
         }
     }
+
+    /// <summary>
+    /// A more specialized node for setting movement intents.
+    /// </summary>
+    public class SetMovementIntentNode : SetIntentNode<IMovementIntent>
+    {
+        public SetMovementIntentNode(IMovementIntent intent) : base(BlackboardKeys.MovementIntent, intent) { }
+    }
+    
+    /// <summary>
+    /// A more specialized node for setting attack intents.
+    /// </summary>
+    public class SetAttackIntentNode : SetIntentNode<IAttackIntent>
+    {
+        public SetAttackIntentNode(IAttackIntent intent) : base(BlackboardKeys.AttackIntent, intent) { }
+    }
+
+    /// <summary>
+    /// Sets a value on the blackboard.
+    /// </summary>
+    public class SetBlackboardValueNode<T> : Node
+    {
+        private readonly string _key;
+        private readonly T _value;
+
+        public SetBlackboardValueNode(string key, T value)
+        {
+            _key = key;
+            _value = value;
+        }
+
+        public override NodeState Evaluate()
+        {
+            Blackboard.Set(_key, _value);
+            return NodeState.Success;
+        }
+    }
+
+    #endregion
 }

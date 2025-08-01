@@ -62,9 +62,6 @@ namespace AshenVoid.Core.Builders
         {
             if (ComponentController == null) return;
 
-            // This now correctly delegates the execution side check to the SystemManager.
-            // Both client and server will run this, and the SystemManager will filter
-            // which systems to execute based on their ExecutionSide property.
             ComponentController.Update(Main.gameTimeCache, NPC, EventBus);
 
             var aiState = GetComponent<AIStateComponent>();
@@ -81,7 +78,7 @@ namespace AshenVoid.Core.Builders
                 {
                     CurrentStateId = newStateId;
                     StateTimer = 0;
-                    NPC.netUpdate = true; // This is crucial to sync the state change.
+                    NPC.netUpdate = true;
                 }
             }
             // Client-side logic to react to state changes from the server.
@@ -93,6 +90,8 @@ namespace AshenVoid.Core.Builders
                     var newStateType = aiState.GetStateType(CurrentStateId);
                     if (newStateType != null)
                     {
+                        // This should be a state change, not a re-initialization.
+                        // We'll address this in a future refactoring step.
                         aiState.SetInitialState(newStateType);
                     }
                 }
@@ -101,25 +100,19 @@ namespace AshenVoid.Core.Builders
 
         public override void SendExtraAI(BinaryWriter writer)
         {
-            // Iterate through all components and send data for those that are network-aware.
-            foreach (var component in ComponentController.GetAllComponents())
+            // OPTIMIZED: Iterate only over the cached networked components.
+            foreach (var networkedComponent in ComponentController.GetNetworkedComponents())
             {
-                if (component is INetworkedComponent networkedComponent)
-                {
-                    networkedComponent.SendData(NPC, writer);
-                }
+                networkedComponent.SendData(NPC, writer);
             }
         }
 
         public override void ReceiveExtraAI(BinaryReader reader)
         {
-            // Iterate through all components and receive data for those that are network-aware.
-            foreach (var component in ComponentController.GetAllComponents())
+            // OPTIMIZED: Iterate only over the cached networked components.
+            foreach (var networkedComponent in ComponentController.GetNetworkedComponents())
             {
-                if (component is INetworkedComponent networkedComponent)
-                {
-                    networkedComponent.ReceiveData(NPC, reader);
-                }
+                networkedComponent.ReceiveData(NPC, reader);
             }
         }
 

@@ -9,6 +9,8 @@ using Terraria.ID;
 
 namespace AshenVoid.Core.ECS.Systems
 {
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(AIStateSystem))]
     public class AttackSystem : IAttackSystem
     {
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;

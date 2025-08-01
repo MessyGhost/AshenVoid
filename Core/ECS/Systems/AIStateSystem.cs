@@ -7,6 +7,7 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     public class AIStateSystem : IAIStateSystem
     {
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
