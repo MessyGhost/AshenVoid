@@ -1,43 +1,24 @@
 {
   "lifeMax": 13100,
   "spawnDuration": 3,
-  "damage": 52,
-  "defense": 10,
+  "damage": 50,
+  "defense": 20,
   "phase1": {
+    "phaseTransitionHealth": 0.5,
     "movement": {
-      "patrolSpeed": 8,
-      "frequency": 1.2,
+      "frequency": 0.5,
       "dampingRatio": 0.8,
-      "responseScale": 0.5,
-      "chaseDistanceFar": 800,
-      "chaseStopDistance": 400,
-      "orbitRadius": 300,
-      "thinkIntervalMin": 2,
-      "thinkIntervalMax": 4,
-      "maxSpeed": 15
+      "responseScale": 1.5,
+      "chaseStopDistance": 200
     },
     "attacks": {
       "basicShot": {
-        "DamageThreshold": 300,
-        "projectileId": 270,
-        "cooldown": 2.5,
-        "damage": 35,
-        "speed": 12,
-        "isChanneled": false,
-        "duration": 0
+        "projectileId": 121, // Placeholder
+        "cooldown": 0.5,
+        "speed": 10,
+        "damage": 30
       }
     },
-    "dash": {
-      "triggerDamage": 300,
-      "rangeMinimum": 320,
-      "chargeTime": 1.5,
-      "speed": 25
-    },
-    "summon": {
-      "healthThreshold": 0.1,
-      "npcId": 517
-    },
-    // Data-driven behavior tree definition
     "behaviorTree": {
       "type": "Selector",
       "children": [
@@ -60,5 +41,24 @@
         }
       ]
     }
-  }
+  },
+  "abilities": [
+    {
+      "name": "Phase1Dash",
+      "type": "Dash",
+      "parameters": {
+        "DamageThreshold": 300,
+        "ChargeTime": 1.5,
+        "Speed": 25
+      }
+    },
+    {
+      "name": "TridentShot",
+      "type": "Projectile",
+      "parameters": {
+        "Cooldown": 1.5,
+        "ProjectileCount": 3
+      }
+    }
+  ]
 }

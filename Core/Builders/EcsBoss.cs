@@ -71,13 +71,25 @@ namespace AshenVoid.Core.Builders
 
             if (EntityId != -1)
             {
+                var world = EcsSystem.Instance.World;
+
+                // Clean up child entities
+                var children = world.GetComponent<ChildrenComponent>(EntityId);
+                if (children != null)
+                {
+                    foreach (var childId in children.ChildEntityIds)
+                    {
+                        world.DestroyEntity(childId);
+                    }
+                }
+
                 // Remove from the global mapping
                 if (EcsSystem.NpcWhoAmIToEntityId.ContainsKey(NPC.whoAmI))
                 {
                     EcsSystem.NpcWhoAmIToEntityId.Remove(NPC.whoAmI);
                 }
 
-                EcsSystem.Instance.World.DestroyEntity(EntityId);
+                world.DestroyEntity(EntityId);
                 EntityId = -1;
             }
         }

@@ -10,6 +10,7 @@ using System.Linq;
 using System;
 using AshenVoid.Core.Builders;
 using System.Reflection;
+using AshenVoid.Core.Abilities;
 
 namespace AshenVoid.Core.ECS
 {
@@ -22,6 +23,7 @@ namespace AshenVoid.Core.ECS
         public SystemManager SystemManager { get; private set; }
         public NetworkManager NetworkManager { get; private set; }
         public StateFactory StateFactory { get; private set; }
+        public AbilityFactory AbilityFactory { get; private set; }
 
         // Global mapping from Terraria NPC ID to ECS Entity ID
         public static readonly Dictionary<int, int> NpcWhoAmIToEntityId = new();
@@ -33,6 +35,7 @@ namespace AshenVoid.Core.ECS
             SystemManager = new SystemManager();
             NetworkManager = new NetworkManager(EventBus);
             StateFactory = new StateFactory();
+            AbilityFactory = new AbilityFactory();
             World = new EcsWorld(SystemManager, EventBus);
 
             RegisterGlobalSystems();
@@ -51,6 +54,8 @@ namespace AshenVoid.Core.ECS
             SystemManager.RegisterSystem(new AnimationSystem());
             SystemManager.RegisterSystem(new BehaviorTreeSystem());
             SystemManager.RegisterSystem(new ClientStateSystem());
+            SystemManager.RegisterSystem(new AbilitySystem());
+            SystemManager.RegisterSystem(new VFXSystem()); // Register the new system
         }
 
         private void RegisterNetworkEvents()
@@ -78,6 +83,7 @@ namespace AshenVoid.Core.ECS
             EventBus = null;
             NetworkManager = null;
             StateFactory = null;
+            AbilityFactory = null;
             Instance = null;
             NpcWhoAmIToEntityId.Clear();
         }

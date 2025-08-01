@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace AshenVoid.Content.NPCs.NightmareCorruption.Configs
 {
     // Top-level container for all boss configurations
@@ -8,6 +10,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.Configs
         public int Damage { get; set; }
         public int Defense { get; set; }
         public PhaseConfig Phase1 { get; set; }
+        public List<AbilityConfig> Abilities { get; set; } = new();
         // public PhaseConfig Phase2 { get; set; } // Future-proofing
     }
 }

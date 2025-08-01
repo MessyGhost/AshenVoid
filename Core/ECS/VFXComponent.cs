@@ -4,6 +4,6 @@ namespace AshenVoid.Core.ECS
 {
     public class VFXComponent : IComponent
     {
-        public Queue<IVFXEffect> EffectQueue { get; } = new Queue<IVFXEffect>();
+        public readonly List<IVFXEffect> ActiveEffects = new();
     }
 }
