@@ -22,9 +22,6 @@ namespace AshenVoid.Core.ECS.Systems
 
         public AttackSystem()
         {
-            // It's better to subscribe in a Load method or similar, but for simplicity...
-            // A better approach would be for the SystemManager to pass the event bus to each system.
-            // For now, this will work.
             EcsSystem.Instance.EventBus.Subscribe<AttackPerformedNetworkEvent>(HandleAttack);
         }
 
@@ -46,8 +43,8 @@ namespace AshenVoid.Core.ECS.Systems
                 Vector2 direction = Vector2.Normalize(target.Center - movement.Npc.Center);
                 Vector2 velocity = direction * attackConfig.Speed;
 
-                Projectile.NewProjectile(new EntitySource_Hostile(movement.Npc), movement.Npc.Center, velocity,
-                    attackConfig.ProjectileId, attackConfig.Damage, 0f, Main.myPlayer);
+                Projectile.NewProjectile(movement.Npc.GetSource_FromAI(), movement.Npc.Center, velocity,
+                    attackConfig.ProjectileId, (int)attackConfig.Damage, 0f, Main.myPlayer);
             }
         }
     }

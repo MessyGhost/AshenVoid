@@ -23,6 +23,12 @@ namespace AshenVoid.Core.ECS
             _states[state.GetType()] = state;
         }
 
+        public IState GetState(Type stateType)
+        {
+            _states.TryGetValue(stateType, out var state);
+            return state;
+        }
+
         public void SetInitialState(Type stateType)
         {
             if (_states.ContainsKey(stateType))
@@ -40,11 +46,34 @@ namespace AshenVoid.Core.ECS
             {
                 if (nextState != CurrentState)
                 {
-                    CurrentState?.Exit(entityId, world);
-                    CurrentState = nextState;
-                    CurrentState.Enter(entityId, world);
+                    ChangeState(entityId, world, eventBus, nextState);
                 }
             }
+        }
+
+        private void ChangeState(int entityId, EcsWorld world, EventBus eventBus, IState nextState)
+        {
+            CurrentState?.Exit(entityId, world);
+            CurrentState = nextState;
+            CurrentState.Enter(entityId, world);
+
+            // Publish the state change to clients
+            if (Main.netMode != Terraria.ID.NetmodeID.MultiplayerClient)
+            {
+                eventBus.Publish(new StateChangedNetworkEvent
+                {
+                    EntityId = entityId,
+                    StateTypeName = nextState.GetType().AssemblyQualifiedName
+                });
+            }
+        }
+
+        /// <summary>
+        /// Forcibly sets the current state. Used by the client to sync with the server.
+        /// </summary>
+        public void ForceState(IState state)
+        {
+            CurrentState = state;
         }
     }
 }
