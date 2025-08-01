@@ -8,7 +8,7 @@ namespace AshenVoid.Core.ECS.Systems
 {
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(AttackSystem))]
-    public class HealthSystem : IHealthSystem
+    public class HealthSystem : IComponentSystem
     {
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 

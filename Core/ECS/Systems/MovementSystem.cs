@@ -10,7 +10,7 @@ namespace AshenVoid.Core.ECS.Systems
 {
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(AIStateSystem))]
-    public class MovementSystem : IMovementSystem
+    public class MovementSystem : IComponentSystem
     {
         private const float Friction = 0.95f; // Damping factor for idle movement.
 
@@ -71,13 +71,9 @@ namespace AshenVoid.Core.ECS.Systems
                     blackboard.Remove(BlackboardKeys.MovementIntent);
                     return;
             }
-
-            // The actual movement is now handled by the dynamics system, which is great.
-            // However, the original code was flawed. It should be updating the dynamics
-            // and then applying the resulting velocity to the NPC.
+            
             Vector2 targetVelocity = movementComponent.Dynamics.Update((float)gameTime.ElapsedGameTime.TotalSeconds, destination) - npc.Center;
-
-            // Let's apply a max speed limit from the stats.
+            
             if (targetVelocity.Length() > movementComponent.Stats.MaxSpeed)
             {
                 targetVelocity.Normalize();

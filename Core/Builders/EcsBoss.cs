@@ -1,7 +1,5 @@
 using AshenVoid.Core.ECS;
-using AshenVoid.Core.ECS.Interfaces;
 using AshenVoid.Core.Events;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System.IO;
 using Terraria;
@@ -11,133 +9,85 @@ using Terraria.ModLoader;
 
 namespace AshenVoid.Core.Builders
 {
-    public abstract class EcsBoss : ModNPC, IComponentProvider
+    // This class is the entry point for the ECS logic for a given NPC.
+    // It should be as lean as possible, delegating all logic to Systems.
+    public abstract class EcsBoss : ModNPC
     {
-        public ComponentController ComponentController { get; private set; }
+        public ComponentController Controller { get; private set; }
         protected EventBus EventBus { get; private set; }
 
-        private int CurrentStateId
-        {
-            get => (int)NPC.ai[0];
-            set => NPC.ai[0] = value;
-        }
-
-        private int StateTimer
-        {
-            get => (int)NPC.ai[1];
-            set => NPC.ai[1] = value;
-        }
-
+        // This method is where you define all the components and systems for this boss.
         protected abstract ComponentController InitializeController();
 
         public sealed override void SetDefaults()
         {
             EventBus = new EventBus();
-            ComponentController = InitializeController();
+            Controller = InitializeController();
 
+            // Call the abstract method for ModNPC specific defaults
             SetBossDefaults();
 
             NPC.aiStyle = -1;
-            NPC.netAlways = true;
+            NPC.netAlways = true; // Important for custom AI
 
-            ComponentController.BuildSystemCache();
+            // The system cache should be built once all components and systems are registered.
+            Controller.BuildSystemCache();
         }
 
+        // Implement this in your derived class to set NPC properties.
         public abstract void SetBossDefaults();
 
         public override void OnSpawn(IEntitySource source)
         {
-            if (Main.netMode != NetmodeID.MultiplayerClient)
-            {
-                var aiState = GetComponent<AIStateComponent>();
-                var initialState = aiState.GetStateType(0);
-                aiState.SetInitialState(initialState);
-                CurrentStateId = 0;
-                StateTimer = 0;
-                NPC.netUpdate = true;
-            }
+            // OnSpawn logic, if any, should be handled by a dedicated System.
+            // The initial state is now set within InitializeController.
         }
 
+        // The AI method is now extremely simple. It just ticks the ECS engine.
         public override void AI()
         {
-            if (ComponentController == null) return;
-
-            ComponentController.Update(Main.gameTimeCache, NPC, EventBus);
-
-            var aiState = GetComponent<AIStateComponent>();
-            if (aiState == null) return;
-
-            // Server-side logic for state transitions and timer updates.
-            if (Main.netMode != NetmodeID.MultiplayerClient)
-            {
-                StateTimer++;
-                aiState.Blackboard.Set("StateTimer", StateTimer);
-
-                var newStateId = aiState.GetStateId(aiState.StateMachine.CurrentState.GetType());
-                if (newStateId != CurrentStateId)
-                {
-                    CurrentStateId = newStateId;
-                    StateTimer = 0;
-                    NPC.netUpdate = true;
-                }
-            }
-            // Client-side logic to react to state changes from the server.
-            else
-            {
-                var currentStateOnClient = aiState.StateMachine.CurrentState;
-                if (currentStateOnClient == null || aiState.GetStateId(currentStateOnClient.GetType()) != CurrentStateId)
-                {
-                    var newStateType = aiState.GetStateType(CurrentStateId);
-                    if (newStateType != null)
-                    {
-                        // This should be a state change, not a re-initialization.
-                        // We'll address this in a future refactoring step.
-                        aiState.SetInitialState(newStateType);
-                    }
-                }
-            }
+            Controller?.Update(Main.gameTimeCache, NPC, EventBus);
         }
 
+        // Network synchronization is now handled by two mechanisms:
+        // 1. Event-based ModPackets for immediate state changes (handled in StateMachine and Mod class).
+        // 2. SendExtraAI/ReceiveExtraAI for continuous data sync (like health, position).
         public override void SendExtraAI(BinaryWriter writer)
         {
-            // OPTIMIZED: Iterate only over the cached networked components.
-            foreach (var networkedComponent in ComponentController.GetNetworkedComponents())
+            // We find components that need syncing and ask them to write their data.
+            var networkedComponents = Controller?.GetNetworkedComponents();
+            if (networkedComponents != null)
             {
-                networkedComponent.SendData(NPC, writer);
+                foreach (var component in networkedComponents)
+                {
+                    component.SendData(NPC, writer);
+                }
             }
         }
 
         public override void ReceiveExtraAI(BinaryReader reader)
         {
-            // OPTIMIZED: Iterate only over the cached networked components.
-            foreach (var networkedComponent in ComponentController.GetNetworkedComponents())
+            var networkedComponents = Controller?.GetNetworkedComponents();
+            if (networkedComponents != null)
             {
-                networkedComponent.ReceiveData(NPC, reader);
+                foreach (var component in networkedComponents)
+                {
+                    component.ReceiveData(NPC, reader);
+                }
             }
         }
 
+        // Event publishing for game events.
         public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
         {
             if (Main.netMode != NetmodeID.MultiplayerClient)
-                EventBus?.Publish(new NPCDamagedEvent(NPC, hit, this));
+                EventBus?.Publish(new NPCDamagedEvent(NPC, hit));
         }
 
         public override void OnHitByProjectile(Projectile projectile, NPC.HitInfo hit, int damageDone)
         {
             if (Main.netMode != NetmodeID.MultiplayerClient)
-                EventBus?.Publish(new NPCDamagedEvent(NPC, hit, this));
-        }
-
-        public T GetComponent<T>() where T : class, IComponent
-        {
-            return ComponentController?.GetComponent<T>();
-        }
-
-        public bool TryGetComponent<T>(out T result) where T : class, IComponent
-        {
-            result = null;
-            if (ComponentController == null) return false;
-            return ComponentController.TryGetComponent(out result);
+                EventBus?.Publish(new NPCDamagedEvent(NPC, hit));
         }
     }
 }

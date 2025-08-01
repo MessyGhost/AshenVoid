@@ -1,35 +1,38 @@
-using AshenVoid.Core.ECS;
 using Terraria;
 
 namespace AshenVoid.Core.Events
 {
+    /// <summary>
+    /// Published when an NPC is damaged.
+    /// Systems can listen to this to react to damage, e.g., by changing stats or behavior.
+    /// The ComponentController can be accessed via the NPC instance if it's an EcsBoss.
+    /// </summary>
     public readonly struct NPCDamagedEvent : IEvent
     {
         public readonly NPC NPC;
         public readonly NPC.HitInfo Hit;
-        public readonly IComponentProvider ComponentProvider;
 
-        public NPCDamagedEvent(NPC npc, NPC.HitInfo hit, IComponentProvider componentProvider)
+        public NPCDamagedEvent(NPC npc, NPC.HitInfo hit)
         {
             NPC = npc;
             Hit = hit;
-            ComponentProvider = componentProvider;
         }
     }
 
+    /// <summary>
+    /// Published by the HealthSystem when an NPC's health changes.
+    /// </summary>
     public readonly struct NPCHealthLossEvent : IEvent
     {
         public readonly NPC NPC;
         public readonly float HealthPercentage;
         public readonly float PreviousHealthPercentage;
-        public readonly IComponentProvider ComponentProvider;
 
-        public NPCHealthLossEvent(NPC npc, float healthPercentage, float previousHealthPercentage, IComponentProvider componentProvider)
+        public NPCHealthLossEvent(NPC npc, float healthPercentage, float previousHealthPercentage)
         {
             NPC = npc;
             HealthPercentage = healthPercentage;
             PreviousHealthPercentage = previousHealthPercentage;
-            ComponentProvider = componentProvider;
         }
     }
 }

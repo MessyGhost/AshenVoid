@@ -13,7 +13,7 @@ namespace AshenVoid.Core.ECS.Systems
     public class SystemManager
     {
         private readonly List<IComponentSystem> _registeredSystems = new List<IComponentSystem>();
-        private List<IComponentSystem> _sortedSystems = new List<IComponentSystem>();
+        private List<IComponentSystem> _sortedSystems; // This will be cached after the first sort.
 
         private readonly Dictionary<IComponentSystem, bool> _systemEligibilityCache = new Dictionary<IComponentSystem, bool>();
         private bool _isCacheDirty = true;
@@ -24,6 +24,7 @@ namespace AshenVoid.Core.ECS.Systems
             {
                 _registeredSystems.Add(componentSystem);
                 _isCacheDirty = true;
+                _sortedSystems = null; // Invalidate the sorted list if systems change.
             }
         }
 
@@ -31,19 +32,21 @@ namespace AshenVoid.Core.ECS.Systems
         {
             if (!_isCacheDirty) return;
 
-            // Step 1: Sort systems based on dependencies
-            try
+            // Step 1: Sort systems only if the list has been invalidated.
+            if (_sortedSystems == null)
             {
-                _sortedSystems = SortSystems(_registeredSystems);
-            }
-            catch (Exception ex)
-            {
-                ModContent.GetInstance<AshenVoid>().Logger.Error($"Failed to sort systems: {ex.Message}");
-                // Fallback to registration order to prevent a crash
-                _sortedSystems = new List<IComponentSystem>(_registeredSystems);
+                try
+                {
+                    _sortedSystems = SortSystems(_registeredSystems);
+                }
+                catch (Exception ex)
+                {
+                    ModContent.GetInstance<AshenVoid>().Logger.Error($"Failed to sort systems: {ex.Message}");
+                    _sortedSystems = new List<IComponentSystem>(_registeredSystems); // Fallback
+                }
             }
 
-            // Step 2: Build eligibility cache based on sorted list
+            // Step 2: Rebuild the eligibility cache based on the controller's components.
             _systemEligibilityCache.Clear();
             foreach (var system in _sortedSystems)
             {
@@ -85,7 +88,6 @@ namespace AshenVoid.Core.ECS.Systems
             var graph = new Dictionary<Type, List<Type>>();
             var inDegree = systems.ToDictionary(s => s.GetType(), s => 0);
 
-            // Build the dependency graph
             foreach (var system in systems)
             {
                 var systemType = system.GetType();
@@ -112,11 +114,10 @@ namespace AshenVoid.Core.ECS.Systems
                 }
             }
 
-            // Group systems
             var groups = systems.GroupBy(s =>
             {
                 var attr = s.GetType().GetCustomAttribute<UpdateInGroupAttribute>();
-                return attr?.GroupType; // Can be null for systems without a group
+                return attr?.GroupType;
             }).ToDictionary(g => g.Key, g => g.ToList());
 
             var sortedList = new List<IComponentSystem>();
@@ -138,7 +139,7 @@ namespace AshenVoid.Core.ECS.Systems
                     {
                         foreach (var neighbor in graph[currentType])
                         {
-                            if (groupSystems.Any(s => s.GetType() == neighbor)) // Ensure dependency is within the same group
+                            if (groupSystems.Any(s => s.GetType() == neighbor))
                             {
                                 inDegree[neighbor]--;
                                 if (inDegree[neighbor] == 0)

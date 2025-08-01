@@ -4,6 +4,8 @@ using AshenVoid.Content.NPCs.NightmareCorruption.States;
 using AshenVoid.Core.Builders;
 using AshenVoid.Core.Configuration;
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.AI;
+using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Systems;
 using Terraria;
@@ -17,6 +19,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
     public class NightmareCorruption : EcsBoss
     {
         private static BossConfig _bossConfig;
+
+        // Factories should ideally be singletons, but for now, we instantiate them here.
+        private static readonly StateFactory _stateFactory = new StateFactory();
+        private static AIBehaviorFactory _behaviorFactory;
+
 
         public override void SetStaticDefaults()
         {
@@ -48,15 +55,25 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         protected override ComponentController InitializeController()
         {
-            var stateFactory = new StateFactory();
             var builder = new BossBuilder();
+            
+            // Initialize the behavior factory. It needs a temporary blackboard to be constructed.
+            // This is a design flaw that should be addressed later.
+            if (_behaviorFactory == null)
+            {
+                var tempBlackboard = new Blackboard();
+                tempBlackboard.Set(BlackboardKeys.NPC, NPC);
+                _behaviorFactory = new AIBehaviorFactory(tempBlackboard);
+            }
 
-            var aiStateComponent = new AIStateComponent(NPC, stateFactory);
+            var aiStateComponent = new AIStateComponent(NPC, _stateFactory, _behaviorFactory);
 
             aiStateComponent.RegisterState<SpawnState>();
             aiStateComponent.RegisterState<Phase1State>();
             aiStateComponent.RegisterState<Phase2State>();
             aiStateComponent.RegisterState<DeathState>();
+            
+            aiStateComponent.SetInitialState(typeof(SpawnState));
 
             aiStateComponent.Blackboard.Set("BossConfig", _bossConfig);
 

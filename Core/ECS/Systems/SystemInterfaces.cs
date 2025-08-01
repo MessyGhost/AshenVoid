@@ -77,18 +77,13 @@ namespace AshenVoid.Core.ECS.Systems
         SystemExecutionSide ExecutionSide { get; }
     }
 
+    // This is the primary interface for any system that operates on components.
     public interface IComponentSystem : ISystem
     {
+        // Defines the set of components an entity must have for this system to run.
         HashSet<Type> RequiredComponents { get; }
+        
+        // The main update logic for the system.
         void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus);
     }
-
-    // Marker interfaces can be removed later if we make systems more generic,
-    // but for now they are fine.
-    public interface IMovementSystem : IComponentSystem { }
-    public interface IAttackSystem : IComponentSystem { }
-    public interface IAnimationSystem : IComponentSystem { }
-    public interface IStatSystem : IComponentSystem { }
-    public interface IAIStateSystem : IComponentSystem { }
-    public interface IHealthSystem : IComponentSystem { }
 }

@@ -13,6 +13,8 @@ namespace AshenVoid.Core.ECS.AI
         public const string Controller = "Controller";
         public const string GameTime = "GameTime";
         public const string AIState = "AIState";
-        public const string RequestedState = "RequestedState"; // Add this key
+        public const string StateFactory = "StateFactory"; // For accessing the state factory
+        public const string AIBehaviorFactory = "AIBehaviorFactory"; // For accessing the behavior factory
+        public const string NextStateIntent = "NextStateIntent"; // For behavior tree nodes to request a state change
     }
 }

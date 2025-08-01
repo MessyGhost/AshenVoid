@@ -2,56 +2,61 @@ using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
-using System;
 using Terraria;
+using Terraria.ID;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class DeathState : IState
     {
-        private const float DeathDuration = 3f; // 3 seconds for death animation
+        private const float DeathDuration = 3f;
+        private static readonly string TimerKey = "DeathTimer";
 
         public void Enter(Blackboard blackboard)
         {
+            blackboard.Set(TimerKey, 0f);
             var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
-
-            blackboard.Set("DeathTimer", 0f);
-            npc.life = 0;
+            
+            // This logic should run on both server and client for immediate feedback
             npc.dontTakeDamage = true;
             npc.velocity = Vector2.Zero;
 
-            blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
+            if (Main.netMode != NetmodeID.MultiplayerClient)
+            {
+                npc.life = 0;
+                blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
+            }
         }
 
-        public Type Update(Blackboard blackboard)
+        public IState Update(Blackboard blackboard)
         {
-            var timer = blackboard.Get<float>("DeathTimer");
+            var timer = blackboard.Get<float>(TimerKey);
             timer += 1f / 60f;
-            blackboard.Set("DeathTimer", timer);
+            blackboard.Set(TimerKey, timer);
 
             var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
 
-            // Simple death effect: fade out and shrink
+            // Visual effects should run on both client and server
             npc.alpha = (int)MathHelper.Lerp(0, 255, timer / DeathDuration);
             npc.scale = MathHelper.Lerp(1f, 0f, timer / DeathDuration);
             npc.rotation += 0.1f;
 
-            if (timer >= DeathDuration)
+            // Final kill logic only on server
+            if (Main.netMode != NetmodeID.MultiplayerClient)
             {
-                // The AIStateSystem will see that the NPC is no longer active and handle the final cleanup.
-                // We just need to make sure the NPC is properly killed.
-                npc.life = 0;
-                npc.checkDead();
+                if (timer >= DeathDuration)
+                {
+                    npc.life = 0;
+                    npc.checkDead();
+                }
             }
 
-            // This state never transitions to another state on its own.
-            return null;
+            return this;
         }
 
         public void Exit(Blackboard blackboard)
         {
-            // Cleanup if needed
-            blackboard.Remove("DeathTimer");
+            blackboard.Remove(TimerKey);
         }
     }
 }

@@ -7,7 +7,7 @@ using Terraria;
 namespace AshenVoid.Core.ECS.Systems
 {
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    public class AnimationSystem : IAnimationSystem
+    public class AnimationSystem : IComponentSystem
     {
         private const int FrameDelay = 5; // Ticks between frame changes.
 

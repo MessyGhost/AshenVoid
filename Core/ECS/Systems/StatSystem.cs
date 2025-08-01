@@ -6,7 +6,7 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class StatSystem : IStatSystem
+    public class StatSystem : IComponentSystem
     {
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 

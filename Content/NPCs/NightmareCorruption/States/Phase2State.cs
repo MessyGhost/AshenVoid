@@ -4,50 +4,57 @@ using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
-using System;
 using Terraria;
+using Terraria.ID;
 using Terraria.ModLoader;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class Phase2State : IState
     {
-        private Node _behaviorTree;
-        private int _orbitDirection = 1;
+        private static readonly string BehaviorTreeKey = "ActiveBehaviorTree_Phase2";
 
         public void Enter(Blackboard blackboard)
         {
-            _behaviorTree = BuildBehaviorTree(blackboard);
+            if (Main.netMode != NetmodeID.MultiplayerClient)
+            {
+                var behaviorTree = BuildBehaviorTree(blackboard);
+                blackboard.Set(BehaviorTreeKey, behaviorTree);
+            }
         }
 
-        public Type Update(Blackboard blackboard)
+        public IState Update(Blackboard blackboard)
         {
-            _behaviorTree?.Evaluate();
-
-            if (blackboard.TryGet(BlackboardKeys.RequestedState, out Type requestedState))
+            if (Main.netMode != NetmodeID.MultiplayerClient)
             {
-                blackboard.Remove(BlackboardKeys.RequestedState);
-                return requestedState;
+                var behaviorTree = blackboard.Get<Node>(BehaviorTreeKey);
+                behaviorTree?.Evaluate();
+
+                if (blackboard.TryGet(BlackboardKeys.NextStateIntent, out IState requestedState))
+                {
+                    blackboard.Remove(BlackboardKeys.NextStateIntent);
+                    return requestedState;
+                }
             }
 
-            return null;
+            return this;
         }
 
         public void Exit(Blackboard blackboard)
         {
-            _behaviorTree = null;
+            blackboard.Remove(BehaviorTreeKey);
         }
 
         private Node BuildBehaviorTree(Blackboard blackboard)
         {
-            var config = blackboard.Get<BossConfig>("BossConfig").Phase1;
+            var stateFactory = blackboard.Get<StateFactory>(BlackboardKeys.StateFactory);
 
             return new FallbackNode(
                 new SequenceNode(
                     new ConditionNode(() => blackboard.Get<NPC>(BlackboardKeys.NPC).life <= 1),
                     new ActionNode(() =>
                     {
-                        blackboard.Set(BlackboardKeys.RequestedState, typeof(DeathState));
+                        blackboard.Set(BlackboardKeys.NextStateIntent, stateFactory.GetState<DeathState>());
                         return NodeState.Success;
                     })
                 ),
@@ -77,8 +84,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
                         blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
                         return NodeState.Failure;
                     }
+                    
+                    if (!blackboard.Has("OrbitDirection"))
+                        blackboard.Set("OrbitDirection", 1);
 
-                    blackboard.Set(BlackboardKeys.MovementIntent, new OrbitIntent(target.Center, 350f, _orbitDirection));
+                    int direction = blackboard.Get<int>("OrbitDirection");
+                    blackboard.Set(BlackboardKeys.MovementIntent, new OrbitIntent(target.Center, 350f, direction));
                     return NodeState.Success;
                 })
             );
