@@ -1,30 +1,38 @@
 using AshenVoid.Core.ECS.AI;
+using AshenVoid.Core.ECS.BehaviorTree;
 using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
 
 namespace AshenVoid.Core.ECS.FSM
 {
-    /// <summary>
-    /// Manages the states of an AI, handling transitions, updates, and network synchronization.
-    /// </summary>
     public class StateMachine
     {
         public IState CurrentState { get; private set; }
+        private Node _activeBehaviorTree;
 
-        /// <summary>
-        /// Transitions to a new state and syncs the change to clients.
-        /// </summary>
-        public void ChangeState(IState newState, Blackboard blackboard)
+        private void PerformStateChange(IState newState, Blackboard blackboard)
         {
             if (newState == null || newState == CurrentState)
                 return;
 
             CurrentState?.Exit(blackboard);
+            _activeBehaviorTree = null;
+
             CurrentState = newState;
             CurrentState.Enter(blackboard);
 
-            // Network Synchronization
+            // Build behavior tree on the server, or if we are in single player.
+            if (Main.netMode != NetmodeID.MultiplayerClient)
+            {
+                _activeBehaviorTree = CurrentState.BuildBehaviorTree(blackboard);
+            }
+        }
+
+        public void ChangeState(IState newState, Blackboard blackboard)
+        {
+            PerformStateChange(newState, blackboard);
+
             if (Main.netMode == NetmodeID.Server)
             {
                 var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
@@ -42,20 +50,26 @@ namespace AshenVoid.Core.ECS.FSM
             }
         }
 
-        /// <summary>
-        /// Updates the current state and handles transitions automatically.
-        /// This should only be called on the server.
-        /// </summary>
+        public void ReceiveStateChange(IState newState, Blackboard blackboard)
+        {
+            // This method is called on the client to apply a state change from the server.
+            // It does not send any packets.
+            PerformStateChange(newState, blackboard);
+        }
+
         public void Update(Blackboard blackboard)
         {
             if (CurrentState == null || Main.netMode == NetmodeID.MultiplayerClient)
                 return;
 
-            var nextState = CurrentState.Update(blackboard);
-
-            if (nextState != CurrentState)
+            var nextState = CurrentState.CheckTransitions(blackboard);
+            if (nextState != null)
             {
                 ChangeState(nextState, blackboard);
+            }
+            else
+            {
+                _activeBehaviorTree?.Evaluate(blackboard);
             }
         }
     }

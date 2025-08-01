@@ -1,68 +1,48 @@
-using AshenVoid.Core.Builders;
 using AshenVoid.Core.ECS.AI;
-using AshenVoid.Core.Events;
 using AshenVoid.Core.Stats;
+using Microsoft.Xna.Framework;
+using System.Collections.Generic;
 using Terraria;
+using Terraria.ID;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    // This system is event-driven and manages blackboard values based on game events.
-    public class AIBlackboardSystem
+    public class AIBlackboardSystem : IComponentSystem
     {
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+        public HashSet<System.Type> RequiredComponents => new HashSet<System.Type> { typeof(AIStateComponent) };
 
-        private bool _isEnraged;
-        private const string RAGE_SOURCE = "Rage";
-        private EventBus _eventBus;
-
-        public void Initialize(EventBus eventBus)
+        public void Update(GameTime gameTime, NPC npc, ComponentController controller, Events.EventBus eventBus)
         {
-            _eventBus = eventBus;
-            _eventBus.Subscribe<NPCDamagedEvent>(OnDamaged);
-            _eventBus.Subscribe<NPCHealthLossEvent>(OnHealthLoss);
-        }
+            var aiState = controller.GetComponent<AIStateComponent>();
+            if (aiState == null) return;
 
-        public void Shutdown()
-        {
-            _eventBus.Unsubscribe<NPCDamagedEvent>(OnDamaged);
-            _eventBus.Unsubscribe<NPCHealthLossEvent>(OnHealthLoss);
-        }
+            var blackboard = aiState.Blackboard;
 
-        private void OnDamaged(NPCDamagedEvent e)
-        {
-            if (e.NPC.ModNPC is not EcsBoss boss) return;
-            if (!boss.Controller.TryGetComponent(out AIStateComponent aiState)) return;
+            blackboard.Set(BlackboardKeys.GameTime, gameTime);
 
-            float damageTaken = aiState.Blackboard.Get<float>("DamageTakenSinceLastDash");
-            aiState.Blackboard.Set("DamageTakenSinceLastDash", damageTaken + e.Hit.Damage);
-        }
-
-        private void OnHealthLoss(NPCHealthLossEvent e)
-        {
-            if (e.NPC.ModNPC is not EcsBoss boss) return;
-            if (!boss.Controller.TryGetComponent(out AIStateComponent aiState) || !boss.Controller.TryGetComponent(out StatSheetComponent statSheet))
+            if (Main.netMode != NetmodeID.Server || npc.target < 0 || npc.target >= Main.maxPlayers)
             {
-                return;
+                npc.TargetClosest(true);
+            }
+            
+            Player target = Main.player[npc.target];
+            if (target.active && !target.dead)
+            {
+                blackboard.Set(BlackboardKeys.Target, target);
+            }
+            else
+            {
+                blackboard.Remove(BlackboardKeys.Target);
             }
 
-            float lastSummonHealth = aiState.Blackboard.Get<float>("LastSummonHealthPercent");
-            if (lastSummonHealth == 0f) lastSummonHealth = 1f;
-
-            if (lastSummonHealth - e.HealthPercentage >= 0.1f)
+            var statSheet = controller.GetComponent<StatSheetComponent>();
+            if (statSheet != null)
             {
-                aiState.Blackboard.Set("ShouldSummon", true);
-                aiState.Blackboard.Set("LastSummonHealthPercent", e.HealthPercentage);
-            }
-
-            if (e.HealthPercentage < 0.5f && !_isEnraged)
-            {
-                _isEnraged = true;
-                // Correctly creating the StatModifier with 4 arguments.
-                var damageMod = new StatModifier(0.2f, StatModType.PercentMult, (int)StatModType.PercentMult, RAGE_SOURCE);
-                var cooldownMod = new StatModifier(-0.2f, StatModType.PercentMult, (int)StatModType.PercentMult, RAGE_SOURCE);
-                statSheet.Damage.AddModifier(damageMod);
-                statSheet.AttackCooldownMultiplier.AddModifier(cooldownMod);
-                Main.NewText($"{e.NPC.FullName} has become enraged! Damage and attack speed increased.");
+                var speedMultiplier = blackboard.Get<float>("SpeedMultiplier", 1f);
+                // To "set" a modifier, we first remove any existing modifiers from this source, then add the new one.
+                statSheet.MovementSpeed.RemoveAllModifiersFromSource("Blackboard");
+                statSheet.MovementSpeed.AddModifier(new StatModifier(speedMultiplier - 1, StatModType.PercentAdd, 0, "Blackboard"));
             }
         }
     }

@@ -1,5 +1,4 @@
 using AshenVoid.Core.ECS.AI;
-using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using System;
 using System.Collections.Generic;
@@ -11,25 +10,20 @@ namespace AshenVoid.Core.ECS
     {
         public StateMachine StateMachine { get; }
         public Blackboard Blackboard { get; }
-        
-        // Factories are now stored in the Blackboard, making them accessible to states.
-        // public StateFactory StateFactory { get; } 
 
         // For network synchronization
         private readonly Dictionary<Type, int> _stateTypeToId = new Dictionary<Type, int>();
         private readonly Dictionary<int, Type> _stateIdToType = new Dictionary<int, Type>();
         private int _nextStateId = 0;
 
-        public AIStateComponent(NPC npc, StateFactory stateFactory, AIBehaviorFactory behaviorFactory)
+        public AIStateComponent(NPC npc)
         {
             StateMachine = new StateMachine();
             Blackboard = new Blackboard();
 
-            // Store dependencies in the blackboard for states and systems to use
+            // Store core references in the blackboard
             Blackboard.Set(BlackboardKeys.NPC, npc);
             Blackboard.Set(BlackboardKeys.AIState, this);
-            Blackboard.Set(BlackboardKeys.StateFactory, stateFactory);
-            Blackboard.Set(BlackboardKeys.AIBehaviorFactory, behaviorFactory);
         }
 
         // Register states to get a unique ID for sync
@@ -56,7 +50,9 @@ namespace AshenVoid.Core.ECS
 
         public void SetInitialState(Type stateType)
         {
-            var stateFactory = Blackboard.Get<StateFactory>(BlackboardKeys.StateFactory);
+            // Services are now retrieved from the blackboard, which is populated by the EcsBoss
+            var services = Blackboard.Get<ServiceLocator>(BlackboardKeys.ServiceLocator);
+            var stateFactory = services.Get<StateFactory>();
             var initialState = stateFactory.GetState(stateType);
             StateMachine.ChangeState(initialState, Blackboard);
         }

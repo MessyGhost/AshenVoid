@@ -1,13 +1,14 @@
 using AshenVoid.Content.Items.Drops;
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Content.NPCs.NightmareCorruption.States;
+using AshenVoid.Core;
 using AshenVoid.Core.Builders;
 using AshenVoid.Core.Configuration;
 using AshenVoid.Core.ECS;
-using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Systems;
+using AshenVoid.Core.Events;
 using Terraria;
 using Terraria.Audio;
 using Terraria.ID;
@@ -18,29 +19,30 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
     [AutoloadBossHead]
     public class NightmareCorruption : EcsBoss
     {
-        private static BossConfig _bossConfig;
-
-        // Factories should ideally be singletons, but for now, we instantiate them here.
-        private static readonly StateFactory _stateFactory = new StateFactory();
-        private static AIBehaviorFactory _behaviorFactory;
-
-
         public override void SetStaticDefaults()
         {
             Main.npcFrameCount[Type] = 4;
+        }
 
+        protected override void RegisterServices(ServiceLocator services)
+        {
             var configLoader = new ConfigLoader();
             string configPath = $"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson";
-            _bossConfig = configLoader.Load<BossConfig>(configPath);
+            var bossConfig = configLoader.Load<BossConfig>(configPath);
+            services.Register(bossConfig);
+
+            services.Register(new StateFactory(services));
+            services.Register(new AIBehaviorFactory(services));
         }
 
         public override void SetBossDefaults()
         {
+            var config = Services.Get<BossConfig>();
             NPC.width = 242;
             NPC.height = 192;
-            NPC.lifeMax = _bossConfig?.LifeMax ?? 13100;
-            NPC.damage = _bossConfig?.Damage ?? 50;
-            NPC.defense = _bossConfig?.Defense ?? 20;
+            NPC.lifeMax = config?.LifeMax ?? 13100;
+            NPC.damage = config?.Damage ?? 50;
+            NPC.defense = config?.Defense ?? 20;
             NPC.knockBackResist = 0f;
             NPC.value = Item.buyPrice(0, 3, 0, 0);
             NPC.boss = true;
@@ -53,52 +55,36 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Music = MusicLoader.GetMusicSlot(Mod, "Assets/Music/FoulAbyssEcho");
         }
 
-        protected override ComponentController InitializeController()
+        protected override ComponentController InitializeController(ServiceLocator services)
         {
-            var builder = new BossBuilder();
-            
-            // Initialize the behavior factory. It needs a temporary blackboard to be constructed.
-            // This is a design flaw that should be addressed later.
-            if (_behaviorFactory == null)
-            {
-                var tempBlackboard = new Blackboard();
-                tempBlackboard.Set(BlackboardKeys.NPC, NPC);
-                _behaviorFactory = new AIBehaviorFactory(tempBlackboard);
-            }
+            var controller = new ComponentController();
+            var config = services.Get<BossConfig>();
 
-            var aiStateComponent = new AIStateComponent(NPC, _stateFactory, _behaviorFactory);
-
+            var aiStateComponent = new AIStateComponent(NPC);
             aiStateComponent.RegisterState<SpawnState>();
             aiStateComponent.RegisterState<Phase1State>();
             aiStateComponent.RegisterState<Phase2State>();
             aiStateComponent.RegisterState<DeathState>();
-            
             aiStateComponent.SetInitialState(typeof(SpawnState));
 
-            aiStateComponent.Blackboard.Set("BossConfig", _bossConfig);
+            controller.AddComponent(new MovementComponent(NPC, config.Phase1.Movement));
+            controller.AddComponent(new AttackComponent());
+            controller.AddComponent(new AnimationComponent(NPC));
+            controller.AddComponent(new VFXComponent());
+            controller.AddComponent(new StatSheetComponent(NPC, config));
+            controller.AddComponent(aiStateComponent);
+            controller.AddComponent(new HealthComponent(NPC.lifeMax));
 
-            builder.AddComponent(() => new MovementComponent(NPC, _bossConfig.Phase1.Movement));
-            builder.AddComponent(() => new AttackComponent());
-            builder.AddComponent(() => new AnimationComponent(NPC));
-            builder.AddComponent(() => new VFXComponent());
-            builder.AddComponent(() => new StatSheetComponent(NPC, _bossConfig));
-            builder.AddComponent(() => aiStateComponent);
-            builder.AddComponent(() => new HealthComponent(NPC.lifeMax));
+            controller.AddSystem(new MovementSystem());
+            controller.AddSystem(new AttackSystem());
+            controller.AddSystem(new AIStateSystem());
+            controller.AddSystem(new StatSystem());
+            controller.AddSystem(new HealthSystem());
+            controller.AddSystem(new ClientInterpolationSystem());
+            controller.AddSystem(new AnimationSystem());
+            controller.AddSystem(new NetworkEventSystem(EventBus)); // Add the new system
 
-            // Server-side systems
-            builder.AddSystem(new MovementSystem());
-            builder.AddSystem(new AttackSystem());
-            builder.AddSystem(new AIStateSystem());
-            builder.AddSystem(new StatSystem());
-            builder.AddSystem(new HealthSystem());
-
-            // Client-side systems
-            builder.AddSystem(new ClientInterpolationSystem());
-
-            // Systems that run on both
-            builder.AddSystem(new AnimationSystem());
-
-            return builder.Build();
+            return controller;
         }
 
         public override void OnKill()

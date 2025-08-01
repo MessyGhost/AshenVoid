@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Terraria;
+using Terraria.ModLoader;
 
 namespace AshenVoid.Core.ECS
 {
@@ -13,30 +14,28 @@ namespace AshenVoid.Core.ECS
     {
         private readonly Dictionary<Type, IComponent> _components = new Dictionary<Type, IComponent>();
         private readonly SystemManager _systemManager = new SystemManager();
-        
-        // NEW: Cache for networked components
         private List<INetworkedComponent> _networkedComponentsCache;
 
-        public void RegisterSystem(ISystem system)
+        public void AddComponent(IComponent component)
+        {
+            _components[component.GetType()] = component;
+            // Invalidate network cache if a new component is added
+            _networkedComponentsCache = null;
+        }
+
+        public void AddSystem(ISystem system)
         {
             _systemManager.RegisterSystem(system);
         }
 
-        public void RegisterComponent(IComponent component)
-        {
-            _components[component.GetType()] = component;
-            
-            // Invalidate the networked components cache
-            _networkedComponentsCache = null;
-        }
-
         public T GetComponent<T>() where T : class, IComponent
         {
-            if (_components.TryGetValue(typeof(T), out var component))
-            {
-                return component as T;
-            }
-            return null;
+            return _components.TryGetValue(typeof(T), out var component) ? (T)component : null;
+        }
+
+        public bool HasComponent<T>() where T : class, IComponent
+        {
+            return _components.ContainsKey(typeof(T));
         }
 
         public bool HasComponent(Type componentType)
@@ -44,30 +43,9 @@ namespace AshenVoid.Core.ECS
             return _components.ContainsKey(componentType);
         }
 
-        public bool TryGetComponent<T>(out T result) where T : class, IComponent
+        public void BuildSystemCache()
         {
-            if (_components.TryGetValue(typeof(T), out var component) && component is T casted)
-            {
-                result = casted;
-                return true;
-            }
-            result = null;
-            return false;
-        }
-
-        public IEnumerable<IComponent> GetAllComponents()
-        {
-            return _components.Values;
-        }
-
-        // NEW: Get only the components that need to be networked
-        public IEnumerable<INetworkedComponent> GetNetworkedComponents()
-        {
-            if (_networkedComponentsCache == null)
-            {
-                _networkedComponentsCache = _components.Values.OfType<INetworkedComponent>().ToList();
-            }
-            return _networkedComponentsCache;
+            _systemManager.BuildCache(this);
         }
 
         public void Update(GameTime gameTime, NPC npc, EventBus eventBus)
@@ -75,9 +53,13 @@ namespace AshenVoid.Core.ECS
             _systemManager.Update(gameTime, npc, this, eventBus);
         }
 
-        public void BuildSystemCache()
+        public IEnumerable<INetworkedComponent> GetNetworkedComponents()
         {
-            _systemManager.BuildCache(this);
+            if (_networkedComponentsCache == null)
+            {
+                _networkedComponentsCache = _components.Values.OfType<INetworkedComponent>().ToList();
+            }
+            return _networkedComponentsCache;
         }
     }
 }

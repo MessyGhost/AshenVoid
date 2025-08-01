@@ -1,6 +1,6 @@
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.Events;
-using Microsoft.Xna.Framework.Graphics;
 using System.IO;
 using Terraria;
 using Terraria.DataStructures;
@@ -9,52 +9,63 @@ using Terraria.ModLoader;
 
 namespace AshenVoid.Core.Builders
 {
-    // This class is the entry point for the ECS logic for a given NPC.
-    // It should be as lean as possible, delegating all logic to Systems.
     public abstract class EcsBoss : ModNPC
     {
         public ComponentController Controller { get; private set; }
+        public ServiceLocator Services { get; private set; }
         protected EventBus EventBus { get; private set; }
 
         // This method is where you define all the components and systems for this boss.
-        protected abstract ComponentController InitializeController();
+        protected abstract ComponentController InitializeController(ServiceLocator services);
+
+        // This method is for registering all necessary services for the boss.
+        protected abstract void RegisterServices(ServiceLocator services);
 
         public sealed override void SetDefaults()
         {
             EventBus = new EventBus();
-            Controller = InitializeController();
+            Services = new ServiceLocator();
 
-            // Call the abstract method for ModNPC specific defaults
+            // Register common services first
+            Services.Register(EventBus);
+
+            // Register boss-specific services
+            RegisterServices(Services);
+
+            // Initialize the controller, passing in the services
+            Controller = InitializeController(Services);
+
+            // Set ModNPC specific defaults
             SetBossDefaults();
 
             NPC.aiStyle = -1;
-            NPC.netAlways = true; // Important for custom AI
+            NPC.netAlways = true;
 
             // The system cache should be built once all components and systems are registered.
             Controller.BuildSystemCache();
+            
+            // Put the service locator in the blackboard for easy access from states/systems
+            var aiState = Controller.GetComponent<AIStateComponent>();
+            if (aiState != null)
+            {
+                aiState.Blackboard.Set(BlackboardKeys.ServiceLocator, Services);
+            }
         }
 
-        // Implement this in your derived class to set NPC properties.
         public abstract void SetBossDefaults();
 
         public override void OnSpawn(IEntitySource source)
         {
             // OnSpawn logic, if any, should be handled by a dedicated System.
-            // The initial state is now set within InitializeController.
         }
 
-        // The AI method is now extremely simple. It just ticks the ECS engine.
         public override void AI()
         {
             Controller?.Update(Main.gameTimeCache, NPC, EventBus);
         }
 
-        // Network synchronization is now handled by two mechanisms:
-        // 1. Event-based ModPackets for immediate state changes (handled in StateMachine and Mod class).
-        // 2. SendExtraAI/ReceiveExtraAI for continuous data sync (like health, position).
         public override void SendExtraAI(BinaryWriter writer)
         {
-            // We find components that need syncing and ask them to write their data.
             var networkedComponents = Controller?.GetNetworkedComponents();
             if (networkedComponents != null)
             {
@@ -77,7 +88,6 @@ namespace AshenVoid.Core.Builders
             }
         }
 
-        // Event publishing for game events.
         public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
         {
             if (Main.netMode != NetmodeID.MultiplayerClient)

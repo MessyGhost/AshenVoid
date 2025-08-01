@@ -32,6 +32,18 @@ namespace AshenVoid.Core.ECS.AI
         }
 
         /// <summary>
+        /// Retrieves a value from the blackboard, returning a default value if the key is not found.
+        /// </summary>
+        public T Get<T>(string key, T defaultValue)
+        {
+            if (_data.TryGetValue(key, out var value) && value is T typedValue)
+            {
+                return typedValue;
+            }
+            return defaultValue;
+        }
+
+        /// <summary>
         /// Checks if a key exists in the blackboard.
         /// </summary>
         public bool Has(string key)

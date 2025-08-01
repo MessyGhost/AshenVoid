@@ -3,111 +3,159 @@ using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using System;
-using System.Collections.Generic;
 using Terraria;
+using Terraria.ModLoader;
 
 namespace AshenVoid.Core.ECS.BehaviorTree
 {
     public class AIBehaviorFactory
     {
-        private readonly Blackboard _blackboard;
+        private readonly ServiceLocator _services;
 
-        public AIBehaviorFactory(Blackboard blackboard)
+        public AIBehaviorFactory(ServiceLocator services)
         {
-            _blackboard = blackboard;
+            _services = services;
         }
 
         public Node CreateBehaviorTree(string treeName)
         {
-            Node tree;
             switch (treeName)
             {
                 case "NightmareCorruption_Phase1":
-                    tree = BuildPhase1Tree();
-                    break;
-                // Add other phases or bosses here
-                // case "NightmareCorruption_Phase2":
-                //     tree = BuildPhase2Tree();
-                //     break;
+                    return BuildPhase1Tree();
                 default:
                     throw new ArgumentException($"No behavior tree found with the name: {treeName}");
             }
-            
-            // IMPORTANT: Set the blackboard for the entire tree
-            tree.SetBlackboard(_blackboard);
-            return tree;
         }
 
         private Node BuildPhase1Tree()
         {
-            var config = _blackboard.Get<BossConfig>("BossConfig").Phase1;
+            var config = _services.Get<BossConfig>();
 
             return new FallbackNode(
-                // Dash logic
-                BuildDashBehavior(config.Dash),
-                // Default patrol and attack logic
-                BuildPatrolBehavior(config.Attacks.BasicShot)
+                BuildChaseBehavior(config.Phase1.ChaseDistanceThreshold),
+                BuildSummonBehavior(),
+                BuildDamageDashBehavior(config.Phase1.Dash),
+                BuildPatrolBehavior(config.Phase1)
             );
         }
 
-        private Node BuildDashBehavior(DashStats dashConfig)
+        private Node BuildChaseBehavior(float chaseDistance)
+        {
+            return new SequenceNode(
+                new ConditionNode(bb => 
+                {
+                    var npc = bb.Get<NPC>(BlackboardKeys.NPC);
+                    var target = bb.Get<Player>(BlackboardKeys.Target);
+                    return target != null && npc.Distance(target.Center) > chaseDistance;
+                }),
+                new ActionNode(bb =>
+                {
+                    var target = bb.Get<Player>(BlackboardKeys.Target);
+                    var movementStats = _services.Get<BossConfig>().Phase1.Movement;
+                    bb.Set(BlackboardKeys.MovementIntent, new ChaseIntent(target.Center, 0f, movementStats.MaxSpeed * 2.5f));
+                    return NodeState.Running;
+                })
+            );
+        }
+
+        private Node BuildSummonBehavior()
+        {
+            return new SequenceNode(
+                new ConditionNode(bb => bb.Get<bool>("ShouldSummonGrasp")),
+                new ActionNode(bb => 
+                {
+                    // TODO: Implement the actual summoning logic (e.g., via a SummonIntent)
+                    // For now, just log it and reset the flag.
+                    ModContent.GetInstance<AshenVoid>().Logger.Info("Summoning Grasp of Trance");
+                    bb.Set("ShouldSummonGrasp", false);
+                    return NodeState.Success;
+                })
+            );
+        }
+
+        private Node BuildDamageDashBehavior(DashStats dashConfig)
         {
             string damageTakenKey = "DamageTakenSinceLastDash";
 
             return new SequenceNode(
-                new ConditionNode(() => _blackboard.Get<float>(damageTakenKey) >= dashConfig.DamageThreshold),
-                // Charge up phase
-                new ActionNode(() =>
+                new ConditionNode(bb => bb.Get<float>(damageTakenKey) >= dashConfig.DamageThreshold),
+                // Charge up
+                new ActionNode(bb =>
                 {
-                    var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
-                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
+                    var npc = bb.Get<NPC>(BlackboardKeys.NPC);
+                    var target = bb.Get<Player>(BlackboardKeys.Target);
                     var chargeDirection = (npc.Center - target.Center).SafeNormalize(Vector2.UnitX);
-                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(npc.Center + chargeDirection * 150f, 0f));
+                    bb.Set(BlackboardKeys.MovementIntent, new ChaseIntent(npc.Center + chargeDirection * 150f, 0f));
+                    // TODO: Trigger charging VFX
                     return NodeState.Success;
                 }),
                 new WaitNode(dashConfig.ChargeTime),
-                // Dash action
-                new SetMovementIntentNode(new ChaseIntent(_blackboard.Get<Player>(BlackboardKeys.Target).Center, 0f, 25f)),
-                new WaitNode(0.5f), // Duration of the dash
+                // Dash
+                new ActionNode(bb =>
+                {
+                    var target = bb.Get<Player>(BlackboardKeys.Target);
+                    bb.Set(BlackboardKeys.MovementIntent, new ChaseIntent(target.Center, 0f, dashConfig.DashSpeed));
+                    // TODO: Spawn corruption monsters on self
+                    return NodeState.Success;
+                }),
+                new WaitNode(0.5f), // Dash duration
                 // Reset
-                new SetBlackboardValueNode<float>(damageTakenKey, 0f),
-                new SetMovementIntentNode(new IdleIntent())
+                new ActionNode(bb =>
+                {
+                    bb.Set(damageTakenKey, 0f);
+                    bb.Set(BlackboardKeys.MovementIntent, new IdleIntent());
+                    return NodeState.Success;
+                })
             );
         }
 
-        private Node BuildPatrolBehavior(ProjectileAttack attackStats)
+        private Node BuildPatrolBehavior(PhaseConfig phaseConfig)
         {
             string patrolDirKey = "PatrolDirection";
+            string patrolTimerKey = "PatrolTimer";
+            float patrolTurnTime = 3f;
 
             return new SequenceNode(
-                new ActionNode(() =>
+                new ActionNode(bb =>
                 {
-                    var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
-                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
+                    var npc = bb.Get<NPC>(BlackboardKeys.NPC);
+                    var target = bb.Get<Player>(BlackboardKeys.Target);
                     
                     if (target == null || !target.active)
                     {
-                        _blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
+                        bb.Set(BlackboardKeys.MovementIntent, new IdleIntent());
                         return NodeState.Failure;
                     }
 
-                    if (!_blackboard.Has(patrolDirKey))
+                    if (!bb.Has(patrolDirKey))
                     {
-                        _blackboard.Set(patrolDirKey, 1);
+                        bb.Set(patrolDirKey, npc.Center.X < target.Center.X ? 1 : -1);
+                        bb.Set(patrolTimerKey, 0f);
                     }
-                    int patrolDirection = _blackboard.Get<int>(patrolDirKey);
 
-                    var patrolTargetPosition = target.Center + new Vector2(400 * patrolDirection, -300);
-                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(patrolTargetPosition, 80f));
+                    float timer = bb.Get<float>(patrolTimerKey);
+                    timer += (float)bb.Get<GameTime>(BlackboardKeys.GameTime).ElapsedGameTime.TotalSeconds;
 
-                    if (Vector2.Distance(npc.Center, patrolTargetPosition) < 100f)
+                    var patrolTargetPosition = target.Center + new Vector2(350 * bb.Get<int>(patrolDirKey), -300);
+                    bb.Set(BlackboardKeys.MovementIntent, new ChaseIntent(patrolTargetPosition, 80f, phaseConfig.Movement.MaxSpeed));
+
+                    if (timer > patrolTurnTime || npc.Distance(patrolTargetPosition) < 100f)
                     {
-                        _blackboard.Set(patrolDirKey, patrolDirection * -1);
-                        if (attackStats != null)
+                        bb.Set(patrolDirKey, bb.Get<int>(patrolDirKey) * -1);
+                        bb.Set(patrolTimerKey, 0f);
+                        bb.Set(BlackboardKeys.AttackIntent, new ShootProjectileIntent(target.Center, phaseConfig.Attacks.BasicShot));
+
+                        if (Main.rand.NextBool())
                         {
-                            _blackboard.Set(BlackboardKeys.AttackIntent, new ShootProjectileIntent(target.Center, attackStats));
+                            bb.Set(BlackboardKeys.MovementIntent, new ChaseIntent(target.Center, 0f, phaseConfig.Movement.MaxSpeed * 2f));
                         }
                     }
+                    else
+                    {
+                        bb.Set(patrolTimerKey, timer);
+                    }
+
                     return NodeState.Success;
                 })
             );

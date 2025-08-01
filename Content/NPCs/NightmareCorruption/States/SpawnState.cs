@@ -1,5 +1,7 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
+using AshenVoid.Core;
 using AshenVoid.Core.ECS.AI;
+using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using Microsoft.Xna.Framework;
 using Terraria;
@@ -10,46 +12,72 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
     public class SpawnState : IState
     {
         private static readonly string TimerKey = "SpawnState_Timer";
-        private static readonly string ConfigKey = "BossConfig";
 
         public void Enter(Blackboard blackboard)
         {
-            blackboard.Set(TimerKey, 0f);
             var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
             
             if (Main.netMode != NetmodeID.MultiplayerClient)
             {
-                var target = blackboard.Get<Player>(BlackboardKeys.Target);
-                if (target != null && target.active)
+                Player target = null;
+                float minDistance = float.MaxValue;
+                for (int i = 0; i < Main.maxPlayers; i++)
                 {
+                    Player p = Main.player[i];
+                    if (p.active && !p.dead)
+                    {
+                        float dist = npc.Distance(p.Center);
+                        if (dist < minDistance)
+                        {
+                            minDistance = dist;
+                            target = p;
+                        }
+                    }
+                }
+
+                if (target != null)
+                {
+                    blackboard.Set(BlackboardKeys.Target, target);
                     npc.Center = target.Center - new Vector2(0, 300);
                 }
             }
+            
             npc.alpha = 255;
+            blackboard.Set(TimerKey, 0f);
         }
 
-        public IState Update(Blackboard blackboard)
+        public Node BuildBehaviorTree(Blackboard blackboard)
         {
-            float timer = blackboard.Get<float>(TimerKey);
-            var config = blackboard.Get<BossConfig>(ConfigKey);
-            var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
+            var config = blackboard.Get<ServiceLocator>(BlackboardKeys.ServiceLocator).Get<BossConfig>();
 
-            timer += 1f / 60f;
-            npc.alpha = (int)MathHelper.Lerp(255, 0, timer / config.SpawnDuration);
-            
-            blackboard.Set(TimerKey, timer);
-
-            // State transition logic should only run on the server.
-            if (Main.netMode != NetmodeID.MultiplayerClient)
-            {
-                if (timer >= config.SpawnDuration)
+            return new SequenceNode(
+                new ActionNode(bb =>
                 {
-                    var stateFactory = blackboard.Get<StateFactory>(BlackboardKeys.StateFactory);
-                    return stateFactory.GetState<Phase1State>();
-                }
+                    var npc = bb.Get<NPC>(BlackboardKeys.NPC);
+                    float timer = bb.Get<float>(TimerKey);
+                    
+                    timer += (float)bb.Get<GameTime>(BlackboardKeys.GameTime).ElapsedGameTime.TotalSeconds;
+                    npc.alpha = (int)MathHelper.Lerp(255, 0, timer / config.SpawnDuration);
+                    
+                    bb.Set(TimerKey, timer);
+                    
+                    return NodeState.Running;
+                })
+            );
+        }
+
+        public IState CheckTransitions(Blackboard blackboard)
+        {
+            var config = blackboard.Get<ServiceLocator>(BlackboardKeys.ServiceLocator).Get<BossConfig>();
+            float timer = blackboard.Get<float>(TimerKey);
+
+            if (timer >= config.SpawnDuration)
+            {
+                var stateFactory = blackboard.Get<ServiceLocator>(BlackboardKeys.ServiceLocator).Get<StateFactory>();
+                return stateFactory.GetState<Phase1State>();
             }
 
-            return this;
+            return null;
         }
 
         public void Exit(Blackboard blackboard)

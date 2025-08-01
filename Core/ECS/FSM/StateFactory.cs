@@ -9,21 +9,20 @@ namespace AshenVoid.Core.ECS.FSM
     /// </summary>
     public class StateFactory
     {
+        private readonly ServiceLocator _services;
         private readonly Dictionary<Type, IState> _stateCache = new Dictionary<Type, IState>();
+
+        public StateFactory(ServiceLocator services)
+        {
+            _services = services;
+        }
 
         /// <summary>
         /// Gets or creates an instance of the specified state type.
         /// </summary>
         public T GetState<T>() where T : class, IState, new()
         {
-            if (_stateCache.TryGetValue(typeof(T), out var state))
-            {
-                return (T)state;
-            }
-
-            var newState = new T();
-            _stateCache[typeof(T)] = newState;
-            return newState;
+            return (T)GetState(typeof(T));
         }
 
         /// <summary>
@@ -42,8 +41,9 @@ namespace AshenVoid.Core.ECS.FSM
                 return state;
             }
 
-            // This assumes states have a parameterless constructor.
-            // For states with dependencies, a proper DI container would be needed here.
+            // States can now be constructed with dependencies via the ServiceLocator if needed,
+            // but for now, we'll stick to parameterless constructors.
+            // This could be expanded with ActivatorUtilities if a full DI container is integrated.
             var newState = (IState)Activator.CreateInstance(stateType);
             _stateCache[stateType] = newState;
             return newState;
