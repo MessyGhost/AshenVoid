@@ -1,7 +1,6 @@
 using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
 using System.Collections.Generic;
-using System.Linq;
 using Terraria;
 using Terraria.ID;
 
@@ -16,19 +15,12 @@ namespace AshenVoid.Core.ECS.Systems
             _systems.Add(system);
         }
 
-        public void BuildCache(ComponentController controller) { }
-
-        public void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus)
+        public void Update(GameTime gameTime, EcsWorld world, EventBus eventBus)
         {
             foreach (var system in _systems)
             {
                 if (system is IComponentSystem componentSystem)
                 {
-                    if (!componentSystem.RequiredComponents.All(controller.HasComponent))
-                    {
-                        continue;
-                    }
-
                     var side = componentSystem.ExecutionSide;
                     if ((side == SystemExecutionSide.Server && Main.netMode == NetmodeID.MultiplayerClient) ||
                         (side == SystemExecutionSide.Client && Main.netMode == NetmodeID.Server))
@@ -36,7 +28,11 @@ namespace AshenVoid.Core.ECS.Systems
                         continue;
                     }
 
-                    componentSystem.Update(gameTime, npc, controller, eventBus);
+                    var entities = world.GetEntities(componentSystem.RequiredComponents);
+                    foreach (var entityId in entities)
+                    {
+                        componentSystem.Update(gameTime, entityId, world, eventBus);
+                    }
                 }
             }
         }

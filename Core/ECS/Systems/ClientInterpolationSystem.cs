@@ -8,26 +8,16 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class ClientInterpolationSystem : IComponentSystem
     {
+        public IEnumerable<Type> RequiredComponents => new[] { typeof(MovementComponent) };
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;
 
-        public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
+        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
-            typeof(MovementComponent)
-        };
-
-        public void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus)
-        {
-            var movement = controller.GetComponent<MovementComponent>();
+            var movement = world.GetComponent<MovementComponent>(entityId);
             if (movement == null) return;
-
-            // On the client, we don't calculate movement. We interpolate to the state
-            // received from the server to ensure smooth visuals.
-            if (movement.SyncedPosition.HasValue)
-            {
-                // Use the dynamics to smoothly move towards the server-authoritative position.
-                // This prevents jitter and makes movement look natural despite network latency.
-                npc.Center = movement.Dynamics.Update((float)gameTime.ElapsedGameTime.TotalSeconds, movement.SyncedPosition.Value, movement.SyncedVelocity);
-            }
+            
+            // The logic from MovementComponent.Interpolate is now here.
+            movement.Npc.position = Vector2.Lerp(movement.Npc.position, movement.NetPosition, 0.2f);
         }
     }
 }

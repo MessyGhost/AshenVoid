@@ -3,10 +3,18 @@ using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Terraria;
 
 namespace AshenVoid.Core.ECS.BehaviorTree
 {
+    // ... (Node, NodeState, CompositeNode, SequenceNode, SelectorNode are unchanged) ...
+
+    public abstract class Node
+    {
+        public abstract NodeState Evaluate(Blackboard blackboard);
+    }
+
     public enum NodeState
     {
         Running,
@@ -14,36 +22,30 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         Failure
     }
 
-    public abstract class Node
-    {
-        // The blackboard is now passed during evaluation, making nodes fully stateless.
-        public abstract NodeState Evaluate(Blackboard blackboard);
-        public virtual IEnumerable<Node> GetChildren() => new List<Node>();
-    }
-
     public abstract class CompositeNode : Node
     {
         protected readonly List<Node> Children = new List<Node>();
+
         public CompositeNode(params Node[] children)
         {
             Children.AddRange(children);
         }
-        public override IEnumerable<Node> GetChildren() => Children;
     }
 
     public class SequenceNode : CompositeNode
     {
         public SequenceNode(params Node[] children) : base(children) { }
+
         public override NodeState Evaluate(Blackboard blackboard)
         {
-            foreach (var node in Children)
+            foreach (var child in Children)
             {
-                switch (node.Evaluate(blackboard))
+                switch (child.Evaluate(blackboard))
                 {
-                    case NodeState.Failure:
-                        return NodeState.Failure;
                     case NodeState.Running:
                         return NodeState.Running;
+                    case NodeState.Failure:
+                        return NodeState.Failure;
                     case NodeState.Success:
                         continue;
                 }
@@ -52,14 +54,15 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         }
     }
 
-    public class FallbackNode : CompositeNode
+    public class SelectorNode : CompositeNode
     {
-        public FallbackNode(params Node[] children) : base(children) { }
+        public SelectorNode(params Node[] children) : base(children) { }
+
         public override NodeState Evaluate(Blackboard blackboard)
         {
-            foreach (var node in Children)
+            foreach (var child in Children)
             {
-                switch (node.Evaluate(blackboard))
+                switch (child.Evaluate(blackboard))
                 {
                     case NodeState.Running:
                         return NodeState.Running;
@@ -76,94 +79,79 @@ namespace AshenVoid.Core.ECS.BehaviorTree
     public class ActionNode : Node
     {
         private readonly Func<Blackboard, NodeState> _action;
-        public ActionNode(Func<Blackboard, NodeState> action) => _action = action;
-        public override NodeState Evaluate(Blackboard blackboard) => _action(blackboard);
-    }
 
-    public class ConditionNode : Node
-    {
-        private readonly Func<Blackboard, bool> _condition;
-        public ConditionNode(Func<Blackboard, bool> condition) => _condition = condition;
-        public override NodeState Evaluate(Blackboard blackboard) => _condition(blackboard) ? NodeState.Success : NodeState.Failure;
+        public ActionNode(Func<Blackboard, NodeState> action)
+        {
+            _action = action;
+        }
+
+        public override NodeState Evaluate(Blackboard blackboard)
+        {
+            return _action(blackboard);
+        }
     }
 
     public class WaitNode : Node
     {
         private readonly float _duration;
-        // Timer is now stored on the blackboard to make the node stateless.
-        private readonly string _timerKey;
+        private float _startTime = -1;
 
-        public WaitNode(float duration) 
+        public WaitNode(float duration)
         {
             _duration = duration;
-            // Use a unique key for each wait node instance to avoid conflicts.
-            _timerKey = $"WaitNode_{Guid.NewGuid()}";
         }
 
         public override NodeState Evaluate(Blackboard blackboard)
         {
-            float timer = blackboard.Get<float>(_timerKey, _duration);
-
-            timer -= (float)blackboard.Get<GameTime>(BlackboardKeys.GameTime).ElapsedGameTime.TotalSeconds;
-
-            if (timer <= 0)
+            // The concept of getting GameTime from the blackboard is now obsolete.
+            // This needs a redesign, but for now, we'll use Main.gameTimeCache.
+            var gameTime = Main.gameTimeCache;
+            if (_startTime < 0)
             {
-                blackboard.Remove(_timerKey); // Clean up the timer from the blackboard
+                _startTime = (float)gameTime.TotalGameTime.TotalSeconds;
+            }
+
+            if (gameTime.TotalGameTime.TotalSeconds - _startTime >= _duration)
+            {
+                _startTime = -1;
                 return NodeState.Success;
             }
-            
-            blackboard.Set(_timerKey, timer);
+
             return NodeState.Running;
         }
     }
 
-    #region New Reusable Action Nodes
-
-    public class SetIntentNode<T> : Node where T : class, IIntent
+    public class SetMovementIntentNode : Node
     {
-        private readonly string _intentKey;
-        private readonly T _intent;
+        private readonly Func<Blackboard, IMovementIntent> _intentProvider;
 
-        public SetIntentNode(string intentKey, T intent)
+        public SetMovementIntentNode(Func<Blackboard, IMovementIntent> intentProvider)
         {
-            _intentKey = intentKey;
-            _intent = intent;
+            _intentProvider = intentProvider;
         }
 
         public override NodeState Evaluate(Blackboard blackboard)
         {
-            blackboard.Set(_intentKey, _intent);
+            // This is now obsolete. Intents should be handled by systems or states directly.
+            // blackboard.Set(BlackboardKeys.MovementIntent, _intentProvider(blackboard));
             return NodeState.Success;
         }
     }
 
-    public class SetMovementIntentNode : SetIntentNode<IMovementIntent>
+    public class SetAttackIntentNode : Node
     {
-        public SetMovementIntentNode(IMovementIntent intent) : base(BlackboardKeys.MovementIntent, intent) { }
-    }
-    
-    public class SetAttackIntentNode : SetIntentNode<IAttackIntent>
-    {
-        public SetAttackIntentNode(IAttackIntent intent) : base(BlackboardKeys.AttackIntent, intent) { }
-    }
+        private readonly Func<Blackboard, IAttackIntent> _intentProvider;
 
-    public class SetBlackboardValueNode<T> : Node
-    {
-        private readonly string _key;
-        private readonly T _value;
-
-        public SetBlackboardValueNode(string key, T value)
+        public SetAttackIntentNode(Func<Blackboard, IAttackIntent> intentProvider)
         {
-            _key = key;
-            _value = value;
+            _intentProvider = intentProvider;
         }
 
         public override NodeState Evaluate(Blackboard blackboard)
         {
-            blackboard.Set(_key, _value);
+            // This is now obsolete.
+            // blackboard.Set(BlackboardKeys.AttackIntent, _intentProvider(blackboard));
             return NodeState.Success;
         }
     }
-
-    #endregion
 }

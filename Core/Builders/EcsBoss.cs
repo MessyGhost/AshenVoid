@@ -1,103 +1,66 @@
 using AshenVoid.Core.ECS;
-using AshenVoid.Core.ECS.AI;
-using AshenVoid.Core.Events;
-using System.IO;
 using Terraria;
 using Terraria.DataStructures;
-using Terraria.ID;
 using Terraria.ModLoader;
 
 namespace AshenVoid.Core.Builders
 {
+    /// <summary>
+    /// Base class for a boss that is managed by the EcsSystem.
+    /// It acts as a bridge between a Terraria ModNPC and an ECS entity.
+    /// </summary>
     public abstract class EcsBoss : ModNPC
     {
-        public ComponentController Controller { get; private set; }
-        public ServiceLocator Services { get; private set; }
-        protected EventBus EventBus { get; private set; }
+        /// <summary>
+        /// The unique identifier for this NPC in the EcsWorld.
+        /// </summary>
+        public int EntityId { get; private set; } = -1;
 
-        // This method is where you define all the components and systems for this boss.
-        protected abstract ComponentController InitializeController(ServiceLocator services);
-
-        // This method is for registering all necessary services for the boss.
-        protected abstract void RegisterServices(ServiceLocator services);
+        /// <summary>
+        /// Defines the components and systems for this boss entity.
+        /// This is where you add components and systems to the EcsWorld.
+        /// </summary>
+        /// <param name="world">The ECS world.</param>
+        /// <param name="entityId">The entity ID for this boss.</param>
+        protected abstract void BuildEntity(EcsWorld world, int entityId);
 
         public sealed override void SetDefaults()
         {
-            EventBus = new EventBus();
-            Services = new ServiceLocator();
-
-            // Register common services first
-            Services.Register(EventBus);
-
-            // Register boss-specific services
-            RegisterServices(Services);
-
-            // Initialize the controller, passing in the services
-            Controller = InitializeController(Services);
-
-            // Set ModNPC specific defaults
+            // Set ModNPC specific defaults first.
             SetBossDefaults();
 
             NPC.aiStyle = -1;
             NPC.netAlways = true;
-
-            // The system cache should be built once all components and systems are registered.
-            Controller.BuildSystemCache();
-            
-            // Put the service locator in the blackboard for easy access from states/systems
-            var aiState = Controller.GetComponent<AIStateComponent>();
-            if (aiState != null)
-            {
-                aiState.Blackboard.Set(BlackboardKeys.ServiceLocator, Services);
-            }
         }
 
         public abstract void SetBossDefaults();
 
         public override void OnSpawn(IEntitySource source)
         {
-            // OnSpawn logic, if any, should be handled by a dedicated System.
+            // Do not create the entity on the client if it's a multiplayer game.
+            // The entity will be created and synced from the server.
+            if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient)
+                return;
+
+            // Create an entity in the global ECS world.
+            var world = EcsSystem.Instance.World;
+            EntityId = world.CreateEntity();
+
+            // Build the entity with its components and systems.
+            BuildEntity(world, EntityId);
+            
+            // TODO: Need a mechanism to sync the EntityId to clients.
+        }
+        
+        public override void OnKill()
+        {
+            // TODO: Need a way to destroy the entity in the EcsWorld.
         }
 
-        public override void AI()
-        {
-            Controller?.Update(Main.gameTimeCache, NPC, EventBus);
-        }
-
-        public override void SendExtraAI(BinaryWriter writer)
-        {
-            var networkedComponents = Controller?.GetNetworkedComponents();
-            if (networkedComponents != null)
-            {
-                foreach (var component in networkedComponents)
-                {
-                    component.SendData(NPC, writer);
-                }
-            }
-        }
-
-        public override void ReceiveExtraAI(BinaryReader reader)
-        {
-            var networkedComponents = Controller?.GetNetworkedComponents();
-            if (networkedComponents != null)
-            {
-                foreach (var component in networkedComponents)
-                {
-                    component.ReceiveData(NPC, reader);
-                }
-            }
-        }
-
-        public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
-        {
-            if (Main.netMode != NetmodeID.MultiplayerClient)
-                EventBus?.Publish(new NPCDamagedEvent(NPC, hit));
-        }
-
-        public override void OnHitByProjectile(Projectile projectile, NPC.HitInfo hit, int damageDone)
-        {
-            if (Main.netMode != NetmodeID.MultiplayerClient)
-                EventBus?.Publish(new NPCDamagedEvent(NPC, hit));
-        }
+        // The AI, SendExtraAI, and ReceiveExtraAI methods are now obsolete.
+        // All logic will be handled by Systems in the EcsSystem.
+        public sealed override void AI() { }
+        public sealed override void SendExtraAI(System.IO.BinaryWriter writer) { }
+        public sealed override void ReceiveExtraAI(System.IO.BinaryReader reader) { }
     }
 }

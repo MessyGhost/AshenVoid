@@ -2,23 +2,9 @@ namespace AshenVoid.Core.ECS.AI
 {
     public static class BlackboardKeys
     {
-        // Core
-        public const string NPC = "NPC";
+        // Most keys are now obsolete as dependencies are injected
+        // and data is passed directly or stored in components.
         public const string Target = "Target";
-        public const string GameTime = "GameTime";
-        public const string AIState = "AIState";
-        public const string ServiceLocator = "ServiceLocator";
-
-        // Factories & Services
-        public const string StateFactory = "StateFactory";
-        public const string AIBehaviorFactory = "AIBehaviorFactory";
-
-        // Intents
-        public const string MovementIntent = "MovementIntent";
-        public const string AttackIntent = "AttackIntent";
-
-        // Timers
-        public const string StateTimer = "StateTimer";
-        public const string AttackTimer = "AttackTimer";
+        public const string Owner = "Owner";
     }
 }

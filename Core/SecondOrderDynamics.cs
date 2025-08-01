@@ -7,23 +7,26 @@ namespace AshenVoid.Core
         // 状态变量
         private Vector2 _prevInput;
         private Vector2 _position;
-        private Vector2? _velocity;
+        private Vector2 _velocity;
 
         // 动力学参数
         private float _k1, _k2, _k3;
         private float _criticalStep;
 
-        public SecondOrderDynamics(float frequency = 2f, float dampingRatio = 1f, float responseScale = 0f)
+        public Vector2 Position => _position;
+
+        public SecondOrderDynamics(float frequency, float dampingRatio, float responseScale, Vector2 initialPosition)
         {
             SetConstants(frequency, dampingRatio, responseScale);
+            Init(initialPosition);
         }
 
         // 初始化状态
-        public void Init(Vector2 x0, Vector2? v0 = null)
+        public void Init(Vector2 x0)
         {
             _prevInput = x0;
             _position = x0;
-            _velocity ??= Vector2.Zero;
+            _velocity = Vector2.Zero;
         }
 
         public void SetConstants(float f, float z, float r)
@@ -49,7 +52,7 @@ namespace AshenVoid.Core
             for (int i = 0; i < iterations; i++)
             {
                 // 位置积分
-                _position += delta * _velocity.Value;
+                _position += delta * _velocity;
                 // 速度积分（基于加速度）
                 _velocity += delta * ((targetPosition + _k3 * xd - _position - _k1 * _velocity) / _k2);
             }

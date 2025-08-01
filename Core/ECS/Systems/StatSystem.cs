@@ -8,18 +8,13 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class StatSystem : IComponentSystem
     {
+        public IEnumerable<Type> RequiredComponents => new[] { typeof(StatSheetComponent) };
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
-        public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
+        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
-            typeof(StatSheetComponent)
-        };
-
-        public void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus)
-        {
-            var statSheet = controller.GetComponent<StatSheetComponent>();
-            // Logic for updating stats over time would go here.
-            // For example, applying buffs/debuffs that modify stats.
+            var stats = world.GetComponent<StatSheetComponent>(entityId);
+            // Stat update logic, if any
         }
     }
 }

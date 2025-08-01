@@ -1,43 +1,34 @@
-using AshenVoid.Core;
-using AshenVoid.Core.ECS.AI;
-using AshenVoid.Core.ECS.BehaviorTree;
+using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.FSM;
+using System;
 using Terraria;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class Phase2State : IState
     {
-        public void Enter(Blackboard blackboard)
+        private readonly NPC _npc;
+
+        public Phase2State(NPC npc)
         {
-            // Logic for entering Phase 2
+            _npc = npc;
         }
 
-        public void Exit(Blackboard blackboard)
+        public void Enter(int entityId, EcsWorld world) { }
+
+        public void Exit(int entityId, EcsWorld world) { }
+
+        public void Update(int entityId, EcsWorld world)
         {
-            // Logic for exiting Phase 2
+            // TODO: Implement Phase 2 logic
         }
 
-        public Node BuildBehaviorTree(Blackboard blackboard)
+        public Type CheckTransitions(int entityId, EcsWorld world)
         {
-            return new SequenceNode(
-                new ActionNode(bb => {
-                    // TODO: Implement Phase 2 logic
-                    return NodeState.Running;
-                })
-            );
-        }
-
-        public IState CheckTransitions(Blackboard blackboard)
-        {
-            var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
-
-            if (npc.life <= 1)
+            if (_npc.life <= 1)
             {
-                var stateFactory = blackboard.Get<ServiceLocator>(BlackboardKeys.ServiceLocator).Get<StateFactory>();
-                return stateFactory.GetState<DeathState>();
+                return typeof(DeathState);
             }
-
             return null;
         }
     }

@@ -6,33 +6,24 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
     public class AnimationSystem : IComponentSystem
     {
-        private const int FrameDelay = 5; // Ticks between frame changes.
+        public IEnumerable<Type> RequiredComponents => new[] { typeof(AnimationComponent) };
+        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;
 
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Both;
-
-        public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
+        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
-            typeof(AnimationComponent)
-        };
+            var animation = world.GetComponent<AnimationComponent>(entityId);
+            if (animation == null) return;
 
-        public void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus)
-        {
-            var animationComponent = controller.GetComponent<AnimationComponent>();
-
-            animationComponent.FrameCounter++;
-            if (animationComponent.FrameCounter >= FrameDelay)
+            // The logic from AnimationComponent.Update is now here.
+            animation.FrameCounter++;
+            if (animation.FrameCounter >= animation.FrameDelay)
             {
-                animationComponent.FrameCounter = 0;
-                animationComponent.CurrentFrame++;
-                if (animationComponent.CurrentFrame >= Main.npcFrameCount[npc.type])
-                {
-                    animationComponent.CurrentFrame = 0;
-                }
+                animation.FrameCounter = 0;
+                animation.CurrentFrame = (animation.CurrentFrame + 1) % Main.npcFrameCount[animation.Npc.type];
             }
-            npc.frame.Y = animationComponent.CurrentFrame * npc.height;
+            animation.Npc.frame.Y = animation.CurrentFrame * animation.Npc.height;
         }
     }
 }

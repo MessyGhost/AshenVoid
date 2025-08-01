@@ -7,6 +7,7 @@ namespace AshenVoid.Core.Events
     public class EventBus
     {
         private readonly Dictionary<Type, List<WeakReference<Delegate>>> _subscribers = new();
+        private readonly Dictionary<Type, object> _liveHandlerPool = new();
         private readonly object _lock = new();
 
         public void Subscribe<T>(Action<T> handler) where T : IEvent
@@ -31,10 +32,8 @@ namespace AshenVoid.Core.Events
             {
                 if (_subscribers.TryGetValue(eventType, out var subscribers))
                 {
-                    var weakRefToRemove = subscribers.FirstOrDefault(wr =>
-                    {
-                        return wr.TryGetTarget(out var existingHandler) && existingHandler.Equals(handler);
-                    });
+                    var weakRefToRemove = subscribers.FirstOrDefault(wr => 
+                        wr.TryGetTarget(out var existingHandler) && existingHandler.Equals(handler));
 
                     if (weakRefToRemove != null)
                     {
@@ -47,16 +46,25 @@ namespace AshenVoid.Core.Events
         public void Publish<T>(T e) where T : IEvent
         {
             var eventType = typeof(T);
-            var liveHandlers = new List<Action<T>>();
-            var deadHandlers = new List<WeakReference<Delegate>>();
+            List<Action<T>> liveHandlers;
 
             lock (_lock)
             {
                 if (!_subscribers.TryGetValue(eventType, out var subscribers))
                     return;
 
-                foreach (var weakHandler in subscribers)
+                if (!_liveHandlerPool.TryGetValue(eventType, out var pool))
                 {
+                    pool = new List<Action<T>>();
+                    _liveHandlerPool[eventType] = pool;
+                }
+                liveHandlers = (List<Action<T>>)pool;
+                liveHandlers.Clear();
+
+                // Using a reverse loop is safer for removal
+                for (int i = subscribers.Count - 1; i >= 0; i--)
+                {
+                    var weakHandler = subscribers[i];
                     if (weakHandler.TryGetTarget(out var handlerDelegate))
                     {
                         if (handlerDelegate is Action<T> handler)
@@ -66,19 +74,13 @@ namespace AshenVoid.Core.Events
                     }
                     else
                     {
-                        deadHandlers.Add(weakHandler);
-                    }
-                }
-
-                if (deadHandlers.Any())
-                {
-                    foreach (var dead in deadHandlers)
-                    {
-                        subscribers.Remove(dead);
+                        // Remove dead reference
+                        subscribers.RemoveAt(i);
                     }
                 }
             }
 
+            // Execute handlers outside the lock to prevent deadlocks
             foreach (var handler in liveHandlers)
             {
                 handler(e);

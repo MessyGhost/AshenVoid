@@ -1,14 +1,9 @@
 using AshenVoid.Content.Items.Drops;
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Content.NPCs.NightmareCorruption.States;
-using AshenVoid.Core;
 using AshenVoid.Core.Builders;
 using AshenVoid.Core.Configuration;
 using AshenVoid.Core.ECS;
-using AshenVoid.Core.ECS.BehaviorTree;
-using AshenVoid.Core.ECS.FSM;
-using AshenVoid.Core.ECS.Systems;
-using AshenVoid.Core.Events;
 using Terraria;
 using Terraria.Audio;
 using Terraria.ID;
@@ -24,25 +19,17 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Main.npcFrameCount[Type] = 4;
         }
 
-        protected override void RegisterServices(ServiceLocator services)
+        public override void SetBossDefaults()
         {
             var configLoader = new ConfigLoader();
             string configPath = $"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson";
             var bossConfig = configLoader.Load<BossConfig>(configPath);
-            services.Register(bossConfig);
 
-            services.Register(new StateFactory(services));
-            services.Register(new AIBehaviorFactory(services));
-        }
-
-        public override void SetBossDefaults()
-        {
-            var config = Services.Get<BossConfig>();
             NPC.width = 242;
             NPC.height = 192;
-            NPC.lifeMax = config?.LifeMax ?? 13100;
-            NPC.damage = config?.Damage ?? 50;
-            NPC.defense = config?.Defense ?? 20;
+            NPC.lifeMax = bossConfig?.LifeMax ?? 13100;
+            NPC.damage = bossConfig?.Damage ?? 50;
+            NPC.defense = bossConfig?.Defense ?? 20;
             NPC.knockBackResist = 0f;
             NPC.value = Item.buyPrice(0, 3, 0, 0);
             NPC.boss = true;
@@ -55,36 +42,26 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Music = MusicLoader.GetMusicSlot(Mod, "Assets/Music/FoulAbyssEcho");
         }
 
-        protected override ComponentController InitializeController(ServiceLocator services)
+        protected override void BuildEntity(EcsWorld world, int entityId)
         {
-            var controller = new ComponentController();
-            var config = services.Get<BossConfig>();
+            var configLoader = new ConfigLoader();
+            string configPath = $"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson";
+            var bossConfig = configLoader.Load<BossConfig>(configPath);
 
             var aiStateComponent = new AIStateComponent(NPC);
-            aiStateComponent.RegisterState<SpawnState>();
-            aiStateComponent.RegisterState<Phase1State>();
-            aiStateComponent.RegisterState<Phase2State>();
-            aiStateComponent.RegisterState<DeathState>();
+            aiStateComponent.RegisterState(new SpawnState(NPC, bossConfig));
+            aiStateComponent.RegisterState(new Phase1State(NPC, bossConfig));
+            aiStateComponent.RegisterState(new Phase2State(NPC));
+            aiStateComponent.RegisterState(new DeathState(NPC));
             aiStateComponent.SetInitialState(typeof(SpawnState));
 
-            controller.AddComponent(new MovementComponent(NPC, config.Phase1.Movement));
-            controller.AddComponent(new AttackComponent());
-            controller.AddComponent(new AnimationComponent(NPC));
-            controller.AddComponent(new VFXComponent());
-            controller.AddComponent(new StatSheetComponent(NPC, config));
-            controller.AddComponent(aiStateComponent);
-            controller.AddComponent(new HealthComponent(NPC.lifeMax));
-
-            controller.AddSystem(new MovementSystem());
-            controller.AddSystem(new AttackSystem());
-            controller.AddSystem(new AIStateSystem());
-            controller.AddSystem(new StatSystem());
-            controller.AddSystem(new HealthSystem());
-            controller.AddSystem(new ClientInterpolationSystem());
-            controller.AddSystem(new AnimationSystem());
-            controller.AddSystem(new NetworkEventSystem(EventBus)); // Add the new system
-
-            return controller;
+            world.AddComponent(entityId, new MovementComponent(NPC, bossConfig.Phase1.Movement));
+            world.AddComponent(entityId, new AttackComponent());
+            world.AddComponent(entityId, new AnimationComponent(NPC));
+            world.AddComponent(entityId, new VFXComponent());
+            world.AddComponent(entityId, new StatSheetComponent(NPC, bossConfig));
+            world.AddComponent(entityId, aiStateComponent);
+            world.AddComponent(entityId, new HealthComponent(NPC.lifeMax));
         }
 
         public override void OnKill()

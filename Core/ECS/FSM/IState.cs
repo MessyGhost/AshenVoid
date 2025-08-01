@@ -1,38 +1,32 @@
 using AshenVoid.Core.ECS.AI;
-using AshenVoid.Core.ECS.BehaviorTree;
 
 namespace AshenVoid.Core.ECS.FSM
 {
     /// <summary>
-    /// Defines a state within the FSM. Each state is now responsible for providing a behavior tree
-    /// that dictates the AI's actions, and for checking conditions that trigger a transition to another state.
+    /// Defines a state within the FSM. A state is now a simple object
+    /// that primarily contains Enter and Exit logic.
     /// </summary>
     public interface IState
     {
         /// <summary>
         /// Called once when the state machine enters this state.
-        /// Use this to set up initial conditions or one-time actions for the state.
         /// </summary>
-        void Enter(Blackboard blackboard);
+        void Enter(int entityId, EcsWorld world);
 
         /// <summary>
         /// Called once when the state machine leaves this state.
-        /// Use this to clean up any data or reset conditions.
         /// </summary>
-        void Exit(Blackboard blackboard);
+        void Exit(int entityId, EcsWorld world);
+        
+        /// <summary>
+        /// Called every frame to update the state's logic.
+        /// </summary>
+        void Update(int entityId, EcsWorld world);
 
         /// <summary>
-        /// Constructs and returns the behavior tree that governs the AI's logic within this state.
-        /// This method is called when the state is entered.
+        /// Called every frame to check for transitions to other states.
         /// </summary>
-        /// <returns>The root node of the behavior tree.</returns>
-        Node BuildBehaviorTree(Blackboard blackboard);
-
-        /// <summary>
-        /// Called every frame to check if a transition to a different state should occur.
-        /// </summary>
-        /// <param name="blackboard">The shared data context.</param>
-        /// <returns>The next state to transition to, or null to remain in the current state.</returns>
-        IState CheckTransitions(Blackboard blackboard);
+        /// <returns>The type of the next state, or null to remain.</returns>
+        System.Type CheckTransitions(int entityId, EcsWorld world);
     }
 }
