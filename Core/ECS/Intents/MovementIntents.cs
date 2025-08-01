@@ -6,7 +6,7 @@ namespace AshenVoid.Core.ECS.Intents
     /// Represents the AI's desire for movement.
     /// This is a data container, holding no logic itself. The MovementComponent will interpret this intent.
     /// </summary>
-    public interface IMovementIntent { }
+    public interface IMovementIntent : IIntent { }
 
     /// <summary>
     /// Intent to move towards a specific position.

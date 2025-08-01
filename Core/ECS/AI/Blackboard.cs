@@ -32,6 +32,14 @@ namespace AshenVoid.Core.ECS.AI
         }
 
         /// <summary>
+        /// Checks if a key exists in the blackboard.
+        /// </summary>
+        public bool Has(string key)
+        {
+            return _data.ContainsKey(key);
+        }
+
+        /// <summary>
         /// Tries to retrieve a value from the blackboard.
         /// </summary>
         /// <returns>True if the key was found and the value is of the correct type, otherwise false.</returns>

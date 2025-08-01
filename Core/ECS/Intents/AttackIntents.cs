@@ -7,7 +7,7 @@ namespace AshenVoid.Core.ECS.Intents
     /// Represents the AI's desire to perform an attack.
     /// This is a data container, holding no logic itself.
     /// </summary>
-    public interface IAttackIntent { }
+    public interface IAttackIntent : IIntent { }
 
     /// <summary>
     /// An intent to shoot a projectile. It carries all necessary data.
