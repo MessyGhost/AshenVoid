@@ -6,22 +6,21 @@ namespace AshenVoid.Core.Events
 {
     public class EventBus
     {
-        private readonly Dictionary<Type, List<WeakReference<Delegate>>> _subscribers = new();
-        private readonly Dictionary<Type, object> _liveHandlerPool = new();
+        // 使用强引用委托列表，而不是WeakReference，以确保订阅的稳定性和可靠性。
+        // 在tModLoader环境中，系统和NPC的生命周期是可控的，不需要担心EventBus导致的内存泄漏。
+        private readonly Dictionary<Type, List<Delegate>> _subscribers = new();
         private readonly object _lock = new();
 
         public void Subscribe<T>(Action<T> handler) where T : IEvent
         {
             var eventType = typeof(T);
-            var weakHandler = new WeakReference<Delegate>(handler);
-
             lock (_lock)
             {
                 if (!_subscribers.ContainsKey(eventType))
                 {
-                    _subscribers[eventType] = new List<WeakReference<Delegate>>();
+                    _subscribers[eventType] = new List<Delegate>();
                 }
-                _subscribers[eventType].Add(weakHandler);
+                _subscribers[eventType].Add(handler);
             }
         }
 
@@ -30,60 +29,43 @@ namespace AshenVoid.Core.Events
             var eventType = typeof(T);
             lock (_lock)
             {
-                if (_subscribers.TryGetValue(eventType, out var subscribers))
+                if (_subscribers.TryGetValue(eventType, out var handlers))
                 {
-                    var weakRefToRemove = subscribers.FirstOrDefault(wr => 
-                        wr.TryGetTarget(out var existingHandler) && existingHandler.Equals(handler));
-
-                    if (weakRefToRemove != null)
-                    {
-                        subscribers.Remove(weakRefToRemove);
-                    }
+                    handlers.Remove(handler);
                 }
             }
         }
 
         public void Publish<T>(T e) where T : IEvent
         {
-            var eventType = typeof(T);
-            List<Action<T>> liveHandlers;
+            var eventType = e.GetType(); // 使用 e.GetType() 而不是 typeof(T) 来支持发布派生类事件
+            List<Delegate> handlersSnapshot;
 
             lock (_lock)
             {
-                if (!_subscribers.TryGetValue(eventType, out var subscribers))
+                if (!_subscribers.TryGetValue(eventType, out var handlers))
                     return;
 
-                if (!_liveHandlerPool.TryGetValue(eventType, out var pool))
-                {
-                    pool = new List<Action<T>>();
-                    _liveHandlerPool[eventType] = pool;
-                }
-                liveHandlers = (List<Action<T>>)pool;
-                liveHandlers.Clear();
-
-                // Using a reverse loop is safer for removal
-                for (int i = subscribers.Count - 1; i >= 0; i--)
-                {
-                    var weakHandler = subscribers[i];
-                    if (weakHandler.TryGetTarget(out var handlerDelegate))
-                    {
-                        if (handlerDelegate is Action<T> handler)
-                        {
-                            liveHandlers.Add(handler);
-                        }
-                    }
-                    else
-                    {
-                        // Remove dead reference
-                        subscribers.RemoveAt(i);
-                    }
-                }
+                // 创建一个快照以在锁外执行，防止死锁
+                handlersSnapshot = new List<Delegate>(handlers);
             }
 
-            // Execute handlers outside the lock to prevent deadlocks
-            foreach (var handler in liveHandlers)
+            // 在锁外执行委托，避免长时间持有锁
+            foreach (var handler in handlersSnapshot)
             {
-                handler(e);
+                // 检查委托是否仍然有效且类型匹配
+                if (handler is Action<T> typedHandler)
+                {
+                    try
+                    {
+                        typedHandler(e);
+                    }
+                    catch (Exception ex)
+                    {
+                        // 记录异常，而不是让一个订阅者的错误中断整个事件分发
+                        Terraria.ModLoader.ModContent.GetInstance<AshenVoid>().Logger.Error($"Error executing event handler for {eventType.Name}", ex);
+                    }
+                }
             }
         }
     }

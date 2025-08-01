@@ -1,5 +1,6 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using System;
 using Terraria;
@@ -11,10 +12,15 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
         private readonly NPC _npc;
         private readonly BossConfig _config;
 
+        public Node BehaviorTree { get; private set; }
+
         public Phase1State(NPC npc, BossConfig config)
         {
             _npc = npc;
             _config = config;
+
+            var factory = new AIBehaviorFactory(config);
+            BehaviorTree = factory.CreateBehaviorTree("NightmareCorruption_Phase1");
         }
 
         public void Enter(int entityId, EcsWorld world) { }
@@ -23,8 +29,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public void Update(int entityId, EcsWorld world)
         {
-            // Behavior tree logic would be executed by a dedicated system.
-            // For now, we leave this empty.
+            // Logic is now handled by the BehaviorTreeSystem
         }
 
         public Type CheckTransitions(int entityId, EcsWorld world)

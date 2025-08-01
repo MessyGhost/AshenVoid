@@ -19,6 +19,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             _npc = npc;
             _config = config;
         }
+        public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
 
         public void Enter(int entityId, EcsWorld world)
         {
@@ -30,7 +31,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
                     _npc.Center = target.Center - new Vector2(0, 300);
                 }
             }
-            
+
             _npc.alpha = 255;
             _timer = 0f;
         }

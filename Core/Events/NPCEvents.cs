@@ -1,3 +1,4 @@
+using System.IO;
 using Terraria;
 
 namespace AshenVoid.Core.Events
@@ -33,6 +34,77 @@ namespace AshenVoid.Core.Events
             NPC = npc;
             HealthPercentage = healthPercentage;
             PreviousHealthPercentage = previousHealthPercentage;
+        }
+    }
+
+    /// <summary>
+    /// Network event to synchronize an ECS entity's ID with a Terraria NPC's ID.
+    /// Sent from the server to all clients when an EcsBoss is spawned.
+    /// </summary>
+    public struct EntityIdSyncEvent : INetworkEvent
+    {
+        public int NpcWhoAmI;
+        public int EntityId;
+
+        public EntityIdSyncEvent(int npcWhoAmI, int entityId)
+        {
+            NpcWhoAmI = npcWhoAmI;
+            EntityId = entityId;
+        }
+
+        public void Write(BinaryWriter writer)
+        {
+            writer.Write((byte)NpcWhoAmI);
+            writer.Write(EntityId);
+        }
+
+        public void Read(BinaryReader reader)
+        {
+            NpcWhoAmI = reader.ReadByte();
+            EntityId = reader.ReadInt32();
+        }
+    }
+
+    /// <summary>
+    /// Network event to inform clients that an entity's AI state has changed.
+    /// </summary>
+    public struct StateChangedNetworkEvent : INetworkEvent
+    {
+        public int EntityId;
+        public string StateTypeName;
+
+        public void Write(BinaryWriter writer)
+        {
+            writer.Write(EntityId);
+            writer.Write(StateTypeName);
+        }
+
+        public void Read(BinaryReader reader)
+        {
+            EntityId = reader.ReadInt32();
+            StateTypeName = reader.ReadString();
+        }
+    }
+
+    /// <summary>
+    /// Network event to inform clients that an entity has performed an attack.
+    /// This can be used to trigger VFX and SFX on the client.
+    /// </summary>
+    public struct AttackPerformedNetworkEvent : INetworkEvent
+    {
+        public int EntityId;
+        public int AttackId; // An identifier for the type of attack
+
+        public void Write(BinaryWriter writer)
+        {
+            writer.Write(EntityId);
+            writer.Write((byte)AttackId);
+        }
+
+        public void Read(BinaryReader reader)
+        {
+            EntityId = reader.ReadInt32();
+            AttackId = reader.ReadByte();
         }
     }
 }

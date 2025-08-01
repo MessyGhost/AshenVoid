@@ -4,6 +4,7 @@ using AshenVoid.Content.NPCs.NightmareCorruption.States;
 using AshenVoid.Core.Builders;
 using AshenVoid.Core.Configuration;
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.AI;
 using Terraria;
 using Terraria.Audio;
 using Terraria.ID;
@@ -21,9 +22,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         public override void SetBossDefaults()
         {
-            var configLoader = new ConfigLoader();
-            string configPath = $"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson";
-            var bossConfig = configLoader.Load<BossConfig>(configPath);
+            var bossConfig = ConfigLoader.Instance.Load<BossConfig>($"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson");
 
             NPC.width = 242;
             NPC.height = 192;
@@ -44,9 +43,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         protected override void BuildEntity(EcsWorld world, int entityId)
         {
-            var configLoader = new ConfigLoader();
-            string configPath = $"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson";
-            var bossConfig = configLoader.Load<BossConfig>(configPath);
+            var bossConfig = ConfigLoader.Instance.Load<BossConfig>($"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson");
 
             var aiStateComponent = new AIStateComponent(NPC);
             aiStateComponent.RegisterState(new SpawnState(NPC, bossConfig));
@@ -62,10 +59,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             world.AddComponent(entityId, new StatSheetComponent(NPC, bossConfig));
             world.AddComponent(entityId, aiStateComponent);
             world.AddComponent(entityId, new HealthComponent(NPC.lifeMax));
+            world.AddComponent(entityId, new AIBlackboardComponent());
         }
 
         public override void OnKill()
         {
+            base.OnKill(); // Call the base method to destroy the entity
             if (Main.netMode != NetmodeID.MultiplayerClient)
             {
                 Item.NewItem(NPC.GetSource_Loot(), NPC.getRect(), ModContent.ItemType<NightmareEssence>(), 10);

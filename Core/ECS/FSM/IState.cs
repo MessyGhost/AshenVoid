@@ -8,6 +8,10 @@ namespace AshenVoid.Core.ECS.FSM
     /// </summary>
     public interface IState
     {
+        /// &lt;summary&gt;
+        /// The behavior tree that governs this state's logic.
+        /// &lt;/summary&gt;
+        BehaviorTree.Node BehaviorTree { get; }
         /// <summary>
         /// Called once when the state machine enters this state.
         /// </summary>
@@ -17,7 +21,7 @@ namespace AshenVoid.Core.ECS.FSM
         /// Called once when the state machine leaves this state.
         /// </summary>
         void Exit(int entityId, EcsWorld world);
-        
+
         /// <summary>
         /// Called every frame to update the state's logic.
         /// </summary>

@@ -17,6 +17,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
         {
             _npc = npc;
         }
+        public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
 
         public void Enter(int entityId, EcsWorld world)
         {
@@ -30,7 +31,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
         public void Update(int entityId, EcsWorld world)
         {
             _timer += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
-            
+
             _npc.alpha = (int)MathHelper.Lerp(0, 255, _timer / DeathDuration);
             _npc.scale = MathHelper.Lerp(1f, 0f, _timer / DeathDuration);
             _npc.rotation += 0.1f;

@@ -31,6 +31,17 @@ namespace AshenVoid.Core.ECS
             return entityId;
         }
 
+        public void DestroyEntity(int entityId)
+        {
+            if (_entityComponents.ContainsKey(entityId))
+            {
+                var archetype = _entityArchetypes.GetValueOrDefault(entityId);
+                archetype?.Entities.Remove(entityId);
+
+                _entityComponents.Remove(entityId);
+                _entityArchetypes.Remove(entityId);
+            }
+        }
         public void AddComponent(int entityId, IComponent component)
         {
             if (_entityComponents.ContainsKey(entityId))

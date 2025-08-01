@@ -37,14 +37,16 @@ namespace AshenVoid.Core.ECS
             SystemManager.RegisterSystem(new HealthSystem());
             SystemManager.RegisterSystem(new ClientInterpolationSystem());
             SystemManager.RegisterSystem(new AnimationSystem());
+            SystemManager.RegisterSystem(new BehaviorTreeSystem());
         }
 
         private void RegisterNetworkEvents()
         {
             // Register all network-synchronized events here.
             // This ensures a consistent ID between server and client.
-            // Example:
-            // NetworkManager.RegisterEventType<MyNetworkEvent>(0);
+            NetworkManager.RegisterEventType<EntityIdSyncEvent>();
+            NetworkManager.RegisterEventType<StateChangedNetworkEvent>();
+            NetworkManager.RegisterEventType<AttackPerformedNetworkEvent>();
         }
 
         public override void Unload()

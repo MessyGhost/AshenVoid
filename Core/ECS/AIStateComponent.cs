@@ -11,7 +11,7 @@ namespace AshenVoid.Core.ECS
     {
         private readonly NPC _npc;
         private readonly Dictionary<Type, IState> _states = new();
-        private IState _currentState;
+        public IState CurrentState { get; private set; }
 
         public AIStateComponent(NPC npc)
         {
@@ -27,22 +27,22 @@ namespace AshenVoid.Core.ECS
         {
             if (_states.ContainsKey(stateType))
             {
-                _currentState = _states[stateType];
+                CurrentState = _states[stateType];
             }
         }
 
         public void Update(GameTime gameTime, EcsWorld world, int entityId, EventBus eventBus)
         {
-            _currentState?.Update(entityId, world);
+            CurrentState?.Update(entityId, world);
 
-            var nextStateType = _currentState?.CheckTransitions(entityId, world);
+            var nextStateType = CurrentState?.CheckTransitions(entityId, world);
             if (nextStateType != null && _states.TryGetValue(nextStateType, out var nextState))
             {
-                if (nextState != _currentState)
+                if (nextState != CurrentState)
                 {
-                    _currentState?.Exit(entityId, world);
-                    _currentState = nextState;
-                    _currentState.Enter(entityId, world);
+                    CurrentState?.Exit(entityId, world);
+                    CurrentState = nextState;
+                    CurrentState.Enter(entityId, world);
                 }
             }
         }

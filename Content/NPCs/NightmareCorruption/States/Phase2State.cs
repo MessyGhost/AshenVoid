@@ -13,6 +13,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
         {
             _npc = npc;
         }
+        public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
 
         public void Enter(int entityId, EcsWorld world) { }
 
@@ -20,7 +21,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public void Update(int entityId, EcsWorld world)
         {
-            // TODO: Implement Phase 2 logic
+            // Phase 2 logic will be implemented in the behavior tree.
         }
 
         public Type CheckTransitions(int entityId, EcsWorld world)

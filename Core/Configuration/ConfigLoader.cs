@@ -8,13 +8,28 @@ namespace AshenVoid.Core.Configuration
 {
     public class ConfigLoader : IConfigLoader
     {
+        // Singleton instance
+        public static ConfigLoader Instance { get; private set; }
+
         private readonly Dictionary<string, object> _configCache = new();
         private readonly Mod _modInstance;
 
-        public ConfigLoader()
+        // Private constructor for singleton pattern
+        private ConfigLoader()
         {
-            // Store the Mod instance to access its file loading capabilities
             _modInstance = ModContent.GetInstance<AshenVoid>();
+        }
+
+        // Called by the mod to initialize the singleton
+        public static void Load()
+        {
+            Instance = new ConfigLoader();
+        }
+
+        // Called by the mod to unload the singleton
+        public static void Unload()
+        {
+            Instance = null;
         }
 
         /// <inheritdoc/>
@@ -33,7 +48,6 @@ namespace AshenVoid.Core.Configuration
 
             try
             {
-                // Use Mod.GetFileBytes to read the file safely in both dev and published environments
                 var fileBytes = _modInstance.GetFileBytes(assetPath);
                 var hjsonText = System.Text.Encoding.UTF8.GetString(fileBytes);
 

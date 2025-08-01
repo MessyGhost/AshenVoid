@@ -5,6 +5,15 @@ namespace AshenVoid
 {
 	public class AshenVoid : Mod
 	{
+		public override void Load()
+		{
+			Core.Configuration.ConfigLoader.Load();
+		}
+
+		public override void Unload()
+		{
+			Core.Configuration.ConfigLoader.Unload();
+		}
 		// The old MessageType enum is no longer needed here, 
 		// as the new NetworkManager handles message types internally.
 

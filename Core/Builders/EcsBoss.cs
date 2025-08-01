@@ -1,4 +1,5 @@
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.Events;
 using Terraria;
 using Terraria.DataStructures;
 using Terraria.ModLoader;
@@ -13,6 +14,7 @@ namespace AshenVoid.Core.Builders
     {
         /// <summary>
         /// The unique identifier for this NPC in the EcsWorld.
+        /// It is -1 until synchronized from the server.
         /// </summary>
         public int EntityId { get; private set; } = -1;
 
@@ -26,9 +28,7 @@ namespace AshenVoid.Core.Builders
 
         public sealed override void SetDefaults()
         {
-            // Set ModNPC specific defaults first.
             SetBossDefaults();
-
             NPC.aiStyle = -1;
             NPC.netAlways = true;
         }
@@ -37,24 +37,45 @@ namespace AshenVoid.Core.Builders
 
         public override void OnSpawn(IEntitySource source)
         {
-            // Do not create the entity on the client if it's a multiplayer game.
-            // The entity will be created and synced from the server.
             if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient)
                 return;
 
-            // Create an entity in the global ECS world.
             var world = EcsSystem.Instance.World;
             EntityId = world.CreateEntity();
 
-            // Build the entity with its components and systems.
             BuildEntity(world, EntityId);
-            
-            // TODO: Need a mechanism to sync the EntityId to clients.
+
+            // Publish the sync event to all clients
+            var syncEvent = new EntityIdSyncEvent(NPC.whoAmI, EntityId);
+            EcsSystem.Instance.EventBus.Publish(syncEvent);
         }
-        
+
         public override void OnKill()
         {
-            // TODO: Need a way to destroy the entity in the EcsWorld.
+            if (EntityId != -1)
+            {
+                EcsSystem.Instance.World.DestroyEntity(EntityId);
+                EntityId = -1;
+            }
+        }
+
+        public override void Load()
+        {
+            EcsSystem.Instance.EventBus.Subscribe<EntityIdSyncEvent>(HandleEntityIdSync);
+        }
+
+        public override void Unload()
+        {
+            EcsSystem.Instance.EventBus.Unsubscribe<EntityIdSyncEvent>(HandleEntityIdSync);
+        }
+
+        private void HandleEntityIdSync(EntityIdSyncEvent e)
+        {
+            // On clients, if the NPC ID matches, set the EntityId
+            if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient && e.NpcWhoAmI == NPC.whoAmI)
+            {
+                EntityId = e.EntityId;
+            }
         }
 
         // The AI, SendExtraAI, and ReceiveExtraAI methods are now obsolete.
