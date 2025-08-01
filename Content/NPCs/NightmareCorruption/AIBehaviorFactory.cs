@@ -1,12 +1,15 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
+using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.AI;
+using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
 using Terraria;
+using Terraria.ModLoader;
 
-namespace AshenVoid.Core.ECS.BehaviorTree
+namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
     public class AIBehaviorFactory
     {
@@ -84,8 +87,8 @@ namespace AshenVoid.Core.ECS.BehaviorTree
             var blackboard = world.GetComponent<AIBlackboardComponent>(entityId);
             if (blackboard == null)
             {
-                blackboard = new AIBlackboardComponent();
-                world.AddComponent(entityId, blackboard);
+                ModContent.GetInstance<AshenVoid>().Logger.Warn($"Entity {entityId} is missing AIBlackboardComponent. Entity was not built correctly.");
+                return NodeStatus.Failure;
             }
 
             Player target = null;
@@ -135,11 +138,12 @@ namespace AshenVoid.Core.ECS.BehaviorTree
 
         private NodeStatus TryBasicAttack(int entityId, EcsWorld world)
         {
+            const string attackName = "BasicShot";
             var attack = world.GetComponent<AttackComponent>(entityId);
-            if (attack == null || !attack.CanAttack(0)) return NodeStatus.Failure;
+            if (attack == null || !attack.CanAttack(attackName)) return NodeStatus.Failure;
 
-            attack.UseAttack(0, _bossConfig.Phase1.Attacks.BasicShot.Cooldown);
-            EcsSystem.Instance.EventBus.Publish(new AttackPerformedNetworkEvent { EntityId = entityId, AttackId = 0 });
+            attack.UseAttack(attackName, _bossConfig.Phase1.Attacks.BasicShot.Cooldown);
+            EcsSystem.Instance.EventBus.Publish(new AttackPerformedNetworkEvent { EntityId = entityId, AttackName = attackName });
             return NodeStatus.Success;
         }
     }

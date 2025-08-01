@@ -11,26 +11,20 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class AttackSystem : IComponentSystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(AttackComponent), typeof(StatSheetComponent) };
+        public IEnumerable<Type> RequiredComponents => new[] { typeof(AttackComponent) };
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
         public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var attack = world.GetComponent<AttackComponent>(entityId);
-            if (attack == null) return;
-
-            var deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-            for (int i = 0; i < attack._attackCooldowns.Length; i++)
-            {
-                if (attack._attackCooldowns[i] > 0)
-                {
-                    attack._attackCooldowns[i] -= deltaTime;
-                }
-            }
+            attack?.UpdateCooldowns((float)gameTime.ElapsedGameTime.TotalSeconds);
         }
 
         public AttackSystem()
         {
+            // This subscription should ideally be in Load() or a similar setup method,
+            // but for now, we'll keep it here.
+            // A better approach would be to have the EcsSystem manage subscriptions.
             EcsSystem.Instance.EventBus.Subscribe<AttackPerformedNetworkEvent>(HandleAttack);
         }
 
@@ -50,7 +44,7 @@ namespace AshenVoid.Core.ECS.Systems
             var target = blackboard.Get<Player>(BlackboardKeys.Target);
             if (target == null) return;
 
-            if (e.AttackId == 0) // Basic Shot
+            if (e.AttackName == "BasicShot")
             {
                 var attackConfig = statSheet.Config.Phase1.Attacks.BasicShot;
                 Vector2 direction = Vector2.Normalize(target.Center - movement.Npc.Center);

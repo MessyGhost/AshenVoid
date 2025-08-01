@@ -40,7 +40,7 @@ namespace AshenVoid.Core.ECS.Systems
             var animation = world.GetComponent<AnimationComponent>(e.EntityId);
 
             // Example: Play a specific animation for the basic attack
-            if (e.AttackId == 0)
+            if (e.AttackName == "BasicShot")
             {
                 // This is a placeholder. You would typically have a more robust
                 // animation controller within the AnimationComponent.

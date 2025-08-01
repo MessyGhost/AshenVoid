@@ -14,6 +14,7 @@ namespace AshenVoid.Core.Utility
         private float _criticalStep;
 
         public Vector2 Position => _position;
+        public Vector2 Velocity => _velocity; // 暴露速度
 
         public SecondOrderDynamics(float frequency, float dampingRatio, float responseScale, Vector2 initialPosition)
         {

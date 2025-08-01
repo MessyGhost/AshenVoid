@@ -30,9 +30,17 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPCID.Sets.SpecificDebuffImmunity[Type][BuffID.Confused] = true;
         }
 
+        public override void RegisterStates(StateFactory factory)
+        {
+            factory.RegisterState(() => new SpawnState());
+            factory.RegisterState(() => new Phase1State());
+            factory.RegisterState(() => new Phase2State());
+            factory.RegisterState(() => new DeathState());
+        }
+
         public override void SetBossDefaults()
         {
-            _config = ConfigLoader.Instance.Load<BossConfig>($"Content/NPCs/NightmareCorruption/Configs/NightmareCorruption.hjson");
+            _config = ConfigLoader.Instance.LoadBossConfig<BossConfig>(this);
 
             NPC.width = 110;
             NPC.height = 110;
@@ -60,7 +68,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             world.AddComponent(entityId, new HealthComponent(NPC.lifeMax, NPC.lifeMax));
             world.AddComponent(entityId, new MovementComponent(NPC, _config.Phase1.Movement));
             world.AddComponent(entityId, new AnimationComponent(NPC));
-            world.AddComponent(entityId, new AttackComponent(1));
+            world.AddComponent(entityId, new AttackComponent());
             world.AddComponent(entityId, new AIStateComponent(typeof(SpawnState), EcsSystem.Instance.StateFactory));
             world.AddComponent(entityId, new AIBlackboardComponent());
         }

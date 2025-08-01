@@ -1,26 +1,37 @@
+using System.Collections.Generic;
 using Terraria;
 
 namespace AshenVoid.Core.ECS
 {
     public class AttackComponent : IComponent
     {
-        public readonly float[] _attackCooldowns;
+        private readonly Dictionary<string, float> _attackCooldowns = new();
 
-        public AttackComponent(int numAttacks = 1)
+        public AttackComponent()
         {
-            _attackCooldowns = new float[numAttacks];
+            // The constructor is now parameterless. Cooldowns are added dynamically.
         }
 
-        public bool CanAttack(int attackId)
+        public bool CanAttack(string attackName)
         {
-            return attackId >= 0 && attackId < _attackCooldowns.Length && _attackCooldowns[attackId] <= 0;
+            return !_attackCooldowns.TryGetValue(attackName, out var cooldown) || cooldown <= 0;
         }
 
-        public void UseAttack(int attackId, float cooldown)
+        public void UseAttack(string attackName, float cooldown)
         {
-            if (attackId >= 0 && attackId < _attackCooldowns.Length)
+            _attackCooldowns[attackName] = cooldown;
+        }
+
+        public void UpdateCooldowns(float deltaTime)
+        {
+            // This needs to be called by a system (e.g., AttackSystem)
+            var keys = new List<string>(_attackCooldowns.Keys);
+            foreach (var key in keys)
             {
-                _attackCooldowns[attackId] = cooldown;
+                if (_attackCooldowns[key] > 0)
+                {
+                    _attackCooldowns[key] -= deltaTime;
+                }
             }
         }
     }

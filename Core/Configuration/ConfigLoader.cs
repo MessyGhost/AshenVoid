@@ -32,6 +32,32 @@ namespace AshenVoid.Core.Configuration
             Instance = null;
         }
 
+        /// <summary>
+        /// Loads a configuration file for a boss by automatically determining the path from its type.
+        /// </summary>
+        /// <typeparam name="T">The type of the configuration object.</typeparam>
+        /// <param name="npc">The ModNPC instance of the boss.</param>
+        /// <returns>The loaded configuration object.</returns>
+        public T LoadBossConfig<T>(ModNPC npc) where T : class, new()
+        {
+            var type = npc.GetType();
+            string fullName = type.FullName ?? string.Empty;
+            string modName = _modInstance.Name;
+
+            // Example: AshenVoid.Content.NPCs.NightmareCorruption.NightmareCorruption
+            // Becomes: Content/NPCs/NightmareCorruption
+            string basePath = fullName.Replace(modName + ".", "").Replace('.', '/');
+
+            // Get the class name
+            string bossName = type.Name;
+
+            // Final path: Content/NPCs/NightmareCorruption/Configs/NightmareCorruption.hjson
+            string assetPath = $"{basePath}/Configs/{bossName}.hjson";
+
+            return Load<T>(assetPath);
+        }
+
+
         /// <inheritdoc/>
         public T Load<T>(string assetPath) where T : class, new()
         {

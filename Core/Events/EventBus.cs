@@ -5,31 +5,69 @@ namespace AshenVoid.Core.Events
 {
     public class EventBus
     {
-        private readonly Dictionary<Type, HashSet<Delegate>> _subscribers = new();
+        // 非泛型接口，用于统一调用
+        private interface IEventHandlerWrapper
+        {
+            void Invoke(IEvent e);
+        }
+
+        // 泛型包装器，持有强类型委托
+        private class EventHandlerWrapper<T> : IEventHandlerWrapper where T : IEvent
+        {
+            private readonly Action<T> _handler;
+
+            public EventHandlerWrapper(Action<T> handler)
+            {
+                _handler = handler;
+            }
+
+            public void Invoke(IEvent e)
+            {
+                // 直接调用，类型在订阅时已确定
+                _handler((T)e);
+            }
+
+            // 用于在 Unsubscribe 中比较
+            public override bool Equals(object obj)
+            {
+                return obj is EventHandlerWrapper<T> other && _handler.Equals(other._handler);
+            }
+
+            public override int GetHashCode()
+            {
+                return _handler.GetHashCode();
+            }
+        }
+
+        private readonly Dictionary<Type, List<IEventHandlerWrapper>> _subscribers = new();
         private readonly Queue<IEvent> _eventQueue = new();
         private readonly object _lock = new();
 
         public void Subscribe<T>(Action<T> handler) where T : IEvent
         {
             var eventType = typeof(T);
+            var wrapper = new EventHandlerWrapper<T>(handler);
+
             lock (_lock)
             {
                 if (!_subscribers.ContainsKey(eventType))
                 {
-                    _subscribers[eventType] = new HashSet<Delegate>();
+                    _subscribers[eventType] = new List<IEventHandlerWrapper>();
                 }
-                _subscribers[eventType].Add(handler);
+                _subscribers[eventType].Add(wrapper);
             }
         }
 
         public void Unsubscribe<T>(Action<T> handler) where T : IEvent
         {
             var eventType = typeof(T);
+            var wrapper = new EventHandlerWrapper<T>(handler);
+
             lock (_lock)
             {
                 if (_subscribers.TryGetValue(eventType, out var handlers))
                 {
-                    handlers.Remove(handler);
+                    handlers.Remove(wrapper);
                 }
             }
         }
@@ -58,23 +96,22 @@ namespace AshenVoid.Core.Events
             {
                 var e = queueSnapshot.Dequeue();
                 var eventType = e.GetType();
-                HashSet<Delegate> handlersSnapshot;
+                List<IEventHandlerWrapper> handlersSnapshot;
 
                 lock (_lock)
                 {
                     if (!_subscribers.TryGetValue(eventType, out var handlers))
                         continue;
 
-                    handlersSnapshot = new HashSet<Delegate>(handlers);
+                    handlersSnapshot = new List<IEventHandlerWrapper>(handlers);
                 }
 
-                foreach (var handler in handlersSnapshot)
+                foreach (var handlerWrapper in handlersSnapshot)
                 {
                     try
                     {
-                        // Instead of 'is', we can use direct invocation after ensuring the delegate type.
-                        // This is slightly faster as the type is known from subscription.
-                        handler.DynamicInvoke(e);
+                        // 无反射，直接调用
+                        handlerWrapper.Invoke(e);
                     }
                     catch (Exception ex)
                     {

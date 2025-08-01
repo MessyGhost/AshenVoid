@@ -25,6 +25,7 @@ namespace AshenVoid.Core.ECS.Systems
 
                 if (health != null)
                 {
+                    // The single source of truth for health updates is now this event.
                     health.CurrentHealth = e.NPC.life;
                 }
             }
@@ -32,14 +33,8 @@ namespace AshenVoid.Core.ECS.Systems
 
         public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
-            var health = world.GetComponent<HealthComponent>(entityId);
-            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
-
-            if (health != null && statSheet != null)
-            {
-                // Sync ECS health to NPC health. The event is for reacting to damage.
-                health.CurrentHealth = statSheet.Npc.life;
-            }
+            // The polling logic has been removed.
+            // All health synchronization is now handled by the OnNpcDamaged event.
         }
     }
 }

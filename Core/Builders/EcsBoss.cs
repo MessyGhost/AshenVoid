@@ -1,4 +1,5 @@
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.Events;
 using Terraria;
 using Terraria.DataStructures;
@@ -26,6 +27,13 @@ namespace AshenVoid.Core.Builders
         /// <param name="entityId">The entity ID for this boss.</param>
         protected abstract void BuildEntity(EcsWorld world, int entityId);
 
+        /// <summary>
+        /// Called during Mod.Load(), allowing each boss to register its own states.
+        /// </summary>
+        /// <param name="factory">The global state factory.</param>
+        public abstract void RegisterStates(StateFactory factory);
+
+
         public sealed override void SetDefaults()
         {
             SetBossDefaults();
@@ -37,6 +45,9 @@ namespace AshenVoid.Core.Builders
 
         public override void OnSpawn(IEntitySource source)
         {
+            // Subscription is now instance-based
+            EcsSystem.Instance.EventBus.Subscribe<EntityIdSyncEvent>(HandleEntityIdSync);
+
             if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient)
                 return;
 
@@ -55,6 +66,9 @@ namespace AshenVoid.Core.Builders
 
         public override void OnKill()
         {
+            // Unsubscribe when the instance is killed
+            EcsSystem.Instance.EventBus.Unsubscribe<EntityIdSyncEvent>(HandleEntityIdSync);
+
             if (EntityId != -1)
             {
                 // Remove from the global mapping
@@ -68,24 +82,18 @@ namespace AshenVoid.Core.Builders
             }
         }
 
-        public override void Load()
-        {
-            EcsSystem.Instance.EventBus.Subscribe<EntityIdSyncEvent>(HandleEntityIdSync);
-        }
-
-        public override void Unload()
-        {
-            EcsSystem.Instance.EventBus.Unsubscribe<EntityIdSyncEvent>(HandleEntityIdSync);
-        }
-
         private void HandleEntityIdSync(EntityIdSyncEvent e)
         {
             // On clients, if the NPC ID matches, set the EntityId
+            // The check is now more specific because only this instance is subscribed
             if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient && e.NpcWhoAmI == NPC.whoAmI)
             {
                 EntityId = e.EntityId;
                 // Also add to the client-side mapping
                 EcsSystem.NpcWhoAmIToEntityId[NPC.whoAmI] = e.EntityId;
+
+                // Once synced, we can probably unsubscribe to avoid future checks,
+                // but let's keep it for now in case of re-sync events.
             }
         }
 

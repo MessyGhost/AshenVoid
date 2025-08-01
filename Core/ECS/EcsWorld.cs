@@ -106,7 +106,7 @@ namespace AshenVoid.Core.ECS
                 if (archetype.Matches(requiredSet))
                 {
                     // Return a copy to prevent issues with collection modification during iteration
-                    foreach (var entityId in archetype.Entities.ToList())
+                    foreach (var entityId in archetype.Entities)
                     {
                         yield return entityId;
                     }

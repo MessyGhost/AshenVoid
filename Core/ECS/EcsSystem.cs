@@ -2,13 +2,14 @@ using AshenVoid.Core.ECS.Systems;
 using AshenVoid.Core.Events;
 using AshenVoid.Core.Networking;
 using AshenVoid.Core.ECS.FSM;
-using AshenVoid.Content.NPCs.NightmareCorruption.States;
-using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Core.Configuration;
 using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
 using System.Collections.Generic;
+using System.Linq;
+using System;
+using AshenVoid.Core.Builders;
+using System.Reflection;
 
 namespace AshenVoid.Core.ECS
 {
@@ -36,7 +37,7 @@ namespace AshenVoid.Core.ECS
 
             RegisterGlobalSystems();
             RegisterNetworkEvents();
-            RegisterStates();
+            RegisterAllBossStates();
         }
 
         private void RegisterGlobalSystems()
@@ -59,13 +60,15 @@ namespace AshenVoid.Core.ECS
             NetworkManager.RegisterEventType<AttackPerformedNetworkEvent>();
         }
 
-        private void RegisterStates()
+        private void RegisterAllBossStates()
         {
-            // States are now stateless and don't need config at registration time.
-            StateFactory.RegisterState(() => new SpawnState());
-            StateFactory.RegisterState(() => new Phase1State());
-            StateFactory.RegisterState(() => new Phase2State());
-            StateFactory.RegisterState(() => new DeathState());
+            foreach (var modNpc in Mod.GetContent<ModNPC>())
+            {
+                if (modNpc is EcsBoss boss)
+                {
+                    boss.RegisterStates(StateFactory);
+                }
+            }
         }
 
         public override void Unload()

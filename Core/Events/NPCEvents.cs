@@ -93,18 +93,18 @@ namespace AshenVoid.Core.Events
     public struct AttackPerformedNetworkEvent : INetworkEvent
     {
         public int EntityId;
-        public int AttackId; // An identifier for the type of attack
+        public string AttackName; // An identifier for the type of attack
 
         public void Write(BinaryWriter writer)
         {
             writer.Write(EntityId);
-            writer.Write((byte)AttackId);
+            writer.Write(AttackName);
         }
 
         public void Read(BinaryReader reader)
         {
             EntityId = reader.ReadInt32();
-            AttackId = reader.ReadByte();
+            AttackName = reader.ReadString();
         }
     }
 }

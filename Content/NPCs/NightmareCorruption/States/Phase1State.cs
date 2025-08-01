@@ -1,6 +1,6 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
 using AshenVoid.Core.ECS;
-using AshenVoid.Core.ECS.BehaviorTree;
+using AshenVoid.Core.ECS.BehaviorTree; // Re-added for Node
 using AshenVoid.Core.ECS.FSM;
 using System;
 using Terraria;
@@ -29,6 +29,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
                 var statSheet = world.GetComponent<StatSheetComponent>(entityId);
                 if (statSheet != null)
                 {
+                    // This now correctly refers to the AIBehaviorFactory in the same namespace.
                     var factory = new AIBehaviorFactory(statSheet.Config);
                     BehaviorTree = factory.CreateBehaviorTree("NightmareCorruption_Phase1");
                 }
