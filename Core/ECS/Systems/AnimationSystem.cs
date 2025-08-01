@@ -19,7 +19,19 @@ namespace AshenVoid.Core.ECS.Systems
         public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var animation = world.GetComponent<AnimationComponent>(entityId);
-            animation?.Update();
+            if (animation == null) return;
+
+            animation.FrameCounter++;
+            if (animation.FrameCounter > animation.FrameDelay)
+            {
+                animation.FrameCounter = 0;
+                animation.CurrentFrame++;
+                if (animation.CurrentFrame >= Main.npcFrameCount[animation.Npc.type])
+                {
+                    animation.CurrentFrame = 0;
+                }
+            }
+            animation.Npc.frame.Y = animation.CurrentFrame * animation.Npc.height;
         }
 
         private void HandleAttackAnimation(AttackPerformedNetworkEvent e)

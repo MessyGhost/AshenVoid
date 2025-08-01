@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace AshenVoid.Core.ECS
 {
@@ -12,77 +13,84 @@ namespace AshenVoid.Core.ECS
         private readonly SystemManager _systemManager;
         private readonly EventBus _eventBus;
 
-        private readonly Dictionary<int, List<IComponent>> _entityComponents = new();
+        private readonly Dictionary<string, Archetype> _archetypes = new();
         private readonly Dictionary<int, Archetype> _entityArchetypes = new();
-        private readonly List<Archetype> _archetypes = new();
         private int _nextEntityId = 0;
 
         public EcsWorld(SystemManager systemManager, EventBus eventBus)
         {
             _systemManager = systemManager;
             _eventBus = eventBus;
+            // Create the initial empty archetype
+            FindOrCreateArchetype(new HashSet<Type>());
         }
 
         public int CreateEntity()
         {
             int entityId = _nextEntityId++;
-            _entityComponents[entityId] = new List<IComponent>();
-            UpdateArchetype(entityId);
+            var emptyArchetype = _archetypes[""];
+            emptyArchetype.AddEntity(entityId, Array.Empty<IComponent>());
+            _entityArchetypes[entityId] = emptyArchetype;
             return entityId;
         }
 
         public void DestroyEntity(int entityId)
         {
-            if (_entityComponents.ContainsKey(entityId))
+            if (_entityArchetypes.TryGetValue(entityId, out var archetype))
             {
-                var archetype = _entityArchetypes.GetValueOrDefault(entityId);
-                archetype?.Entities.Remove(entityId);
-
-                _entityComponents.Remove(entityId);
+                archetype.RemoveEntity(entityId);
                 _entityArchetypes.Remove(entityId);
             }
         }
+
         public void AddComponent(int entityId, IComponent component)
         {
-            if (_entityComponents.ContainsKey(entityId))
-            {
-                _entityComponents[entityId].Add(component);
-                UpdateArchetype(entityId);
-            }
-        }
+            if (!_entityArchetypes.TryGetValue(entityId, out var oldArchetype))
+                return;
 
-        private void UpdateArchetype(int entityId)
-        {
-            var currentArchetype = _entityArchetypes.GetValueOrDefault(entityId);
-            currentArchetype?.Entities.Remove(entityId);
+            var newComponentTypes = new HashSet<Type>(oldArchetype.ComponentTypes);
+            newComponentTypes.Add(component.GetType());
 
-            var componentTypes = new HashSet<Type>(_entityComponents[entityId].Select(c => c.GetType()));
-            var newArchetype = FindOrCreateArchetype(componentTypes);
+            var newArchetype = FindOrCreateArchetype(newComponentTypes);
 
-            newArchetype.Entities.Add(entityId);
+            oldArchetype.MoveEntityTo(entityId, newArchetype, component);
             _entityArchetypes[entityId] = newArchetype;
         }
 
         private Archetype FindOrCreateArchetype(HashSet<Type> componentTypes)
         {
-            foreach (var archetype in _archetypes)
+            var signature = GenerateArchetypeSignature(componentTypes);
+            if (_archetypes.TryGetValue(signature, out var archetype))
             {
-                if (archetype.ComponentTypes.SetEquals(componentTypes))
-                {
-                    return archetype;
-                }
+                return archetype;
             }
 
-            var newArchetype = new Archetype(componentTypes);
-            _archetypes.Add(newArchetype);
+            var newArchetype = new Archetype(componentTypes, signature);
+            _archetypes[signature] = newArchetype;
             return newArchetype;
+        }
+
+        private string GenerateArchetypeSignature(HashSet<Type> componentTypes)
+        {
+            if (componentTypes == null || componentTypes.Count == 0)
+                return "";
+
+            var typeNames = componentTypes.Select(t => t.FullName).ToList();
+            typeNames.Sort(StringComparer.Ordinal);
+
+            var sb = new StringBuilder();
+            foreach (var name in typeNames)
+            {
+                sb.Append(name).Append(';');
+            }
+            return sb.ToString();
         }
 
         public T GetComponent<T>(int entityId) where T : class, IComponent
         {
-            if (_entityComponents.TryGetValue(entityId, out var components))
+            if (_entityArchetypes.TryGetValue(entityId, out var archetype))
             {
-                return components.OfType<T>().FirstOrDefault();
+                return archetype.GetComponent<T>(entityId);
             }
             return null;
         }
@@ -93,11 +101,12 @@ namespace AshenVoid.Core.ECS
             if (!requiredSet.Any())
                 yield break;
 
-            foreach (var archetype in _archetypes)
+            foreach (var archetype in _archetypes.Values)
             {
                 if (archetype.Matches(requiredSet))
                 {
-                    foreach (var entityId in archetype.Entities)
+                    // Return a copy to prevent issues with collection modification during iteration
+                    foreach (var entityId in archetype.Entities.ToList())
                     {
                         yield return entityId;
                     }

@@ -1,15 +1,17 @@
 namespace AshenVoid.Core.ECS
 {
     /// <summary>
-    /// Stores health-related state for an entity, such as its last known health value.
+    /// Stores health-related state for an entity.
     /// </summary>
     public class HealthComponent : IComponent
     {
-        public int LastHealth;
+        public int CurrentHealth;
+        public int MaxHealth;
 
-        public HealthComponent(int initialHealth)
+        public HealthComponent(int initialHealth, int maxHealth)
         {
-            LastHealth = initialHealth;
+            CurrentHealth = initialHealth;
+            MaxHealth = maxHealth;
         }
     }
 }

@@ -1,34 +1,30 @@
 {
-  "lifeMax": 13100, // Boss 最大生命值
-  "spawnDuration": 3, // 出生动画时长
+  "lifeMax": 13100,
+  "spawnDuration": 3,
   "damage": 52,
   "defense": 10,
-    // 第一阶段配置
   "phase1": {
-        // 移动参数
     "movement": {
-      "patrolSpeed": 8, // 徘徊速度
-      "frequency": 1.2, // PID控制器频率
-      "dampingRatio": 0.8, // 阻尼比
-      "responseScale": 0.5, // 响应缩放
-      "chaseDistanceFar": 800, // 追击距离
-      "chaseStopDistance": 400, // 停止距离
-      "orbitRadius": 300, // 环绕半径
-      "thinkIntervalMin": 2, // 最小思考间隔
-      "thinkIntervalMax": 4, // 最大思考间隔
-      "maxSpeed": 15 // 最大移动速度
+      "patrolSpeed": 8,
+      "frequency": 1.2,
+      "dampingRatio": 0.8,
+      "responseScale": 0.5,
+      "chaseDistanceFar": 800,
+      "chaseStopDistance": 400,
+      "orbitRadius": 300,
+      "thinkIntervalMin": 2,
+      "thinkIntervalMax": 4,
+      "maxSpeed": 15
     },
-        
-        // 攻击参数
     "attacks": {
       "basicShot": {
         "DamageThreshold": 300,
-        "projectileId": 270, // ProjectileID.DemonScythe
-        "cooldown": 2.5, // 冷却时间
-        "damage": 35, // 伤害
-        "speed": 12, // 弹幕速度
-        "isChanneled": false, // 是否为持续性攻击
-        "duration": 0 // 持续时间（瞬时攻击为0）
+        "projectileId": 270,
+        "cooldown": 2.5,
+        "damage": 35,
+        "speed": 12,
+        "isChanneled": false,
+        "duration": 0
       }
     },
     "dash": {
@@ -38,8 +34,31 @@
       "speed": 25
     },
     "summon": {
-      "healthThreshold": 0.1, // 10%
-      "npcId": 517 // Example: Creeper, replace with actual "Grasp of Trance" ID
+      "healthThreshold": 0.1,
+      "npcId": 517
+    },
+    // Data-driven behavior tree definition
+    "behaviorTree": {
+      "type": "Selector",
+      "children": [
+        {
+          "type": "Sequence",
+          "children": [
+            {
+              "type": "Action",
+              "name": "FindAndTargetPlayer"
+            },
+            {
+              "type": "Action",
+              "name": "MoveToPlayer"
+            },
+            {
+              "type": "Action",
+              "name": "TryBasicAttack"
+            }
+          ]
+        }
+      ]
     }
   }
 }

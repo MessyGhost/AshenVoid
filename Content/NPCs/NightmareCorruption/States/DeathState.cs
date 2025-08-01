@@ -11,18 +11,17 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
     {
         private const float DeathDuration = 3f;
         private float _timer;
-        private readonly NPC _npc;
 
-        public DeathState(NPC npc)
-        {
-            _npc = npc;
-        }
+        public DeathState() { }
+
         public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
 
         public void Enter(int entityId, EcsWorld world)
         {
-            _npc.dontTakeDamage = true;
-            _npc.velocity = Vector2.Zero;
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            if (statSheet == null) return;
+            statSheet.Npc.dontTakeDamage = true;
+            statSheet.Npc.velocity = Vector2.Zero;
             _timer = 0f;
         }
 
@@ -30,11 +29,15 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public void Update(int entityId, EcsWorld world)
         {
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            if (statSheet == null) return;
+            var npc = statSheet.Npc;
+
             _timer += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
 
-            _npc.alpha = (int)MathHelper.Lerp(0, 255, _timer / DeathDuration);
-            _npc.scale = MathHelper.Lerp(1f, 0f, _timer / DeathDuration);
-            _npc.rotation += 0.1f;
+            npc.alpha = (int)MathHelper.Lerp(0, 255, _timer / DeathDuration);
+            npc.scale = MathHelper.Lerp(1f, 0f, _timer / DeathDuration);
+            npc.rotation += 0.1f;
         }
 
         public Type CheckTransitions(int entityId, EcsWorld world)
@@ -43,8 +46,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             {
                 if (Main.netMode != NetmodeID.MultiplayerClient)
                 {
-                    _npc.life = 0;
-                    _npc.checkDead();
+                    var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+                    if (statSheet != null)
+                    {
+                        statSheet.Npc.life = 0;
+                        statSheet.Npc.checkDead();
+                    }
                 }
             }
             return null;

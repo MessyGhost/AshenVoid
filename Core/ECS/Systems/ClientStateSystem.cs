@@ -31,10 +31,14 @@ namespace AshenVoid.Core.ECS.Systems
             Type stateType = stateFactory.GetTypeById(e.StateId);
             if (stateType != null)
             {
-                var nextState = aiState.GetState(stateType);
-                if (nextState != null && nextState != aiState.CurrentState)
+                // Create a new instance of the state and force it.
+                var nextState = stateFactory.CreateState(stateType);
+                if (nextState != null && nextState.GetType() != aiState.CurrentState.GetType())
                 {
+                    // We need to call Enter/Exit manually on the client for synchronization
+                    aiState.CurrentState?.Exit(e.EntityId, world);
                     aiState.ForceState(nextState);
+                    aiState.CurrentState.Enter(e.EntityId, world);
                 }
             }
         }

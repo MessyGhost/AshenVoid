@@ -17,7 +17,7 @@ namespace AshenVoid.Core.Networking
         private readonly Queue<INetworkEvent> _eventQueue = new();
 
         private readonly Dictionary<Type, byte> _eventTypeToId = new();
-        private readonly Dictionary<byte, Type> _idToEventType = new();
+        private readonly Dictionary<byte, Func<INetworkEvent>> _idToEventFactory = new();
         private byte _nextEventId = 0;
 
         public NetworkManager(EventBus eventBus)
@@ -31,7 +31,7 @@ namespace AshenVoid.Core.Networking
             var type = typeof(T);
             var id = _nextEventId++;
             _eventTypeToId[type] = id;
-            _idToEventType[id] = type;
+            _idToEventFactory[id] = () => new T(); // Register the factory function
         }
 
         private void QueueEvent(INetworkEvent e)
@@ -45,7 +45,7 @@ namespace AshenVoid.Core.Networking
                 return;
 
             var packet = ModContent.GetInstance<AshenVoid>().GetPacket();
-            
+
             while (_eventQueue.Count > 0)
             {
                 var e = _eventQueue.Dequeue();
@@ -67,9 +67,9 @@ namespace AshenVoid.Core.Networking
             {
                 case MessageType.SyncEvent:
                     var eventId = reader.ReadByte();
-                    if (_idToEventType.TryGetValue(eventId, out var type))
+                    if (_idToEventFactory.TryGetValue(eventId, out var factory))
                     {
-                        var e = (INetworkEvent)Activator.CreateInstance(type);
+                        var e = factory(); // Use the factory, no reflection
                         e.Read(reader);
                         _eventBus.Publish(e);
                     }

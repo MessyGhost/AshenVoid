@@ -13,20 +13,5 @@ namespace AshenVoid.Core.ECS
         {
             Npc = npc;
         }
-
-        public void Update()
-        {
-            FrameCounter++;
-            if (FrameCounter > FrameDelay)
-            {
-                FrameCounter = 0;
-                CurrentFrame++;
-                if (CurrentFrame >= Main.npcFrameCount[Npc.type])
-                {
-                    CurrentFrame = 0;
-                }
-            }
-            Npc.frame.Y = CurrentFrame * Npc.height;
-        }
     }
 }

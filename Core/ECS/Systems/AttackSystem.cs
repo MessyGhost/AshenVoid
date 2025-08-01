@@ -17,7 +17,16 @@ namespace AshenVoid.Core.ECS.Systems
         public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             var attack = world.GetComponent<AttackComponent>(entityId);
-            attack?.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
+            if (attack == null) return;
+
+            var deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            for (int i = 0; i < attack._attackCooldowns.Length; i++)
+            {
+                if (attack._attackCooldowns[i] > 0)
+                {
+                    attack._attackCooldowns[i] -= deltaTime;
+                }
+            }
         }
 
         public AttackSystem()
@@ -27,6 +36,10 @@ namespace AshenVoid.Core.ECS.Systems
 
         private void HandleAttack(AttackPerformedNetworkEvent e)
         {
+            // Critical fix: Ensure projectile creation only happens on the server.
+            if (Main.netMode == NetmodeID.MultiplayerClient)
+                return;
+
             var world = EcsSystem.Instance.World;
             var statSheet = world.GetComponent<StatSheetComponent>(e.EntityId);
             var movement = world.GetComponent<MovementComponent>(e.EntityId);

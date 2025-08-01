@@ -8,6 +8,7 @@ using AshenVoid.Core.Configuration;
 using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
+using System.Collections.Generic;
 
 namespace AshenVoid.Core.ECS
 {
@@ -20,6 +21,9 @@ namespace AshenVoid.Core.ECS
         public SystemManager SystemManager { get; private set; }
         public NetworkManager NetworkManager { get; private set; }
         public StateFactory StateFactory { get; private set; }
+
+        // Global mapping from Terraria NPC ID to ECS Entity ID
+        public static readonly Dictionary<int, int> NpcWhoAmIToEntityId = new();
 
         public override void Load()
         {
@@ -57,12 +61,11 @@ namespace AshenVoid.Core.ECS
 
         private void RegisterStates()
         {
-            var bossConfig = ConfigLoader.Instance.Load<BossConfig>($"Content/NPCs/NightmareCorruption/Configs/NightmareCorruption.hjson");
-
-            StateFactory.RegisterState(() => new SpawnState(null, bossConfig));
-            StateFactory.RegisterState(() => new Phase1State(null, bossConfig));
-            StateFactory.RegisterState(() => new Phase2State(null));
-            StateFactory.RegisterState(() => new DeathState(null));
+            // States are now stateless and don't need config at registration time.
+            StateFactory.RegisterState(() => new SpawnState());
+            StateFactory.RegisterState(() => new Phase1State());
+            StateFactory.RegisterState(() => new Phase2State());
+            StateFactory.RegisterState(() => new DeathState());
         }
 
         public override void Unload()
@@ -73,6 +76,7 @@ namespace AshenVoid.Core.ECS
             NetworkManager = null;
             StateFactory = null;
             Instance = null;
+            NpcWhoAmIToEntityId.Clear();
         }
 
         public override void PostUpdateEverything()

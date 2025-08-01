@@ -43,6 +43,9 @@ namespace AshenVoid.Core.Builders
             var world = EcsSystem.Instance.World;
             EntityId = world.CreateEntity();
 
+            // Add to the global mapping
+            EcsSystem.NpcWhoAmIToEntityId[NPC.whoAmI] = EntityId;
+
             BuildEntity(world, EntityId);
 
             // Publish the sync event to all clients
@@ -54,6 +57,12 @@ namespace AshenVoid.Core.Builders
         {
             if (EntityId != -1)
             {
+                // Remove from the global mapping
+                if (EcsSystem.NpcWhoAmIToEntityId.ContainsKey(NPC.whoAmI))
+                {
+                    EcsSystem.NpcWhoAmIToEntityId.Remove(NPC.whoAmI);
+                }
+
                 EcsSystem.Instance.World.DestroyEntity(EntityId);
                 EntityId = -1;
             }
@@ -75,6 +84,8 @@ namespace AshenVoid.Core.Builders
             if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient && e.NpcWhoAmI == NPC.whoAmI)
             {
                 EntityId = e.EntityId;
+                // Also add to the client-side mapping
+                EcsSystem.NpcWhoAmIToEntityId[NPC.whoAmI] = e.EntityId;
             }
         }
 

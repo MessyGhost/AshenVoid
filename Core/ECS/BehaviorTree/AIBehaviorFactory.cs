@@ -10,61 +10,95 @@ namespace AshenVoid.Core.ECS.BehaviorTree
 {
     public class AIBehaviorFactory
     {
-        private readonly Dictionary<string, Func<Node>> _behaviorTrees = new();
         private readonly BossConfig _bossConfig;
+        private readonly Dictionary<string, Func<int, EcsWorld, NodeStatus>> _actionLookups;
 
         public AIBehaviorFactory(BossConfig bossConfig)
         {
             _bossConfig = bossConfig;
-            RegisterBehaviorTrees();
-        }
-
-        private void RegisterBehaviorTrees()
-        {
-            _behaviorTrees["NightmareCorruption_Phase1"] = CreatePhase1Tree;
+            _actionLookups = new Dictionary<string, Func<int, EcsWorld, NodeStatus>>
+            {
+                { "FindAndTargetPlayer", FindAndTargetPlayer },
+                { "MoveToPlayer", MoveToPlayer },
+                { "TryBasicAttack", TryBasicAttack }
+            };
         }
 
         public Node CreateBehaviorTree(string name)
         {
-            if (_behaviorTrees.TryGetValue(name, out var factoryMethod))
+            // For now, we assume the name corresponds to a phase in the config.
+            // A more robust solution might involve a dictionary of trees in the config.
+            if (name == "NightmareCorruption_Phase1" && _bossConfig.Phase1.BehaviorTree != null)
             {
-                return factoryMethod();
+                return ParseNode(_bossConfig.Phase1.BehaviorTree);
             }
-            throw new ArgumentException($"Behavior tree '{name}' not found.");
+            throw new ArgumentException($"Behavior tree '{name}' not found in config or factory.");
         }
 
-        private Node CreatePhase1Tree()
+        private Node ParseNode(BehaviorTreeConfig nodeConfig)
         {
-            return new Selector()
-                .Add(new Sequence()
-                    .Add(new ActionNode(FindAndTargetPlayer))
-                    .Add(new ActionNode(MoveToPlayer))
-                    .Add(new ActionNode(TryBasicAttack))
-                );
+            if (nodeConfig == null) return null;
+
+            Node node = null;
+            switch (nodeConfig.Type)
+            {
+                case "Selector":
+                    node = new Selector();
+                    break;
+                case "Sequence":
+                    node = new Sequence();
+                    break;
+                case "Action":
+                    if (!string.IsNullOrEmpty(nodeConfig.Name) && _actionLookups.TryGetValue(nodeConfig.Name, out var action))
+                    {
+                        node = new ActionNode(action);
+                    }
+                    else
+                    {
+                        throw new ArgumentException($"Unknown action name: {nodeConfig.Name}");
+                    }
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown node type: {nodeConfig.Type}");
+            }
+
+            if (nodeConfig.Children != null)
+            {
+                foreach (var childConfig in nodeConfig.Children)
+                {
+                    var childNode = ParseNode(childConfig);
+                    if (childNode != null && node is CompositeNode compositeNode)
+                    {
+                        compositeNode.Add(childNode);
+                    }
+                }
+            }
+
+            return node;
         }
+
+        // --- Action Methods ---
 
         private NodeStatus FindAndTargetPlayer(int entityId, EcsWorld world)
         {
             var blackboard = world.GetComponent<AIBlackboardComponent>(entityId);
             if (blackboard == null)
             {
-                // Create a blackboard if it doesn't exist
                 blackboard = new AIBlackboardComponent();
                 world.AddComponent(entityId, blackboard);
             }
 
             Player target = null;
             float minDistance = float.MaxValue;
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            if (statSheet == null) return NodeStatus.Failure;
 
             for (int i = 0; i < Main.maxPlayers; i++)
             {
                 Player p = Main.player[i];
                 if (p.active && !p.dead)
                 {
-                    var npc = world.GetComponent<MovementComponent>(entityId)?.Npc;
-                    if (npc == null) return NodeStatus.Failure;
-
-                    float dist = npc.Distance(p.Center);
+                    float dist = statSheet.Npc.Distance(p.Center);
                     if (dist < minDistance)
                     {
                         minDistance = dist;

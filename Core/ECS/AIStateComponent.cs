@@ -9,37 +9,13 @@ namespace AshenVoid.Core.ECS
 {
     public class AIStateComponent : IComponent
     {
-        private readonly NPC _npc;
-        private readonly Dictionary<byte, IState> _states = new();
         private readonly StateFactory _stateFactory;
         public IState CurrentState { get; private set; }
 
-        public AIStateComponent(NPC npc, StateFactory stateFactory)
+        public AIStateComponent(Type initialState, StateFactory stateFactory)
         {
-            _npc = npc;
             _stateFactory = stateFactory;
-        }
-
-        public void RegisterState(IState state)
-        {
-            var stateId = _stateFactory.GetIdByType(state.GetType());
-            _states[stateId] = state;
-        }
-
-        public IState GetState(Type stateType)
-        {
-            var stateId = _stateFactory.GetIdByType(stateType);
-            _states.TryGetValue(stateId, out var state);
-            return state;
-        }
-
-        public void SetInitialState(Type stateType)
-        {
-            var stateId = _stateFactory.GetIdByType(stateType);
-            if (_states.ContainsKey(stateId))
-            {
-                CurrentState = _states[stateId];
-            }
+            CurrentState = _stateFactory.CreateState(initialState);
         }
 
         public void Update(GameTime gameTime, EcsWorld world, int entityId, EventBus eventBus)
@@ -49,8 +25,8 @@ namespace AshenVoid.Core.ECS
             var nextStateType = CurrentState?.CheckTransitions(entityId, world);
             if (nextStateType != null)
             {
-                var nextStateId = _stateFactory.GetIdByType(nextStateType);
-                if (_states.TryGetValue(nextStateId, out var nextState) && nextState != CurrentState)
+                var nextState = _stateFactory.CreateState(nextStateType);
+                if (nextState != null && nextState.GetType() != CurrentState.GetType())
                 {
                     ChangeState(entityId, world, eventBus, nextState);
                 }

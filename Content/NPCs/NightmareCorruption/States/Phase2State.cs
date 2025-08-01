@@ -7,12 +7,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class Phase2State : IState
     {
-        private readonly NPC _npc;
+        // Constructor is now parameterless
+        public Phase2State() { }
 
-        public Phase2State(NPC npc)
-        {
-            _npc = npc;
-        }
         public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
 
         public void Enter(int entityId, EcsWorld world) { }
@@ -26,7 +23,10 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public Type CheckTransitions(int entityId, EcsWorld world)
         {
-            if (_npc.life <= 1)
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            if (statSheet == null) return null;
+
+            if (statSheet.Npc.life <= 1)
             {
                 return typeof(DeathState);
             }

@@ -11,40 +11,49 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
     public class SpawnState : IState
     {
         private float _timer;
-        private readonly BossConfig _config;
-        private readonly NPC _npc;
 
-        public SpawnState(NPC npc, BossConfig config)
-        {
-            _npc = npc;
-            _config = config;
-        }
+        // Constructor is now parameterless
+        public SpawnState() { }
+
         public Core.ECS.BehaviorTree.Node BehaviorTree { get; } = null;
 
         public void Enter(int entityId, EcsWorld world)
         {
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            if (statSheet == null) return;
+            var npc = statSheet.Npc;
+
             if (Main.netMode != NetmodeID.MultiplayerClient)
             {
-                Player target = FindClosestPlayer();
+                Player target = FindClosestPlayer(npc);
                 if (target != null)
                 {
-                    _npc.Center = target.Center - new Vector2(0, 300);
+                    npc.Center = target.Center - new Vector2(0, 300);
                 }
             }
 
-            _npc.alpha = 255;
+            npc.alpha = 255;
             _timer = 0f;
         }
 
         public void Update(int entityId, EcsWorld world)
         {
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            if (statSheet == null) return;
+            var npc = statSheet.Npc;
+            var config = statSheet.Config;
+
             _timer += (float)Main.gameTimeCache.ElapsedGameTime.TotalSeconds;
-            _npc.alpha = (int)MathHelper.Lerp(255, 0, _timer / _config.SpawnDuration);
+            npc.alpha = (int)MathHelper.Lerp(255, 0, _timer / config.SpawnDuration);
         }
 
         public Type CheckTransitions(int entityId, EcsWorld world)
         {
-            if (_timer >= _config.SpawnDuration)
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            if (statSheet == null) return null;
+            var config = statSheet.Config;
+
+            if (_timer >= config.SpawnDuration)
             {
                 return typeof(Phase1State);
             }
@@ -53,10 +62,14 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 
         public void Exit(int entityId, EcsWorld world)
         {
-            _npc.alpha = 0;
+            var statSheet = world.GetComponent<StatSheetComponent>(entityId);
+            if (statSheet != null)
+            {
+                statSheet.Npc.alpha = 0;
+            }
         }
 
-        private Player FindClosestPlayer()
+        private Player FindClosestPlayer(NPC npc)
         {
             Player target = null;
             float minDistance = float.MaxValue;
@@ -65,7 +78,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
                 Player p = Main.player[i];
                 if (p.active && !p.dead)
                 {
-                    float dist = _npc.Distance(p.Center);
+                    float dist = npc.Distance(p.Center);
                     if (dist < minDistance)
                     {
                         minDistance = dist;
