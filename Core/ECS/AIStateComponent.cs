@@ -10,30 +10,35 @@ namespace AshenVoid.Core.ECS
     public class AIStateComponent : IComponent
     {
         private readonly NPC _npc;
-        private readonly Dictionary<Type, IState> _states = new();
+        private readonly Dictionary<byte, IState> _states = new();
+        private readonly StateFactory _stateFactory;
         public IState CurrentState { get; private set; }
 
-        public AIStateComponent(NPC npc)
+        public AIStateComponent(NPC npc, StateFactory stateFactory)
         {
             _npc = npc;
+            _stateFactory = stateFactory;
         }
 
         public void RegisterState(IState state)
         {
-            _states[state.GetType()] = state;
+            var stateId = _stateFactory.GetIdByType(state.GetType());
+            _states[stateId] = state;
         }
 
         public IState GetState(Type stateType)
         {
-            _states.TryGetValue(stateType, out var state);
+            var stateId = _stateFactory.GetIdByType(stateType);
+            _states.TryGetValue(stateId, out var state);
             return state;
         }
 
         public void SetInitialState(Type stateType)
         {
-            if (_states.ContainsKey(stateType))
+            var stateId = _stateFactory.GetIdByType(stateType);
+            if (_states.ContainsKey(stateId))
             {
-                CurrentState = _states[stateType];
+                CurrentState = _states[stateId];
             }
         }
 
@@ -42,9 +47,10 @@ namespace AshenVoid.Core.ECS
             CurrentState?.Update(entityId, world);
 
             var nextStateType = CurrentState?.CheckTransitions(entityId, world);
-            if (nextStateType != null && _states.TryGetValue(nextStateType, out var nextState))
+            if (nextStateType != null)
             {
-                if (nextState != CurrentState)
+                var nextStateId = _stateFactory.GetIdByType(nextStateType);
+                if (_states.TryGetValue(nextStateId, out var nextState) && nextState != CurrentState)
                 {
                     ChangeState(entityId, world, eventBus, nextState);
                 }
@@ -57,13 +63,12 @@ namespace AshenVoid.Core.ECS
             CurrentState = nextState;
             CurrentState.Enter(entityId, world);
 
-            // Publish the state change to clients
             if (Main.netMode != Terraria.ID.NetmodeID.MultiplayerClient)
             {
                 eventBus.Publish(new StateChangedNetworkEvent
                 {
                     EntityId = entityId,
-                    StateTypeName = nextState.GetType().AssemblyQualifiedName
+                    StateId = _stateFactory.GetIdByType(nextState.GetType())
                 });
             }
         }

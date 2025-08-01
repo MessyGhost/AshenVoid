@@ -27,7 +27,8 @@ namespace AshenVoid.Core.ECS.Systems
             var aiState = world.GetComponent<AIStateComponent>(e.EntityId);
             if (aiState == null) return;
 
-            Type stateType = Type.GetType(e.StateTypeName);
+            var stateFactory = EcsSystem.Instance.StateFactory;
+            Type stateType = stateFactory.GetTypeById(e.StateId);
             if (stateType != null)
             {
                 var nextState = aiState.GetState(stateType);

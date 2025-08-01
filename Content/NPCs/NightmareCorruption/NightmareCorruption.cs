@@ -44,12 +44,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         protected override void BuildEntity(EcsWorld world, int entityId)
         {
             var bossConfig = ConfigLoader.Instance.Load<BossConfig>($"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson");
+            var stateFactory = EcsSystem.Instance.StateFactory;
 
-            var aiStateComponent = new AIStateComponent(NPC);
-            aiStateComponent.RegisterState(new SpawnState(NPC, bossConfig));
-            aiStateComponent.RegisterState(new Phase1State(NPC, bossConfig));
-            aiStateComponent.RegisterState(new Phase2State(NPC));
-            aiStateComponent.RegisterState(new DeathState(NPC));
+            var aiStateComponent = new AIStateComponent(NPC, stateFactory);
             aiStateComponent.SetInitialState(typeof(SpawnState));
 
             world.AddComponent(entityId, new MovementComponent(NPC, bossConfig.Phase1.Movement));
