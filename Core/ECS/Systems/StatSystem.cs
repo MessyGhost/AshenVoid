@@ -1,15 +1,23 @@
+using AshenVoid.Core.Events;
+using Microsoft.Xna.Framework;
+using System;
+using System.Collections.Generic;
 using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
     public class StatSystem : IStatSystem
     {
-        public void Update(NPC npc, StatSheetComponent statSheet)
+        public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
         {
-            // Apply the final calculated stats to the NPC instance
-            // This ensures that Terraria's internal logic uses our modified values.
-            npc.damage = (int)statSheet.Damage.Value;
-            npc.defense = (int)statSheet.Defense.Value;
+            typeof(StatSheetComponent)
+        };
+
+        public void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus)
+        {
+            var statSheet = controller.GetComponent<StatSheetComponent>();
+            // Logic for updating stats over time would go here.
+            // For example, applying buffs/debuffs that modify stats.
         }
     }
 }

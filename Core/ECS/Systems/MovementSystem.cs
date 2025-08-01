@@ -1,20 +1,29 @@
 using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.Intents;
+using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
 using System;
+using System.Collections.Generic;
 using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
     public class MovementSystem : IMovementSystem
     {
-        public void Update(GameTime gameTime, NPC npc, MovementComponent movementComponent, AIStateComponent aiState)
+        public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
         {
+            typeof(MovementComponent),
+            typeof(AIStateComponent)
+        };
+
+        public void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus)
+        {
+            var movementComponent = controller.GetComponent<MovementComponent>();
+            var aiState = controller.GetComponent<AIStateComponent>();
             var blackboard = aiState.Blackboard;
 
             if (!blackboard.TryGet(BlackboardKeys.MovementIntent, out IMovementIntent movementIntent))
             {
-                // If no intent, default to idle behavior
                 npc.velocity *= 0.95f;
                 return;
             }
@@ -28,7 +37,6 @@ namespace AshenVoid.Core.ECS.Systems
                     if (npc.Center.Distance(chase.TargetPosition) < chase.StopDistance)
                     {
                         destination = npc.Center;
-                        // Consume intent when destination is reached
                         blackboard.Remove(BlackboardKeys.MovementIntent);
                     }
                     break;

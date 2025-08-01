@@ -9,13 +9,13 @@ namespace AshenVoid.Core.ECS
     {
         public StateMachine StateMachine { get; }
         public Blackboard Blackboard { get; }
-        private readonly StateFactory _stateFactory;
+        public StateFactory StateFactory { get; } // Expose the factory
 
         public AIStateComponent(NPC npc, StateFactory stateFactory)
         {
             StateMachine = new StateMachine();
             Blackboard = new Blackboard();
-            _stateFactory = stateFactory;
+            StateFactory = stateFactory; // Store the factory
 
             // Populate the blackboard with long-lived objects
             Blackboard.Set(BlackboardKeys.NPC, npc);
@@ -24,14 +24,8 @@ namespace AshenVoid.Core.ECS
 
         public void SetInitialState(Type stateType)
         {
-            var initialState = _stateFactory.GetState(stateType);
+            var initialState = StateFactory.GetState(stateType);
             StateMachine.ChangeState(initialState, Blackboard);
-        }
-
-        public void ChangeState<T>() where T : class, IState, new()
-        {
-            var newState = _stateFactory.GetState<T>();
-            StateMachine.ChangeState(newState, Blackboard);
         }
     }
 }

@@ -1,129 +1,130 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
+using System;
 using Terraria;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class Phase1State : IState
     {
-        private PhaseConfig _config;
-        private Node _behaviorTree;
-        private int _patrolDirection = 1;
-        private Blackboard _blackboard;
+        private static readonly string PatrolDirectionKey = "Phase1State_PatrolDirection";
+        private static readonly string BehaviorTreeKey = "Phase1State_BehaviorTree";
 
         public void Enter(Blackboard blackboard)
         {
-            _blackboard = blackboard;
-            _config = _blackboard.Get<BossConfig>("BossConfig").Phase1;
-            _behaviorTree = BuildBehaviorTree();
+            blackboard.Set(PatrolDirectionKey, 1);
+            // Build the behavior tree ONCE and store it in the blackboard.
+            blackboard.Set(BehaviorTreeKey, BuildBehaviorTree(blackboard));
         }
 
-        public void Update(Blackboard blackboard)
+        public Type Update(Blackboard blackboard)
         {
-            _blackboard = blackboard;
-            _behaviorTree?.Evaluate();
+            var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
+            var config = blackboard.Get<BossConfig>("BossConfig").Phase1;
+
+            // Check for phase transition first, as it's the highest priority.
+            if (npc.life < npc.lifeMax * config.PhaseTransitionHealth)
+            {
+                return typeof(Phase2State);
+            }
+
+            // Evaluate the behavior tree.
+            var behaviorTree = blackboard.Get<Node>(BehaviorTreeKey);
+            behaviorTree?.Evaluate();
+
+            return null; // No transition requested by default
         }
 
         public void Exit(Blackboard blackboard)
         {
-            _behaviorTree = null;
-            _blackboard = null;
-            _config = null;
+            // Clean up blackboard data
+            blackboard.Remove(PatrolDirectionKey);
+            blackboard.Remove(BehaviorTreeKey);
         }
 
-        private Node BuildBehaviorTree()
+        private Node BuildBehaviorTree(Blackboard blackboard)
         {
-            return new FallbackNode(
-                // Highest priority: Transition to Phase 2
-                new SequenceNode(
-                    new ConditionNode(() => _blackboard.Get<NPC>(BlackboardKeys.NPC).life < _blackboard.Get<NPC>(BlackboardKeys.NPC).lifeMax * _config.PhaseTransitionHealth),
-                    new ActionNode(() =>
-                    {
-                        _blackboard.Get<AIStateComponent>(BlackboardKeys.AIState).ChangeState<Phase2State>();
-                        return NodeState.Success;
-                    })
-                ),
+            var config = blackboard.Get<BossConfig>("BossConfig").Phase1;
 
+            return new FallbackNode(
                 // Summon logic
                 new SequenceNode(
-                    new ConditionNode(() => _blackboard.Get<bool>("ShouldSummon")),
+                    new ConditionNode(() => blackboard.Get<bool>("ShouldSummon")),
                     new ActionNode(() =>
                     {
                         Terraria.ModLoader.ModContent.GetInstance<AshenVoid>().Logger.Info("Summoning minions would happen here.");
                         return NodeState.Success;
                     }),
-                    new ActionNode(() => { _blackboard.Set("ShouldSummon", false); return NodeState.Success; })
+                    new ActionNode(() => { blackboard.Set("ShouldSummon", false); return NodeState.Success; })
                 ),
 
                 // Dash logic
-                BuildDashBehavior(),
+                BuildDashBehavior(blackboard, config.Dash),
 
                 // Default patrol and attack logic
-                BuildPatrolBehavior()
+                BuildPatrolBehavior(blackboard, config.Attacks.BasicShot)
             );
         }
 
-        private Node BuildDashBehavior()
+        private Node BuildDashBehavior(Blackboard blackboard, DashStats dashConfig)
         {
             return new SequenceNode(
-                new ConditionNode(() => _blackboard.Get<float>("DamageTakenSinceLastDash") >= _config.Dash.DamageThreshold),
+                new ConditionNode(() => blackboard.Get<float>("DamageTakenSinceLastDash") >= dashConfig.DamageThreshold),
                 // Charge up phase
                 new ActionNode(() =>
                 {
-                    var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
-                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
-
+                    var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
+                    var target = blackboard.Get<Player>(BlackboardKeys.Target);
                     var chargeDirection = (npc.Center - target.Center).SafeNormalize(Vector2.UnitX);
-                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(npc.Center + chargeDirection * 150f, 0f));
+                    blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(npc.Center + chargeDirection * 150f, 0f));
                     return NodeState.Success;
                 }),
-                new WaitNode(_config.Dash.ChargeTime),
+                new WaitNode(dashConfig.ChargeTime),
                 // Dash action
                 new ActionNode(() =>
                 {
-                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
-                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(target.Center, 0f, 25f));
+                    var target = blackboard.Get<Player>(BlackboardKeys.Target);
+                    blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(target.Center, 0f, 25f));
                     return NodeState.Success;
                 }),
                 new WaitNode(0.5f), // Duration of the dash
                 new ActionNode(() =>
                 {
-                    _blackboard.Set("DamageTakenSinceLastDash", 0f);
-                    _blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent()); // End dash with an idle intent
+                    blackboard.Set("DamageTakenSinceLastDash", 0f);
+                    blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent()); // End dash with an idle intent
                     return NodeState.Success;
                 })
             );
         }
 
-        private Node BuildPatrolBehavior()
+        private Node BuildPatrolBehavior(Blackboard blackboard, ProjectileAttack attackStats)
         {
             return new SequenceNode(
                 new ActionNode(() =>
                 {
-                    var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
-                    var target = _blackboard.Get<Player>(BlackboardKeys.Target);
+                    var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
+                    var target = blackboard.Get<Player>(BlackboardKeys.Target);
+                    int patrolDirection = blackboard.Get<int>(PatrolDirectionKey);
 
                     if (target == null || !target.active)
                     {
-                        _blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
+                        blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
                         return NodeState.Failure;
                     }
 
-                    var patrolTargetPosition = target.Center + new Vector2(400 * _patrolDirection, -300);
-                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(patrolTargetPosition, 80f));
+                    var patrolTargetPosition = target.Center + new Vector2(400 * patrolDirection, -300);
+                    blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(patrolTargetPosition, 80f));
 
                     if (Vector2.Distance(npc.Center, patrolTargetPosition) < 100f)
                     {
-                        _patrolDirection *= -1;
-                        var attackStats = _config.Attacks.BasicShot;
+                        blackboard.Set(PatrolDirectionKey, patrolDirection * -1);
                         if (attackStats != null)
                         {
-                            _blackboard.Set(BlackboardKeys.AttackIntent, new ShootProjectileIntent(target.Center, attackStats));
+                            blackboard.Set(BlackboardKeys.AttackIntent, new ShootProjectileIntent(target.Center, attackStats));
                         }
                     }
                     return NodeState.Success;

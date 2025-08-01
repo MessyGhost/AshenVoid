@@ -1,6 +1,9 @@
 using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.Intents;
+using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
+using System;
+using System.Collections.Generic;
 using Terraria;
 using Terraria.ID;
 
@@ -8,21 +11,30 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class AttackSystem : IAttackSystem
     {
-        public void Update(GameTime gameTime, NPC npc, AttackComponent attackComponent, StatSheetComponent statSheet, AIStateComponent aiState)
+        public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
         {
-            // Update cooldown timer
+            typeof(AttackComponent),
+            typeof(StatSheetComponent),
+            typeof(AIStateComponent)
+        };
+
+        public void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus)
+        {
+            var attackComponent = controller.GetComponent<AttackComponent>();
+            var statSheet = controller.GetComponent<StatSheetComponent>();
+            var aiState = controller.GetComponent<AIStateComponent>();
+            var blackboard = aiState.Blackboard;
+
             if (attackComponent.CooldownTimer > 0)
             {
                 attackComponent.CooldownTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
 
-            var blackboard = aiState.Blackboard;
             if (!blackboard.TryGet(BlackboardKeys.AttackIntent, out IAttackIntent intent) || !attackComponent.IsReady())
             {
                 return;
             }
 
-            // Execute the attack based on intent type
             switch (intent)
             {
                 case ShootProjectileIntent shoot:
@@ -36,7 +48,6 @@ namespace AshenVoid.Core.ECS.Systems
                     break;
             }
 
-            // Consume the intent
             blackboard.Remove(BlackboardKeys.AttackIntent);
         }
 
@@ -60,7 +71,7 @@ namespace AshenVoid.Core.ECS.Systems
                 npc.Center,
                 velocity,
                 intent.Stats.ProjectileId,
-                (int)npc.damage, // Use the NPC's final damage
+                (int)npc.damage,
                 0f,
                 Main.myPlayer
             );

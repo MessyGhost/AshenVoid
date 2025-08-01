@@ -5,12 +5,13 @@ namespace AshenVoid.Core.ECS
 {
     public class AnimationComponent : IAnimationComponent
     {
-        private readonly NPC _npc;
+        public int CurrentFrame { get; set; }
         public int FrameCounter { get; set; }
 
         public AnimationComponent(NPC npc)
         {
-            _npc = npc;
+            // The NPC reference is no longer needed here,
+            // as the system will provide it.
         }
 
         public void SetAnimation(string animationName)

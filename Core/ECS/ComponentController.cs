@@ -31,6 +31,11 @@ namespace AshenVoid.Core.ECS
             return null;
         }
 
+        public bool HasComponent(Type componentType)
+        {
+            return _components.ContainsKey(componentType);
+        }
+
         public bool TryGetComponent<T>(out T result) where T : class, IComponent
         {
             if (_components.TryGetValue(typeof(T), out var component) && component is T casted)

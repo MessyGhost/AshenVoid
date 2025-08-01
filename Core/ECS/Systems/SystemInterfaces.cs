@@ -1,60 +1,46 @@
-using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
+using System;
+using System.Collections.Generic;
 using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
     /// <summary>
-    /// Base marker interface for all systems.
+    /// Marker interface for a system.
     /// </summary>
     public interface ISystem { }
 
     /// <summary>
-    /// System for handling NPC movement logic.
+    /// Defines a system that operates on a set of components.
+    /// This is the core of the new, efficient SystemManager.
     /// </summary>
-    public interface IMovementSystem : ISystem
+    public interface IComponentSystem : ISystem
     {
-        void Update(GameTime gameTime, NPC npc, MovementComponent movementComponent, AIStateComponent aiState);
+        /// <summary>
+        /// Gets the set of component types that this system requires to operate.
+        /// The SystemManager will use this to determine if the system should run for a given entity.
+        /// </summary>
+        HashSet<Type> RequiredComponents { get; }
+
+        /// <summary>
+        /// The generic update method for all systems.
+        /// </summary>
+        /// <param name="gameTime">The game time.</param>
+        /// <param name="npc">The NPC entity.</param>
+        /// <param name="controller">The component controller for accessing components.</param>
+        /// <param name="eventBus">The event bus for publishing events.</param>
+        void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus);
     }
 
-    /// <summary>
-    /// System for handling attack execution and cooldowns.
-    /// </summary>
-    public interface IAttackSystem : ISystem
-    {
-        void Update(GameTime gameTime, NPC npc, AttackComponent attackComponent, StatSheetComponent statSheet, AIStateComponent aiState);
-    }
+    // The specific system interfaces are now just for categorization and clarity.
+    // They no longer define their own Update methods.
+    // This simplifies the SystemManager immensely.
 
-    /// <summary>
-    /// System for updating NPC animation frames.
-    /// </summary>
-    public interface IAnimationSystem : ISystem
-    {
-        void Update(NPC npc, AnimationComponent animationComponent);
-    }
-
-    /// <summary>
-    /// System for applying stat modifications to the NPC.
-    /// </summary>
-    public interface IStatSystem : ISystem
-    {
-        void Update(NPC npc, StatSheetComponent statSheet);
-    }
-
-    /// <summary>
-    /// System for driving the AI state machine.
-    /// </summary>
-    public interface IAIStateSystem : ISystem
-    {
-        void Update(GameTime gameTime, NPC npc, AIStateComponent aiState);
-    }
-
-    /// <summary>
-    /// System for monitoring health changes and publishing events.
-    /// </summary>
-    public interface IHealthSystem : ISystem
-    {
-        void Update(NPC npc, HealthComponent health, EventBus eventBus);
-    }
+    public interface IMovementSystem : IComponentSystem { }
+    public interface IAttackSystem : IComponentSystem { }
+    public interface IAnimationSystem : IComponentSystem { }
+    public interface IStatSystem : IComponentSystem { }
+    public interface IAIStateSystem : IComponentSystem { }
+    public interface IHealthSystem : IComponentSystem { }
 }

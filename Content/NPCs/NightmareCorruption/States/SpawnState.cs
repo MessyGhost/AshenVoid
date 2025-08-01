@@ -1,21 +1,23 @@
 using AshenVoid.Content.NPCs.NightmareCorruption.Configs;
-using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.FSM;
 using Microsoft.Xna.Framework;
+using System;
 using Terraria;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class SpawnState : IState
     {
-        private float _timer;
-        private BossConfig _config;
+        // Define keys for blackboard data to avoid magic strings
+        private static readonly string TimerKey = "SpawnState_Timer";
+        private static readonly string ConfigKey = "BossConfig";
 
         public void Enter(Blackboard blackboard)
         {
-            _timer = 0f;
-            _config = blackboard.Get<BossConfig>("BossConfig");
+            // Initialize state data in the blackboard
+            blackboard.Set(TimerKey, 0f);
+
             var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
             var target = blackboard.Get<Player>(BlackboardKeys.Target);
 
@@ -26,18 +28,26 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             npc.alpha = 255;
         }
 
-        public void Update(Blackboard blackboard)
+        public Type Update(Blackboard blackboard)
         {
-            _timer += 1f / 60f; // Assuming 60 FPS
-
+            // Retrieve data from blackboard
+            float timer = blackboard.Get<float>(TimerKey);
+            var config = blackboard.Get<BossConfig>(ConfigKey);
             var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
-            npc.alpha = (int)MathHelper.Lerp(255, 0, _timer / _config.SpawnDuration);
 
-            if (_timer >= _config.SpawnDuration)
+            timer += 1f / 60f; // Assuming 60 FPS
+            npc.alpha = (int)MathHelper.Lerp(255, 0, timer / config.SpawnDuration);
+
+            // Store updated data back into blackboard
+            blackboard.Set(TimerKey, timer);
+
+            // Request a state transition by returning the new state's type
+            if (timer >= config.SpawnDuration)
             {
-                var aiState = blackboard.Get<AIStateComponent>(BlackboardKeys.AIState);
-                aiState?.ChangeState<Phase1State>();
+                return typeof(Phase1State);
             }
+
+            return null; // No transition requested
         }
 
         public void Exit(Blackboard blackboard)
@@ -47,7 +57,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
             {
                 npc.alpha = 0;
             }
-            _config = null; // Release reference
+            // Clean up blackboard data that is no longer needed
+            blackboard.Remove(TimerKey);
         }
     }
 }

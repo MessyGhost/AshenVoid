@@ -1,40 +1,33 @@
+using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
+using System;
+using System.Collections.Generic;
 using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
     public class AnimationSystem : IAnimationSystem
     {
-        public void Update(NPC npc, AnimationComponent animationComponent)
+        public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
         {
-            // This logic will be driven by states or animation requests in the future.
-            // For now, we can keep the simple movement-based animation.
+            typeof(AnimationComponent)
+        };
 
-            int frameHeight = npc.frame.Height;
+        public void Update(GameTime gameTime, NPC npc, ComponentController controller, EventBus eventBus)
+        {
+            var animationComponent = controller.GetComponent<AnimationComponent>();
+
             animationComponent.FrameCounter++;
-
-            bool isMoving = npc.velocity.Length() > 1.5f;
-
-            if (isMoving)
+            if (animationComponent.FrameCounter >= 5)
             {
-                if (animationComponent.FrameCounter >= 10)
+                animationComponent.FrameCounter = 0;
+                animationComponent.CurrentFrame++;
+                if (animationComponent.CurrentFrame >= Main.npcFrameCount[npc.type])
                 {
-                    npc.frame.Y = (npc.frame.Y + frameHeight) % (4 * frameHeight);
-                    if (npc.frame.Y < 2 * frameHeight)
-                    {
-                        npc.frame.Y = 2 * frameHeight;
-                    }
-                    animationComponent.FrameCounter = 0;
+                    animationComponent.CurrentFrame = 0;
                 }
             }
-            else
-            {
-                if (animationComponent.FrameCounter >= 15)
-                {
-                    npc.frame.Y = (npc.frame.Y + frameHeight) % (2 * frameHeight);
-                    animationComponent.FrameCounter = 0;
-                }
-            }
+            npc.frame.Y = animationComponent.CurrentFrame * npc.height;
         }
     }
 }

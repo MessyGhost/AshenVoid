@@ -4,13 +4,11 @@ using AshenVoid.Content.NPCs.NightmareCorruption.States;
 using AshenVoid.Core.Builders;
 using AshenVoid.Core.Configuration;
 using AshenVoid.Core.ECS;
-using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Systems;
-using AshenVoid.Core.Events;
 using Terraria;
-using Terraria.ID;
 using Terraria.Audio;
+using Terraria.ID;
 using Terraria.ModLoader;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption
@@ -51,29 +49,30 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.defense = bossConfig.Defense;
 
             var stateFactory = new StateFactory();
-            var blackboardSystem = new AIBlackboardSystem();
 
-            var controller = new BossBuilder()
-                .AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement))
-                .AddComponent(() => new AttackComponent())
-                .AddComponent(() => new AnimationComponent(NPC))
-                .AddComponent(() => new VFXComponent())
-                .AddComponent(() => new StatSheetComponent(NPC, bossConfig))
-                .AddComponent(() => new AIStateComponent(NPC, stateFactory))
-                .AddComponent(() => new HealthComponent(NPC.life))
-                .AddSystem(new MovementSystem())
-                .AddSystem(new AttackSystem())
-                .AddSystem(new AIStateSystem())
-                .AddSystem(new AnimationSystem())
-                .AddSystem(new StatSystem())
-                .AddSystem(new HealthSystem())
-                .AddSystem(blackboardSystem)
-                .WithInitialState(typeof(SpawnState))
-                .WithBlackboardData("BossConfig", bossConfig)
-                .OnBuild(c => blackboardSystem.Initialize(EventBus))
-                .Build();
+            var builder = new BossBuilder();
 
-            return controller;
+            // Setup AI Component first, as it holds the blackboard
+            var aiStateComponent = new AIStateComponent(NPC, stateFactory);
+            aiStateComponent.Blackboard.Set("BossConfig", bossConfig);
+            aiStateComponent.SetInitialState(typeof(SpawnState));
+
+            builder.AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement));
+            builder.AddComponent(() => new AttackComponent());
+            builder.AddComponent(() => new AnimationComponent(NPC));
+            builder.AddComponent(() => new VFXComponent());
+            builder.AddComponent(() => new StatSheetComponent(NPC, bossConfig));
+            builder.AddComponent(() => aiStateComponent); // Add the pre-configured component
+            builder.AddComponent(() => new HealthComponent(NPC.life));
+
+            builder.AddSystem(new MovementSystem());
+            builder.AddSystem(new AttackSystem());
+            builder.AddSystem(new AIStateSystem());
+            builder.AddSystem(new AnimationSystem());
+            builder.AddSystem(new StatSystem());
+            builder.AddSystem(new HealthSystem());
+
+            return builder.Build();
         }
 
         public override void OnKill()

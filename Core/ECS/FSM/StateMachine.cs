@@ -1,4 +1,5 @@
 using AshenVoid.Core.ECS.AI;
+using System;
 
 namespace AshenVoid.Core.ECS.FSM
 {
@@ -12,8 +13,6 @@ namespace AshenVoid.Core.ECS.FSM
         /// <summary>
         /// Transitions to a new state.
         /// </summary>
-        /// <param name="newState">The state to transition to.</param>
-        /// <param name="blackboard">The AI's blackboard containing all context.</param>
         public void ChangeState(IState newState, Blackboard blackboard)
         {
             CurrentState?.Exit(blackboard);
@@ -24,10 +23,10 @@ namespace AshenVoid.Core.ECS.FSM
         /// <summary>
         /// Updates the current state.
         /// </summary>
-        /// <param name="blackboard">The AI's blackboard containing all context.</param>
-        public void Update(Blackboard blackboard)
+        /// <returns>If a state transition is requested, the Type of the new state; otherwise, null.</returns>
+        public Type Update(Blackboard blackboard)
         {
-            CurrentState?.Update(blackboard);
+            return CurrentState?.Update(blackboard);
         }
     }
 }
