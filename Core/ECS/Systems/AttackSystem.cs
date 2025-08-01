@@ -11,6 +11,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class AttackSystem : IAttackSystem
     {
+        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+
         public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
         {
             typeof(AttackComponent),

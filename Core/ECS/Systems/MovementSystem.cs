@@ -10,6 +10,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class MovementSystem : IMovementSystem
     {
+        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+
         public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
         {
             typeof(MovementComponent),

@@ -51,5 +51,10 @@ namespace AshenVoid.Core.ECS
         {
             _systemManager.Update(gameTime, npc, this, eventBus);
         }
+
+        public void BuildSystemCache()
+        {
+            _systemManager.BuildCache(this);
+        }
     }
 }

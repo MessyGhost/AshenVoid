@@ -1,43 +1,65 @@
 # AshenVoid tModLoader Boss Framework
 
-This project contains a custom ECS (Entity-Component-System) framework designed for creating complex and maintainable bosses in tModLoader.
+This project contains a custom ECS (Entity-Component-System) framework designed for creating complex, maintainable, and multiplayer-compatible bosses in tModLoader.
 
 ## Core Concepts
 
 ### ECS (Entity-Component-System)
-- **Entity**: The NPC itself.
+- **Entity**: The `ModNPC` itself, represented by the `EcsBoss` base class.
 - **Component**: Pure data containers (e.g., `MovementComponent`, `AttackComponent`). They hold state but no logic.
 - **System**: Pure logic containers (e.g., `MovementSystem`, `AttackSystem`). They operate on components to perform actions.
 
-### State Management
-- **FSM (Finite State Machine)**: The boss's overall behavior is managed by a State Machine (`StateMachine.cs`). Each state (`IState`) represents a major phase or mode (e.g., `Phase1State`, `DeathState`).
-- **Behavior Tree**: Within each state, complex attack patterns and decision-making are handled by a Behavior Tree. This allows for modular and readable AI logic.
+### State Management & Network Sync
+- **FSM (Finite State Machine)**: The boss's overall behavior is managed by a `StateMachine`. Each `IState` represents a major phase (e.g., `Phase1State`, `DeathState`).
+- **State Synchronization**: The FSM's current state is automatically synchronized from the server to clients using `npc.ai[]`. The server has authority over the state, and clients react to state changes.
+- **Behavior Tree**: Within each state, complex attack patterns and decision-making can be handled by a Behavior Tree.
 
 ### Data Flow & Decoupling
-The key to this framework is decoupling AI decision-making from execution.
-1.  **AI Decision (State/BT)**: The AI's only job is to decide **what** to do. It does this by creating an **Intent** object (e.g., `ChaseIntent`, `ShootProjectileIntent`).
-2.  **Blackboard**: The AI places the created `Intent` onto a central `Blackboard`. The `Blackboard` is a simple key-value store for communication.
-3.  **System Execution**: Systems (like `MovementSystem`) run every frame. They check the `Blackboard` for relevant `Intents`. If an `Intent` is found, the system executes it by manipulating the data in the corresponding `Component`.
+The framework decouples AI decision-making from execution, which is crucial for clarity and network compatibility.
 
-This ensures the AI doesn't need to know *how* to move or attack, only that it *wants* to.
+1.  **AI Decision (Server-Side)**: The AI (FSM/BT) decides **what** to do. It creates an **Intent** object (e.g., `ChaseIntent`, `ShootProjectileIntent`).
+2.  **Blackboard**: The AI places the `Intent` onto a central `Blackboard` (a key-value store).
+3.  **System Execution (Server-Side)**: Systems like `MovementSystem` and `AttackSystem` run on the server. They read `Intents` from the `Blackboard` and execute them by manipulating component data and game state.
+4.  **State & Position Sync (tModLoader)**: tModLoader automatically syncs the `npc.ai[]` array (which we use for state) and `npc.position`/`npc.velocity` to clients.
+5.  **System Execution (Client-Side)**: Systems like `AnimationSystem` and `VFXSystem` run on the client, reacting to the synchronized state to produce visual and audio feedback.
+
+This ensures the AI logic runs only on the server, and clients are just "puppets" that render the outcome.
 
 ## Creating a Boss
-1.  Create a new class that inherits from `EcsBoss`.
-2.  Implement the `InitializeController` method.
-3.  Use the `BossBuilder` to fluently add components and systems.
-4.  Define the boss's behavior by creating `IState` classes.
-5.  Use the `WithInitialState` and `WithBlackboardData` methods on the `BossBuilder` to set up the initial state and any required configuration data.
 
-Example from `NightmareCorruption.cs`:
+1.  Create a new class that inherits from `EcsBoss`.
+2.  Implement `SetBossDefaults()` to configure standard `NPC` properties (`width`, `height`, `lifeMax`, etc.).
+3.  Implement `InitializeController()`. This method is called **once** from `SetDefaults` to create the boss's "blueprint".
+4.  Inside `InitializeController`, use the `BossBuilder` to add all necessary components and systems.
+5.  **Crucially**, register all of your `IState` classes with the `AIStateComponent` to get unique network IDs. The order of registration matters!
+6.  Define the boss's behavior by creating `IState` classes.
+
+Example from the refactored `NightmareCorruption.cs`:
 ```csharp
-var controller = new BossBuilder()
+// In InitializeController()
+var aiStateComponent = new AIStateComponent(NPC, stateFactory);
+
+// Register states for network IDs. SpawnState gets ID 0, Phase1State gets ID 1, etc.
+aiStateComponent.RegisterState<SpawnState>();
+aiStateComponent.RegisterState<Phase1State>();
+aiStateComponent.RegisterState<DeathState>();
+
+var builder = new BossBuilder()
     .AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement))
     .AddComponent(() => new AttackComponent())
-    .AddComponent(() => new HealthComponent(NPC.life))
-    .AddSystem(new MovementSystem())
-    .AddSystem(new AttackSystem())
-    .AddSystem(new HealthSystem())
-    .WithInitialState(typeof(SpawnState))
-    .WithBlackboardData("BossConfig", bossConfig)
-    .OnBuild(c => blackboardSystem.Initialize(EventBus))
-    .Build();
+    .AddComponent(() => aiStateComponent) // Add the pre-configured component
+    .AddSystem(new MovementSystem()) // Runs on Server
+    .AddSystem(new AttackSystem())   // Runs on Server
+    .AddSystem(new AnimationSystem()); // Runs on Both
+
+return builder.Build();
+```
+
+## System Execution Side
+
+Each system must implement the `ExecutionSide` property:
+- `SystemExecutionSide.Server`: For all logic, AI, and gameplay calculations.
+- `SystemExecutionSide.Client`: For purely visual effects that don't depend on gameplay state.
+- `SystemExecutionSide.Both`: For logic that needs to run everywhere, like animations.
+
+The `SystemManager` will automatically ensure systems only run on the correct side.

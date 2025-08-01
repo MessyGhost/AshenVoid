@@ -8,6 +8,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class HealthSystem : IHealthSystem
     {
+        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+
         public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
         {
             typeof(HealthComponent)

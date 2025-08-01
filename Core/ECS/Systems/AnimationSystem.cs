@@ -8,6 +8,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class AnimationSystem : IAnimationSystem
     {
+        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Both;
+
         public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
         {
             typeof(AnimationComponent)

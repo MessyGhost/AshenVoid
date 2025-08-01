@@ -7,6 +7,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class AIBlackboardSystem : ISystem
     {
+        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+
         private bool _isEnraged;
         private const string RAGE_SOURCE = "Rage";
         private EventBus _eventBus;
