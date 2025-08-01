@@ -70,19 +70,19 @@ namespace AshenVoid.Core.Events
     /// </summary>
     public struct StateChangedNetworkEvent : INetworkEvent
     {
-        public int EntityId;
-        public string StateTypeName;
+        public int EntityId { get; set; }
+        public byte StateId { get; set; }
 
         public void Write(BinaryWriter writer)
         {
             writer.Write(EntityId);
-            writer.Write(StateTypeName);
+            writer.Write(StateId);
         }
 
         public void Read(BinaryReader reader)
         {
             EntityId = reader.ReadInt32();
-            StateTypeName = reader.ReadString();
+            StateId = reader.ReadByte();
         }
     }
 

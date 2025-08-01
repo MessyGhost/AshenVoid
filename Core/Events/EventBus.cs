@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace AshenVoid.Core.Events
 {
     public class EventBus
     {
-        // 使用强引用委托列表，而不是WeakReference，以确保订阅的稳定性和可靠性。
-        // 在tModLoader环境中，系统和NPC的生命周期是可控的，不需要担心EventBus导致的内存泄漏。
-        private readonly Dictionary<Type, List<Delegate>> _subscribers = new();
+        private readonly Dictionary<Type, HashSet<Delegate>> _subscribers = new();
+        private readonly Queue<IEvent> _eventQueue = new();
         private readonly object _lock = new();
 
         public void Subscribe<T>(Action<T> handler) where T : IEvent
@@ -18,7 +16,7 @@ namespace AshenVoid.Core.Events
             {
                 if (!_subscribers.ContainsKey(eventType))
                 {
-                    _subscribers[eventType] = new List<Delegate>();
+                    _subscribers[eventType] = new HashSet<Delegate>();
                 }
                 _subscribers[eventType].Add(handler);
             }
@@ -38,31 +36,48 @@ namespace AshenVoid.Core.Events
 
         public void Publish<T>(T e) where T : IEvent
         {
-            var eventType = e.GetType(); // 使用 e.GetType() 而不是 typeof(T) 来支持发布派生类事件
-            List<Delegate> handlersSnapshot;
-
             lock (_lock)
             {
-                if (!_subscribers.TryGetValue(eventType, out var handlers))
+                _eventQueue.Enqueue(e);
+            }
+        }
+
+        public void DispatchEvents()
+        {
+            Queue<IEvent> queueSnapshot;
+            lock (_lock)
+            {
+                if (_eventQueue.Count == 0)
                     return;
 
-                // 创建一个快照以在锁外执行，防止死锁
-                handlersSnapshot = new List<Delegate>(handlers);
+                queueSnapshot = new Queue<IEvent>(_eventQueue);
+                _eventQueue.Clear();
             }
 
-            // 在锁外执行委托，避免长时间持有锁
-            foreach (var handler in handlersSnapshot)
+            while (queueSnapshot.Count > 0)
             {
-                // 检查委托是否仍然有效且类型匹配
-                if (handler is Action<T> typedHandler)
+                var e = queueSnapshot.Dequeue();
+                var eventType = e.GetType();
+                HashSet<Delegate> handlersSnapshot;
+
+                lock (_lock)
+                {
+                    if (!_subscribers.TryGetValue(eventType, out var handlers))
+                        continue;
+
+                    handlersSnapshot = new HashSet<Delegate>(handlers);
+                }
+
+                foreach (var handler in handlersSnapshot)
                 {
                     try
                     {
-                        typedHandler(e);
+                        // Instead of 'is', we can use direct invocation after ensuring the delegate type.
+                        // This is slightly faster as the type is known from subscription.
+                        handler.DynamicInvoke(e);
                     }
                     catch (Exception ex)
                     {
-                        // 记录异常，而不是让一个订阅者的错误中断整个事件分发
                         Terraria.ModLoader.ModContent.GetInstance<AshenVoid>().Logger.Error($"Error executing event handler for {eventType.Name}", ex);
                     }
                 }

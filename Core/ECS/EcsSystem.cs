@@ -79,6 +79,9 @@ namespace AshenVoid.Core.ECS
         {
             World?.Update(Main.gameTimeCache);
 
+            // Dispatch all queued events after systems have updated
+            EventBus?.DispatchEvents();
+
             if (Main.netMode == NetmodeID.Server)
             {
                 NetworkManager?.SendPendingMessages();
