@@ -1,22 +1,22 @@
 namespace AshenVoid.Core.Configuration
 {
     /// <summary>
-    /// 定义了配置加载器的契约。
+    /// Defines the contract for the configuration loader.
     /// </summary>
     public interface IConfigLoader
     {
         /// <summary>
-        /// 根据Boss的FullName加载其配置。
+        /// Loads a configuration file from the mod's content.
         /// </summary>
-        /// <typeparam name="T">配置的类型。</typeparam>
-        /// <param name="bossFullName">Boss的FullName属性，例如 "MyMod/MyBoss"。</param>
-        /// <returns>加载并反序列化后的配置对象。</returns>
-        T LoadForBoss<T>(string bossFullName) where T : class, new();
+        /// <typeparam name="T">The type of the configuration object.</typeparam>
+        /// <param name="assetPath">The relative path to the asset within the mod (e.g., "Content/NPCs/MyBoss/Configs/MyBoss.hjson").</param>
+        /// <returns>The loaded and deserialized configuration object, or a default object on failure.</returns>
+        T Load<T>(string assetPath) where T : class, new();
 
         /// <summary>
-        /// 从缓存中移除一个Boss配置，使其在下次加载时被重新读取。
+        /// Removes a configuration from the cache, forcing a reload on next access.
         /// </summary>
-        /// <param name="bossFullName">要重载的Boss的FullName。</param>
-        void ReloadBossConfig(string bossFullName);
+        /// <param name="assetPath">The asset path of the configuration to reload.</param>
+        void ReloadConfig(string assetPath);
     }
 }

@@ -1,51 +1,57 @@
-using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.FSM;
-using AshenVoid.Core.ECS.Interfaces;
+using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
+using System;
 using Terraria;
 
 namespace AshenVoid.Content.NPCs.NightmareCorruption.States
 {
     public class DeathState : IState
     {
-        private float _timer;
         private const float DeathDuration = 3f; // 3 seconds for death animation
 
         public void Enter(Blackboard blackboard)
         {
-            _timer = 0f;
             var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
-            var controller = blackboard.Get<ComponentController>(BlackboardKeys.Controller);
 
-            npc.life = 0; // Ensure it's marked as dead
+            blackboard.Set("DeathTimer", 0f);
+            npc.life = 0;
             npc.dontTakeDamage = true;
             npc.velocity = Vector2.Zero;
 
-            // Disable AI by setting an idle intent
-            controller.GetComponent<IMovementComponent>()?.SetIntent(new Core.ECS.Intents.IdleIntent());
+            blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
         }
 
-        public void Update(Blackboard blackboard)
+        public Type Update(Blackboard blackboard)
         {
-            _timer += 1f / 60f;
+            var timer = blackboard.Get<float>("DeathTimer");
+            timer += 1f / 60f;
+            blackboard.Set("DeathTimer", timer);
 
             var npc = blackboard.Get<NPC>(BlackboardKeys.NPC);
 
             // Simple death effect: fade out and shrink
-            npc.alpha = (int)MathHelper.Lerp(0, 255, _timer / DeathDuration);
-            npc.scale = MathHelper.Lerp(1f, 0f, _timer / DeathDuration);
+            npc.alpha = (int)MathHelper.Lerp(0, 255, timer / DeathDuration);
+            npc.scale = MathHelper.Lerp(1f, 0f, timer / DeathDuration);
             npc.rotation += 0.1f;
 
-            if (_timer >= DeathDuration)
+            if (timer >= DeathDuration)
             {
-                npc.StrikeNPC(new NPC.HitInfo { Damage = npc.lifeMax, InstantKill = true });
+                // The AIStateSystem will see that the NPC is no longer active and handle the final cleanup.
+                // We just need to make sure the NPC is properly killed.
+                npc.life = 0;
+                npc.checkDead();
             }
+
+            // This state never transitions to another state on its own.
+            return null;
         }
 
         public void Exit(Blackboard blackboard)
         {
-            // Cleanup if needed, but StrikeNPC should handle everything.
+            // Cleanup if needed
+            blackboard.Remove("DeathTimer");
         }
     }
 }

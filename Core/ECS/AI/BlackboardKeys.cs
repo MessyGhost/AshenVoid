@@ -13,5 +13,6 @@ namespace AshenVoid.Core.ECS.AI
         public const string Controller = "Controller";
         public const string GameTime = "GameTime";
         public const string AIState = "AIState";
+        public const string RequestedState = "RequestedState"; // Add this key
     }
 }

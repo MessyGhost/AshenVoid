@@ -21,7 +21,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Main.npcFrameCount[Type] = 4;
         }
 
-        // NEW: This replaces the old SetDefaults
         public override void SetBossDefaults()
         {
             NPC.width = 242;
@@ -32,7 +31,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.boss = true;
             NPC.noGravity = true;
             NPC.noTileCollide = true;
-            // NPC.netAlways and aiStyle are now set in the base class
 
             NPC.HitSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionHurt");
             NPC.DeathSound = new SoundStyle("AshenVoid/Assets/Sounds/Custom/NightmareCorruptionDead");
@@ -40,13 +38,13 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             Music = MusicLoader.GetMusicSlot(Mod, "Assets/Music/FoulAbyssEcho");
         }
 
-        // This is now called from SetDefaults in the base class
         protected override ComponentController InitializeController()
         {
             var configLoader = new ConfigLoader();
-            var bossConfig = configLoader.LoadForBoss<BossConfig>(FullName);
+            // Define the path explicitly here. This is more robust.
+            string configPath = $"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson";
+            var bossConfig = configLoader.Load<BossConfig>(configPath);
 
-            // We can now set these here, as this runs before the NPC is "live"
             NPC.damage = bossConfig.Damage;
             NPC.defense = bossConfig.Defense;
 
@@ -55,14 +53,12 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
             var aiStateComponent = new AIStateComponent(NPC, stateFactory);
 
-            // NEW: Register all possible states for network IDs
-            aiStateComponent.RegisterState<SpawnState>();    // ID: 0
-            aiStateComponent.RegisterState<Phase1State>();   // ID: 1
-            aiStateComponent.RegisterState<Phase2State>();   // ID: 2
-            aiStateComponent.RegisterState<DeathState>();    // ID: 3
+            aiStateComponent.RegisterState<SpawnState>();
+            aiStateComponent.RegisterState<Phase1State>();
+            aiStateComponent.RegisterState<Phase2State>();
+            aiStateComponent.RegisterState<DeathState>();
 
             aiStateComponent.Blackboard.Set("BossConfig", bossConfig);
-            // We no longer set initial state here. It's done in OnSpawn.
 
             builder.AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement));
             builder.AddComponent(() => new AttackComponent());
@@ -70,11 +66,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             builder.AddComponent(() => new VFXComponent());
             builder.AddComponent(() => new StatSheetComponent(NPC, bossConfig));
             builder.AddComponent(() => aiStateComponent);
-
-            // HealthComponent should be initialized with NPC.lifeMax, not NPC.life
             builder.AddComponent(() => new HealthComponent(NPC.lifeMax));
 
-            // Systems are defined once and for all
             builder.AddSystem(new MovementSystem());
             builder.AddSystem(new AttackSystem());
             builder.AddSystem(new AIStateSystem());
@@ -87,7 +80,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         public override void OnKill()
         {
-            // This check is correct
             if (Main.netMode != NetmodeID.MultiplayerClient)
             {
                 Item.NewItem(NPC.GetSource_Loot(), NPC.getRect(), ModContent.ItemType<NightmareEssence>(), 10);

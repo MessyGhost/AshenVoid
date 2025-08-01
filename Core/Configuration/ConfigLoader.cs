@@ -1,81 +1,60 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Hjson;
 using Newtonsoft.Json;
 using Terraria.ModLoader;
 
 namespace AshenVoid.Core.Configuration
 {
-    /// <summary>
-    /// 一个通用的、可注入的配置加载器，用于从.hjson文件加载配置。
-    /// </summary>
     public class ConfigLoader : IConfigLoader
     {
         private readonly Dictionary<string, object> _configCache = new();
-        private readonly string _modSourcePath;
+        private readonly Mod _modInstance;
 
         public ConfigLoader()
         {
-            _modSourcePath = AshenVoid.ModSourcePath;
-            if (string.IsNullOrEmpty(_modSourcePath))
-            {
-                ModContent.GetInstance<AshenVoid>().Logger.Error("Mod源路径未初始化，配置加载器可能无法正常工作。");
-            }
+            // Store the Mod instance to access its file loading capabilities
+            _modInstance = ModContent.GetInstance<AshenVoid>();
         }
 
         /// <inheritdoc/>
-        public T LoadForBoss<T>(string bossFullName) where T : class, new()
+        public T Load<T>(string assetPath) where T : class, new()
         {
-            if (_configCache.TryGetValue(bossFullName, out var cached))
+            if (_configCache.TryGetValue(assetPath, out var cached))
                 return (T)cached;
 
-            if (string.IsNullOrEmpty(_modSourcePath))
+            if (!_modInstance.FileExists(assetPath))
             {
-                ModContent.GetInstance<AshenVoid>().Logger.Error($"由于Mod源路径无效，无法加载Boss配置: {bossFullName}");
-                return new T();
-            }
-
-            var bossNameParts = bossFullName.Split('/');
-            if (bossNameParts.Length < 2)
-            {
-                ModContent.GetInstance<AshenVoid>().Logger.Error($"无效的Boss FullName格式: {bossFullName}");
-                return new T();
-            }
-            var bossInternalName = bossNameParts[^1];
-            var configPath = Path.Combine("Content", "NPCs", bossInternalName, "Configs", $"{bossInternalName}.hjson");
-
-            var fullPath = Path.Combine(_modSourcePath, configPath);
-
-            if (!File.Exists(fullPath))
-            {
-                ModContent.GetInstance<AshenVoid>().Logger.Warn($"Boss配置文件不存在: {fullPath}，将使用默认配置。");
+                _modInstance.Logger.Warn($"Configuration file not found: {assetPath}. Using default config.");
                 var defaultConfig = new T();
-                _configCache[bossFullName] = defaultConfig;
+                _configCache[assetPath] = defaultConfig;
                 return defaultConfig;
             }
 
             try
             {
-                var hjsonText = File.ReadAllText(fullPath);
+                // Use Mod.GetFileBytes to read the file safely in both dev and published environments
+                var fileBytes = _modInstance.GetFileBytes(assetPath);
+                var hjsonText = System.Text.Encoding.UTF8.GetString(fileBytes);
+
                 var hjsonValue = HjsonValue.Parse(hjsonText);
                 var jsonText = hjsonValue.ToString(Stringify.Plain);
                 var config = JsonConvert.DeserializeObject<T>(jsonText);
 
-                _configCache[bossFullName] = config;
+                _configCache[assetPath] = config;
                 return config;
             }
             catch (Exception ex)
             {
-                ModContent.GetInstance<AshenVoid>().Logger.Error($"加载或解析Boss配置失败: {bossFullName} ({configPath})", ex);
-                return new T();
+                _modInstance.Logger.Error($"Failed to load or parse config: {assetPath}", ex);
+                return new T(); // Return default on failure
             }
         }
 
         /// <inheritdoc/>
-        public void ReloadBossConfig(string bossFullName)
+        public void ReloadConfig(string assetPath)
         {
-            _configCache.Remove(bossFullName);
+            _configCache.Remove(assetPath);
         }
     }
 }
