@@ -1,3 +1,4 @@
+using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using Terraria;
@@ -5,9 +6,9 @@ using Terraria.ID;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class AttackSystem : ISystem
+    public class AttackSystem : IAttackSystem
     {
-        public void Update(GameTime gameTime, NPC npc, AttackComponent attackComponent, StatSheetComponent statSheet)
+        public void Update(GameTime gameTime, NPC npc, AttackComponent attackComponent, StatSheetComponent statSheet, AIStateComponent aiState)
         {
             // Update cooldown timer
             if (attackComponent.CooldownTimer > 0)
@@ -15,11 +16,14 @@ namespace AshenVoid.Core.ECS.Systems
                 attackComponent.CooldownTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
 
-            // Check if there's an attack to execute
-            if (attackComponent.CurrentIntent == null || !attackComponent.IsReady()) return;
+            var blackboard = aiState.Blackboard;
+            if (!blackboard.TryGet(BlackboardKeys.AttackIntent, out IAttackIntent intent) || !attackComponent.IsReady())
+            {
+                return;
+            }
 
             // Execute the attack based on intent type
-            switch (attackComponent.CurrentIntent)
+            switch (intent)
             {
                 case ShootProjectileIntent shoot:
                     ExecuteShootProjectile(npc, shoot);
@@ -33,7 +37,7 @@ namespace AshenVoid.Core.ECS.Systems
             }
 
             // Consume the intent
-            attackComponent.CurrentIntent = null;
+            blackboard.Remove(BlackboardKeys.AttackIntent);
         }
 
         private void ExecuteSpawnNpc(NPC npc, SpawnNpcIntent intent)

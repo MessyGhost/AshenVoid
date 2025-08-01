@@ -1,11 +1,4 @@
-namespace AshenVoid.Core.ECS.Systems
-{
-    /// <summary>
-    /// A marker interface for all systems in the ECS architecture.
-    /// Systems contain logic that operates on components.
-    /// A system should have one public method named "Update" which parameters will be injected.
-    /// </summary>
-    public interface ISystem
-    {
-    }
-}
+// This file is now obsolete and its contents have been moved to SystemInterfaces.cs
+// A system should implement one of the specific system interfaces (e.g., IMovementSystem)
+// to be processed by the SystemManager. All systems are instantiated and added to the
+// ComponentController via the BossBuilder.

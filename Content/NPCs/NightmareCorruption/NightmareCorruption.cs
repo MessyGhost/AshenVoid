@@ -50,8 +50,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             NPC.damage = bossConfig.Damage;
             NPC.defense = bossConfig.Defense;
 
-            EventBus = new EventBus();
             var stateFactory = new StateFactory();
+            var blackboardSystem = new AIBlackboardSystem();
 
             var controller = new BossBuilder()
                 .AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement))
@@ -59,19 +59,19 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
                 .AddComponent(() => new AnimationComponent(NPC))
                 .AddComponent(() => new VFXComponent())
                 .AddComponent(() => new StatSheetComponent(NPC, bossConfig))
-                .AddComponent(() => new AIStateComponent(NPC, ComponentController, stateFactory))
+                .AddComponent(() => new AIStateComponent(NPC, stateFactory))
+                .AddComponent(() => new HealthComponent(NPC.life))
                 .AddSystem(new MovementSystem())
                 .AddSystem(new AttackSystem())
                 .AddSystem(new AIStateSystem())
                 .AddSystem(new AnimationSystem())
                 .AddSystem(new StatSystem())
-                .AddSystem(new AIBlackboardSystem(EventBus))
+                .AddSystem(new HealthSystem())
+                .AddSystem(blackboardSystem)
                 .WithInitialState(typeof(SpawnState))
+                .WithBlackboardData("BossConfig", bossConfig)
+                .OnBuild(c => blackboardSystem.Initialize(EventBus))
                 .Build();
-
-            // Put the config into the blackboard for states to access
-            var aiState = controller.GetComponent<AIStateComponent>();
-            aiState?.Blackboard.Set("BossConfig", bossConfig);
 
             return controller;
         }

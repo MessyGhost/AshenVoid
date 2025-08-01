@@ -1,3 +1,4 @@
+using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using System;
@@ -5,20 +6,30 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class MovementSystem : ISystem
+    public class MovementSystem : IMovementSystem
     {
-        public void Update(GameTime gameTime, NPC npc, MovementComponent movementComponent)
+        public void Update(GameTime gameTime, NPC npc, MovementComponent movementComponent, AIStateComponent aiState)
         {
-            Vector2 targetVelocity = npc.velocity;
+            var blackboard = aiState.Blackboard;
+
+            if (!blackboard.TryGet(BlackboardKeys.MovementIntent, out IMovementIntent movementIntent))
+            {
+                // If no intent, default to idle behavior
+                npc.velocity *= 0.95f;
+                return;
+            }
+
             Vector2 destination = npc.Center;
 
-            switch (movementComponent.CurrentIntent)
+            switch (movementIntent)
             {
                 case ChaseIntent chase:
                     destination = chase.TargetPosition;
                     if (npc.Center.Distance(chase.TargetPosition) < chase.StopDistance)
                     {
                         destination = npc.Center;
+                        // Consume intent when destination is reached
+                        blackboard.Remove(BlackboardKeys.MovementIntent);
                     }
                     break;
 
@@ -38,18 +49,17 @@ namespace AshenVoid.Core.ECS.Systems
                 case TeleportIntent teleport:
                     npc.Center = teleport.TargetPosition;
                     npc.velocity = Vector2.Zero;
-                    movementComponent.CurrentIntent = null;
+                    blackboard.Remove(BlackboardKeys.MovementIntent);
                     return;
 
                 case IdleIntent _:
-                case null:
                     npc.velocity *= 0.95f;
-                    movementComponent.CurrentIntent = null;
+                    blackboard.Remove(BlackboardKeys.MovementIntent);
                     return;
             }
 
             Vector2 idealPosition = movementComponent.Dynamics.Update((float)gameTime.ElapsedGameTime.TotalSeconds, npc.Center, destination);
-            targetVelocity = idealPosition - npc.Center;
+            Vector2 targetVelocity = idealPosition - npc.Center;
 
             npc.velocity = Collision.TileCollision(npc.position, targetVelocity, npc.width, npc.height, !npc.noTileCollide, !npc.noTileCollide);
         }

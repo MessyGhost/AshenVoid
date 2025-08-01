@@ -5,31 +5,31 @@ namespace AshenVoid.Core.Events
 {
     public readonly struct NPCDamagedEvent : IEvent
     {
-        public readonly ComponentController Controller;
         public readonly NPC NPC;
         public readonly NPC.HitInfo Hit;
+        public readonly IComponentProvider ComponentProvider;
 
-        public NPCDamagedEvent(ComponentController controller, NPC npc, NPC.HitInfo hit)
+        public NPCDamagedEvent(NPC npc, NPC.HitInfo hit, IComponentProvider componentProvider)
         {
-            Controller = controller;
             NPC = npc;
             Hit = hit;
+            ComponentProvider = componentProvider;
         }
     }
 
     public readonly struct NPCHealthLossEvent : IEvent
     {
-        public readonly ComponentController Controller;
         public readonly NPC NPC;
         public readonly float HealthPercentage;
         public readonly float PreviousHealthPercentage;
+        public readonly IComponentProvider ComponentProvider;
 
-        public NPCHealthLossEvent(ComponentController controller, NPC npc, float healthPercentage, float previousHealthPercentage)
+        public NPCHealthLossEvent(NPC npc, float healthPercentage, float previousHealthPercentage, IComponentProvider componentProvider)
         {
-            Controller = controller;
             NPC = npc;
             HealthPercentage = healthPercentage;
             PreviousHealthPercentage = previousHealthPercentage;
+            ComponentProvider = componentProvider;
         }
     }
 }

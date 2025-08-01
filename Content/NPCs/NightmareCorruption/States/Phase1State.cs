@@ -3,7 +3,7 @@ using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.BehaviorTree;
 using AshenVoid.Core.ECS.FSM;
-using AshenVoid.Core.ECS.Interfaces;
+using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using Terraria;
 
@@ -77,10 +77,9 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
                 {
                     var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
                     var target = _blackboard.Get<Player>(BlackboardKeys.Target);
-                    var controller = _blackboard.Get<ComponentController>(BlackboardKeys.Controller);
 
                     var chargeDirection = (npc.Center - target.Center).SafeNormalize(Vector2.UnitX);
-                    controller.GetComponent<IMovementComponent>().SetIntent(new Core.ECS.Intents.ChaseIntent(npc.Center + chargeDirection * 150f, 0f));
+                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(npc.Center + chargeDirection * 150f, 0f));
                     return NodeState.Success;
                 }),
                 new WaitNode(_config.Dash.ChargeTime),
@@ -88,14 +87,14 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
                 new ActionNode(() =>
                 {
                     var target = _blackboard.Get<Player>(BlackboardKeys.Target);
-                    var controller = _blackboard.Get<ComponentController>(BlackboardKeys.Controller);
-                    controller.GetComponent<IMovementComponent>().SetIntent(new Core.ECS.Intents.ChaseIntent(target.Center, 0f, 25f));
+                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(target.Center, 0f, 25f));
                     return NodeState.Success;
                 }),
                 new WaitNode(0.5f), // Duration of the dash
                 new ActionNode(() =>
                 {
                     _blackboard.Set("DamageTakenSinceLastDash", 0f);
+                    _blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent()); // End dash with an idle intent
                     return NodeState.Success;
                 })
             );
@@ -108,21 +107,24 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption.States
                 {
                     var npc = _blackboard.Get<NPC>(BlackboardKeys.NPC);
                     var target = _blackboard.Get<Player>(BlackboardKeys.Target);
-                    var controller = _blackboard.Get<ComponentController>(BlackboardKeys.Controller);
 
                     if (target == null || !target.active)
                     {
-                        controller.GetComponent<IMovementComponent>()?.SetIntent(new Core.ECS.Intents.IdleIntent());
+                        _blackboard.Set(BlackboardKeys.MovementIntent, new IdleIntent());
                         return NodeState.Failure;
                     }
 
                     var patrolTargetPosition = target.Center + new Vector2(400 * _patrolDirection, -300);
-                    controller.GetComponent<IMovementComponent>()?.SetIntent(new Core.ECS.Intents.ChaseIntent(patrolTargetPosition, 80f));
+                    _blackboard.Set(BlackboardKeys.MovementIntent, new ChaseIntent(patrolTargetPosition, 80f));
 
                     if (Vector2.Distance(npc.Center, patrolTargetPosition) < 100f)
                     {
                         _patrolDirection *= -1;
-                        Terraria.ModLoader.ModContent.GetInstance<AshenVoid>().Logger.Info("Shooting projectile would happen here.");
+                        var attackStats = _config.Attacks.BasicShot;
+                        if (attackStats != null)
+                        {
+                            _blackboard.Set(BlackboardKeys.AttackIntent, new ShootProjectileIntent(target.Center, attackStats));
+                        }
                     }
                     return NodeState.Success;
                 })

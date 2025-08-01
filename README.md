@@ -1,71 +1,43 @@
-# Ashen Void Boss Framework
+# AshenVoid tModLoader Boss Framework
 
-This document provides an overview of the ECS (Entity Component System) based framework for creating bosses in the Ashen Void mod.
+This project contains a custom ECS (Entity-Component-System) framework designed for creating complex and maintainable bosses in tModLoader.
 
 ## Core Concepts
 
-The framework is built on a modern ECS architecture, emphasizing separation of concerns, data-oriented design, and dependency injection.
+### ECS (Entity-Component-System)
+- **Entity**: The NPC itself.
+- **Component**: Pure data containers (e.g., `MovementComponent`, `AttackComponent`). They hold state but no logic.
+- **System**: Pure logic containers (e.g., `MovementSystem`, `AttackSystem`). They operate on components to perform actions.
 
-### Entity, Component, System (ECS)
+### State Management
+- **FSM (Finite State Machine)**: The boss's overall behavior is managed by a State Machine (`StateMachine.cs`). Each state (`IState`) represents a major phase or mode (e.g., `Phase1State`, `DeathState`).
+- **Behavior Tree**: Within each state, complex attack patterns and decision-making are handled by a Behavior Tree. This allows for modular and readable AI logic.
 
--   **Entity**: In our case, the `NPC` object is the Entity.
--   **Component**: Components are pure data containers that hold the state of a boss. They should not contain any logic. Examples: `MovementComponent`, `AttackComponent`. All components implement the `IComponent` marker interface.
--   **System**: Systems contain all the logic. They operate on components. The `SystemManager` automatically injects the required components into a system's `Update` method based on its signature. This removes all coupling between systems. Example: `MovementSystem` has an `Update(NPC npc, MovementComponent move)` method.
+### Data Flow & Decoupling
+The key to this framework is decoupling AI decision-making from execution.
+1.  **AI Decision (State/BT)**: The AI's only job is to decide **what** to do. It does this by creating an **Intent** object (e.g., `ChaseIntent`, `ShootProjectileIntent`).
+2.  **Blackboard**: The AI places the created `Intent` onto a central `Blackboard`. The `Blackboard` is a simple key-value store for communication.
+3.  **System Execution**: Systems (like `MovementSystem`) run every frame. They check the `Blackboard` for relevant `Intents`. If an `Intent` is found, the system executes it by manipulating the data in the corresponding `Component`.
 
-### The `EcsBoss` Base Class
+This ensures the AI doesn't need to know *how* to move or attack, only that it *wants* to.
 
-To create a new boss, you should inherit from `Core.Builders.EcsBoss`. This base class handles all the boilerplate code for setting up the ECS, updating systems, and publishing events.
+## Creating a Boss
+1.  Create a new class that inherits from `EcsBoss`.
+2.  Implement the `InitializeController` method.
+3.  Use the `BossBuilder` to fluently add components and systems.
+4.  Define the boss's behavior by creating `IState` classes.
+5.  Use the `WithInitialState` and `WithBlackboardData` methods on the `BossBuilder` to set up the initial state and any required configuration data.
 
-You only need to implement one abstract method: `InitializeController()`.
-
-### `BossBuilder`
-
-Inside `InitializeController()`, you use the `BossBuilder` to construct your boss. It provides a fluent API to:
--   `AddComponent()`: Register a new component.
--   `AddSystem()`: Register a new system.
--   `WithInitialState()`: Set the initial state for the boss's state machine.
-
-### State Management (FSM)
-
-The framework includes a simple Finite State Machine.
--   **IState**: States define the major behaviors of a boss (e.g., `SpawnState`, `Phase1State`). States should be stateless and retrieve any necessary configuration or data from the `Blackboard`.
--   **StateFactory**: Creates and caches states on demand. States can transition to a new state by calling `aiState.ChangeState<NewState>()`.
--   **Blackboard**: A key-value store that is passed to each state. It's used to share data between systems and states, such as the boss configuration, the player target, etc.
-
-## How to Create a New Boss
-
-1.  **Create a new class** that inherits from `EcsBoss`.
-2.  **Implement `SetDefaults()`** as you normally would.
-3.  **Implement `InitializeController()`**:
-    -   Load your boss's configuration.
-    -   Create an `EventBus` and a `StateFactory`.
-    -   Use the `BossBuilder` to add all the components and systems your boss needs.
-    -   Put any necessary data (like the config object) into the `Blackboard`.
-    -   Return the built `ComponentController`.
-
+Example from `NightmareCorruption.cs`:
 ```csharp
-// Example from NightmareCorruption.cs
-protected override ComponentController InitializeController()
-{
-    var configLoader = new ConfigLoader();
-    var bossConfig = configLoader.LoadForBoss<BossConfig>(FullName);
-
-    NPC.damage = bossConfig.Damage;
-    NPC.defense = bossConfig.Defense;
-
-    EventBus = new EventBus();
-    var stateFactory = new StateFactory();
-
-    var controller = new BossBuilder()
-        .AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement))
-        .AddComponent(() => new AttackComponent())
-        // ... other components and systems
-        .AddSystem(new AIBlackboardSystem(EventBus))
-        .WithInitialState(typeof(SpawnState))
-        .Build();
-    
-    var aiState = controller.GetComponent<AIStateComponent>();
-    aiState?.Blackboard.Set("BossConfig", bossConfig);
-
-    return controller;
-}
+var controller = new BossBuilder()
+    .AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement))
+    .AddComponent(() => new AttackComponent())
+    .AddComponent(() => new HealthComponent(NPC.life))
+    .AddSystem(new MovementSystem())
+    .AddSystem(new AttackSystem())
+    .AddSystem(new HealthSystem())
+    .WithInitialState(typeof(SpawnState))
+    .WithBlackboardData("BossConfig", bossConfig)
+    .OnBuild(c => blackboardSystem.Initialize(EventBus))
+    .Build();

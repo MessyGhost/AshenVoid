@@ -3,7 +3,7 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class AnimationSystem : ISystem
+    public class AnimationSystem : IAnimationSystem
     {
         public void Update(NPC npc, AnimationComponent animationComponent)
         {

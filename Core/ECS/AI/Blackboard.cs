@@ -46,5 +46,13 @@ namespace AshenVoid.Core.ECS.AI
             value = default;
             return false;
         }
+
+        /// <summary>
+        /// Removes a value from the blackboard.
+        /// </summary>
+        public void Remove(string key)
+        {
+            _data.Remove(key);
+        }
     }
 }

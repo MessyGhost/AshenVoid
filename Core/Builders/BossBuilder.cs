@@ -1,4 +1,5 @@
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.AI;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.ECS.Systems;
 using System;
@@ -11,10 +12,9 @@ namespace AshenVoid.Core.Builders
     {
         private readonly List<Func<IComponent>> _componentFactories = new List<Func<IComponent>>();
         private readonly List<ISystem> _systems = new List<ISystem>();
+        private readonly Dictionary<string, object> _blackboardData = new Dictionary<string, object>();
         private Type _initialStateType;
-
-        // Constructor is still needed to pass context to the component factories if they need it.
-        public BossBuilder() { }
+        private Action<ComponentController> _onBuildCallback;
 
         public BossBuilder WithInitialState(Type stateType)
         {
@@ -38,6 +38,18 @@ namespace AshenVoid.Core.Builders
             return this;
         }
 
+        public BossBuilder WithBlackboardData(string key, object value)
+        {
+            _blackboardData[key] = value;
+            return this;
+        }
+
+        public BossBuilder OnBuild(Action<ComponentController> callback)
+        {
+            _onBuildCallback = callback;
+            return this;
+        }
+
         public ComponentController Build()
         {
             var controller = new ComponentController();
@@ -55,6 +67,12 @@ namespace AshenVoid.Core.Builders
             var aiState = controller.GetComponent<AIStateComponent>();
             if (aiState != null)
             {
+                // Populate blackboard with initial data
+                foreach (var data in _blackboardData)
+                {
+                    aiState.Blackboard.Set(data.Key, data.Value);
+                }
+
                 if (_initialStateType != null)
                 {
                     aiState.SetInitialState(_initialStateType);
@@ -64,6 +82,8 @@ namespace AshenVoid.Core.Builders
                     ModContent.GetInstance<AshenVoid>().Logger.Warn("No initial state provided for the boss.");
                 }
             }
+
+            _onBuildCallback?.Invoke(controller);
 
             return controller;
         }

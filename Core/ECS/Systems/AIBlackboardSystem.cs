@@ -9,11 +9,19 @@ namespace AshenVoid.Core.ECS.Systems
     {
         private bool _isEnraged;
         private const string RAGE_SOURCE = "Rage";
+        private EventBus _eventBus;
 
-        public AIBlackboardSystem(EventBus eventBus)
+        public void Initialize(EventBus eventBus)
         {
-            eventBus.Subscribe<NPCDamagedEvent>(OnDamaged);
-            eventBus.Subscribe<NPCHealthLossEvent>(OnHealthLoss);
+            _eventBus = eventBus;
+            _eventBus.Subscribe<NPCDamagedEvent>(OnDamaged);
+            _eventBus.Subscribe<NPCHealthLossEvent>(OnHealthLoss);
+        }
+
+        public void Shutdown()
+        {
+            _eventBus.Unsubscribe<NPCDamagedEvent>(OnDamaged);
+            _eventBus.Unsubscribe<NPCHealthLossEvent>(OnHealthLoss);
         }
 
         public void Update()
@@ -23,8 +31,7 @@ namespace AshenVoid.Core.ECS.Systems
 
         private void OnDamaged(NPCDamagedEvent e)
         {
-            var aiState = e.Controller.GetComponent<AIStateComponent>();
-            if (aiState == null) return;
+            if (!e.ComponentProvider.TryGetComponent(out AIStateComponent aiState)) return;
 
             float damageTaken = aiState.Blackboard.Get<float>("DamageTakenSinceLastDash");
             aiState.Blackboard.Set("DamageTakenSinceLastDash", damageTaken + e.Hit.Damage);
@@ -32,9 +39,10 @@ namespace AshenVoid.Core.ECS.Systems
 
         private void OnHealthLoss(NPCHealthLossEvent e)
         {
-            var aiState = e.Controller.GetComponent<AIStateComponent>();
-            var statSheet = e.Controller.GetComponent<StatSheetComponent>();
-            if (aiState == null || statSheet == null) return;
+            if (!e.ComponentProvider.TryGetComponent(out AIStateComponent aiState) || !e.ComponentProvider.TryGetComponent(out StatSheetComponent statSheet))
+            {
+                return;
+            }
 
             float lastSummonHealth = aiState.Blackboard.Get<float>("LastSummonHealthPercent");
             if (lastSummonHealth == 0f) lastSummonHealth = 1f;

@@ -2,7 +2,7 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class StatSystem : ISystem
+    public class StatSystem : IStatSystem
     {
         public void Update(NPC npc, StatSheetComponent statSheet)
         {

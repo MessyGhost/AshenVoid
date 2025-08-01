@@ -1,4 +1,5 @@
 using AshenVoid.Core.ECS.Systems;
+using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
@@ -30,10 +31,20 @@ namespace AshenVoid.Core.ECS
             return null;
         }
 
-        public void Update(GameTime gameTime, NPC npc)
+        public bool TryGetComponent<T>(out T result) where T : class, IComponent
         {
-            // Pass the component dictionary to the system manager
-            _systemManager.Update(gameTime, npc, _components);
+            if (_components.TryGetValue(typeof(T), out var component) && component is T casted)
+            {
+                result = casted;
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
+        public void Update(GameTime gameTime, NPC npc, EventBus eventBus)
+        {
+            _systemManager.Update(gameTime, npc, this, eventBus);
         }
     }
 }
