@@ -8,6 +8,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class AnimationSystem : IAnimationSystem
     {
+        private const int FrameDelay = 5; // Ticks between frame changes.
+
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Both;
 
         public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
@@ -20,7 +22,7 @@ namespace AshenVoid.Core.ECS.Systems
             var animationComponent = controller.GetComponent<AnimationComponent>();
 
             animationComponent.FrameCounter++;
-            if (animationComponent.FrameCounter >= 5)
+            if (animationComponent.FrameCounter >= FrameDelay)
             {
                 animationComponent.FrameCounter = 0;
                 animationComponent.CurrentFrame++;

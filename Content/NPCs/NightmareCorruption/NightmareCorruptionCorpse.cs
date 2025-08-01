@@ -7,6 +7,16 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 {
     public class NightmareCorruptionCorpse : ModNPC
     {
+        // Constants for better readability and maintenance.
+        private const int FadeInTime = 30; // Time in ticks for the corpse to become fully visible
+        private const int MinAlpha = 100;
+        private const int MaxTimeLeft = 600;
+        private const int DustSpawnChance = 10; // 1 in 10 chance per tick
+        private const float Gravity = 0.5f;
+
+        // Using ai[0] as a timer for synchronized dust effects in multiplayer.
+        private ref float DustTimer => ref NPC.ai[0];
+
         public override string Texture => "Terraria/Images/Gore_262";
 
         public override void SetDefaults()
@@ -27,16 +37,38 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         public override void AI()
         {
-            NPC.alpha -= 5;
-            if (NPC.alpha < 100) NPC.alpha = 100;
+            // Fade-in logic
+            if (NPC.alpha > MinAlpha)
+            {
+                NPC.alpha -= (255 - MinAlpha) / FadeInTime;
+                if (NPC.alpha < MinAlpha)
+                {
+                    NPC.alpha = MinAlpha;
+                }
+            }
 
-            NPC.velocity.Y = 0.5f;
+            NPC.velocity.Y = Gravity;
 
-            // 随时间消失
-            if (NPC.timeLeft > 600) NPC.timeLeft = 600;
+            // Ensure timeLeft doesn't exceed the max value.
+            if (NPC.timeLeft > MaxTimeLeft)
+            {
+                NPC.timeLeft = MaxTimeLeft;
+            }
 
-            // 粒子效果
-            if (Main.rand.NextBool(10))
+            // Synchronized dust effect logic.
+            // The timer runs on the server and syncs via npc.ai.
+            if (Main.netMode != NetmodeID.MultiplayerClient)
+            {
+                DustTimer++;
+                if (DustTimer >= DustSpawnChance)
+                {
+                    DustTimer = 0;
+                    NPC.netUpdate = true; // Sync the timer reset and trigger dust on clients.
+                }
+            }
+
+            // Clients spawn dust when the timer resets.
+            if (DustTimer == 0)
             {
                 Dust.NewDust(NPC.position, NPC.width, NPC.height, DustID.Corruption, 0f, -1f, 0, default, 1.5f);
             }

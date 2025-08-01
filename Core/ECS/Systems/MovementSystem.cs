@@ -10,6 +10,8 @@ namespace AshenVoid.Core.ECS.Systems
 {
     public class MovementSystem : IMovementSystem
     {
+        private const float Friction = 0.95f; // Damping factor for idle movement.
+
         public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
         public HashSet<Type> RequiredComponents { get; } = new HashSet<Type>
@@ -26,7 +28,7 @@ namespace AshenVoid.Core.ECS.Systems
 
             if (!blackboard.TryGet(BlackboardKeys.MovementIntent, out IMovementIntent movementIntent))
             {
-                npc.velocity *= 0.95f;
+                npc.velocity *= Friction;
                 return;
             }
 
@@ -63,15 +65,24 @@ namespace AshenVoid.Core.ECS.Systems
                     return;
 
                 case IdleIntent _:
-                    npc.velocity *= 0.95f;
+                    npc.velocity *= Friction;
                     blackboard.Remove(BlackboardKeys.MovementIntent);
                     return;
             }
 
-            Vector2 idealPosition = movementComponent.Dynamics.Update((float)gameTime.ElapsedGameTime.TotalSeconds, npc.Center, destination);
-            Vector2 targetVelocity = idealPosition - npc.Center;
+            // The actual movement is now handled by the dynamics system, which is great.
+            // However, the original code was flawed. It should be updating the dynamics
+            // and then applying the resulting velocity to the NPC.
+            Vector2 targetVelocity = movementComponent.Dynamics.Update((float)gameTime.ElapsedGameTime.TotalSeconds, destination) - npc.Center;
 
-            npc.velocity = Collision.TileCollision(npc.position, targetVelocity, npc.width, npc.height, !npc.noTileCollide, !npc.noTileCollide);
+            // Let's apply a max speed limit from the stats.
+            if (targetVelocity.Length() > movementComponent.Stats.MaxSpeed)
+            {
+                targetVelocity.Normalize();
+                targetVelocity *= movementComponent.Stats.MaxSpeed;
+            }
+
+            npc.velocity = targetVelocity;
         }
     }
 }

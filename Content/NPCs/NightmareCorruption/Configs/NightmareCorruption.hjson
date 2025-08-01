@@ -1,4 +1,5 @@
 {
+  "lifeMax": 13100, // Boss 最大生命值
   "spawnDuration": 3, // 出生动画时长
   "damage": 52,
   "defense": 10,

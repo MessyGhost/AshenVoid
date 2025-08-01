@@ -1,4 +1,5 @@
 using AshenVoid.Core.ECS;
+using AshenVoid.Core.ECS.Interfaces;
 using AshenVoid.Core.Events;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -39,7 +40,6 @@ namespace AshenVoid.Core.Builders
             NPC.aiStyle = -1;
             NPC.netAlways = true;
 
-            // NEW: Build the system cache after everything is initialized.
             ComponentController.BuildSystemCache();
         }
 
@@ -62,24 +62,29 @@ namespace AshenVoid.Core.Builders
         {
             if (ComponentController == null) return;
 
+            // This now correctly delegates the execution side check to the SystemManager.
+            // Both client and server will run this, and the SystemManager will filter
+            // which systems to execute based on their ExecutionSide property.
+            ComponentController.Update(Main.gameTimeCache, NPC, EventBus);
+
             var aiState = GetComponent<AIStateComponent>();
             if (aiState == null) return;
 
+            // Server-side logic for state transitions and timer updates.
             if (Main.netMode != NetmodeID.MultiplayerClient)
             {
                 StateTimer++;
                 aiState.Blackboard.Set("StateTimer", StateTimer);
-
-                ComponentController.Update(Main.gameTimeCache, NPC, EventBus);
 
                 var newStateId = aiState.GetStateId(aiState.StateMachine.CurrentState.GetType());
                 if (newStateId != CurrentStateId)
                 {
                     CurrentStateId = newStateId;
                     StateTimer = 0;
-                    NPC.netUpdate = true;
+                    NPC.netUpdate = true; // This is crucial to sync the state change.
                 }
             }
+            // Client-side logic to react to state changes from the server.
             else
             {
                 var currentStateOnClient = aiState.StateMachine.CurrentState;
@@ -91,14 +96,32 @@ namespace AshenVoid.Core.Builders
                         aiState.SetInitialState(newStateType);
                     }
                 }
-
-                ComponentController.Update(Main.gameTimeCache, NPC, EventBus);
             }
         }
 
-        public override void SendExtraAI(BinaryWriter writer) { }
+        public override void SendExtraAI(BinaryWriter writer)
+        {
+            // Iterate through all components and send data for those that are network-aware.
+            foreach (var component in ComponentController.GetAllComponents())
+            {
+                if (component is INetworkedComponent networkedComponent)
+                {
+                    networkedComponent.SendData(NPC, writer);
+                }
+            }
+        }
 
-        public override void ReceiveExtraAI(BinaryReader reader) { }
+        public override void ReceiveExtraAI(BinaryReader reader)
+        {
+            // Iterate through all components and receive data for those that are network-aware.
+            foreach (var component in ComponentController.GetAllComponents())
+            {
+                if (component is INetworkedComponent networkedComponent)
+                {
+                    networkedComponent.ReceiveData(NPC, reader);
+                }
+            }
+        }
 
         public override void OnHitByItem(Player player, Item item, NPC.HitInfo hit, int damageDone)
         {

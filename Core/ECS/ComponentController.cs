@@ -47,6 +47,12 @@ namespace AshenVoid.Core.ECS
             return false;
         }
 
+        // New method to allow iterating over all registered components.
+        public IEnumerable<IComponent> GetAllComponents()
+        {
+            return _components.Values;
+        }
+
         public void Update(GameTime gameTime, NPC npc, EventBus eventBus)
         {
             _systemManager.Update(gameTime, npc, this, eventBus);

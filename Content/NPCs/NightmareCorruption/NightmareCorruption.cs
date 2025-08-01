@@ -16,16 +16,24 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
     [AutoloadBossHead]
     public class NightmareCorruption : EcsBoss
     {
+        private static BossConfig _bossConfig;
+
         public override void SetStaticDefaults()
         {
             Main.npcFrameCount[Type] = 4;
+
+            var configLoader = new ConfigLoader();
+            string configPath = $"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson";
+            _bossConfig = configLoader.Load<BossConfig>(configPath);
         }
 
         public override void SetBossDefaults()
         {
             NPC.width = 242;
             NPC.height = 192;
-            NPC.lifeMax = 13100;
+            NPC.lifeMax = _bossConfig?.LifeMax ?? 13100;
+            NPC.damage = _bossConfig?.Damage ?? 50;
+            NPC.defense = _bossConfig?.Defense ?? 20;
             NPC.knockBackResist = 0f;
             NPC.value = Item.buyPrice(0, 3, 0, 0);
             NPC.boss = true;
@@ -40,14 +48,6 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         protected override ComponentController InitializeController()
         {
-            var configLoader = new ConfigLoader();
-            // Define the path explicitly here. This is more robust.
-            string configPath = $"Content/NPCs/NightmareCorruption/Configs/{nameof(NightmareCorruption)}.hjson";
-            var bossConfig = configLoader.Load<BossConfig>(configPath);
-
-            NPC.damage = bossConfig.Damage;
-            NPC.defense = bossConfig.Defense;
-
             var stateFactory = new StateFactory();
             var builder = new BossBuilder();
 
@@ -58,22 +58,28 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             aiStateComponent.RegisterState<Phase2State>();
             aiStateComponent.RegisterState<DeathState>();
 
-            aiStateComponent.Blackboard.Set("BossConfig", bossConfig);
+            aiStateComponent.Blackboard.Set("BossConfig", _bossConfig);
 
-            builder.AddComponent(() => new MovementComponent(NPC, bossConfig.Phase1.Movement));
+            builder.AddComponent(() => new MovementComponent(NPC, _bossConfig.Phase1.Movement));
             builder.AddComponent(() => new AttackComponent());
             builder.AddComponent(() => new AnimationComponent(NPC));
             builder.AddComponent(() => new VFXComponent());
-            builder.AddComponent(() => new StatSheetComponent(NPC, bossConfig));
+            builder.AddComponent(() => new StatSheetComponent(NPC, _bossConfig));
             builder.AddComponent(() => aiStateComponent);
             builder.AddComponent(() => new HealthComponent(NPC.lifeMax));
 
+            // Server-side systems
             builder.AddSystem(new MovementSystem());
             builder.AddSystem(new AttackSystem());
             builder.AddSystem(new AIStateSystem());
-            builder.AddSystem(new AnimationSystem());
             builder.AddSystem(new StatSystem());
             builder.AddSystem(new HealthSystem());
+
+            // Client-side systems
+            builder.AddSystem(new ClientInterpolationSystem());
+
+            // Systems that run on both
+            builder.AddSystem(new AnimationSystem());
 
             return builder.Build();
         }
