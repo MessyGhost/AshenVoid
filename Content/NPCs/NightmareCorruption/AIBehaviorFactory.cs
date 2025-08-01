@@ -17,6 +17,8 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         private readonly Dictionary<AIActionType, Func<int, EcsWorld, NodeStatus>> _actionLookups;
         private readonly Dictionary<string, Node> _treeCache = new();
 
+        private const float FIND_TARGET_INTERVAL = 0.5f; // Search for a target every 0.5 seconds
+
         public AIBehaviorFactory(BossConfig bossConfig)
         {
             _bossConfig = bossConfig;
@@ -97,9 +99,18 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
 
         private NodeStatus FindAndTargetPlayer(int entityId, EcsWorld world)
         {
+            var blackboard = world.GetComponent<AIBlackboardComponent>(entityId);
             var targetComponent = world.GetComponent<TargetComponent>(entityId);
-            if (targetComponent == null) return NodeStatus.Failure;
+            if (targetComponent == null || blackboard == null) return NodeStatus.Failure;
 
+            // If cooldown is active, don't search for a new target
+            if (blackboard.FindTargetCooldown > 0)
+            {
+                // Succeed if we already have a target, fail otherwise to force a search if needed
+                return targetComponent.Target != null ? NodeStatus.Success : NodeStatus.Failure;
+            }
+
+            // Cooldown is over, time to search
             Player bestTarget = null;
             float minDistance = float.MaxValue;
             var statSheet = world.GetComponent<StatSheetComponent>(entityId);
@@ -122,6 +133,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             if (bestTarget != null)
             {
                 targetComponent.Target = bestTarget;
+                blackboard.FindTargetCooldown = FIND_TARGET_INTERVAL; // Reset cooldown
                 return NodeStatus.Success;
             }
             return NodeStatus.Failure;
@@ -151,7 +163,11 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
             if (attack == null || !attack.CanAttack(AttackType.BasicShot)) return NodeStatus.Failure;
 
             attack.UseAttack(AttackType.BasicShot, _bossConfig.Phase1.Attacks.BasicShot.Cooldown);
-            EcsSystem.Instance.EventBus.Publish(new RequestAttackExecutionEvent { EntityId = entityId, AttackType = AttackType.BasicShot });
+
+            var networkEvent = new RequestAttackExecutionEvent { EntityId = entityId, AttackType = AttackType.BasicShot };
+            EcsSystem.Instance.EventBus.Publish(networkEvent); // Publish locally for server systems
+            EcsSystem.Instance.NetworkManager.Send(networkEvent); // Send to clients
+
             return NodeStatus.Success;
         }
     }

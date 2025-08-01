@@ -6,20 +6,18 @@ using System.Linq;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public abstract class CachedComponentSystem : IComponentSystem
+    public abstract class EntityQuerySystem : ISystem
     {
         private readonly List<int> _cachedEntities = new();
+        private readonly HashSet<Type> _requiredComponentsSet;
         private bool _isCacheInvalid = true;
 
         public abstract IEnumerable<Type> RequiredComponents { get; }
         public abstract SystemExecutionSide ExecutionSide { get; }
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        protected EntityQuerySystem()
         {
-            // This method is called by the SystemManager for each entity, which we want to avoid.
-            // The logic is moved to a new UpdateAll method.
-            // This is a design flaw in the current SystemManager.
-            // For now, we will leave this empty and do the work in a different way.
+            _requiredComponentsSet = new HashSet<Type>(RequiredComponents);
         }
 
         public virtual void UpdateAll(GameTime gameTime, EcsWorld world, EventBus eventBus)
@@ -31,8 +29,10 @@ namespace AshenVoid.Core.ECS.Systems
 
             if (_isCacheInvalid)
             {
+                // Use the optimized GetEntities version
+                var entities = world.GetEntities(_requiredComponentsSet);
                 _cachedEntities.Clear();
-                _cachedEntities.AddRange(world.GetEntities(RequiredComponents));
+                _cachedEntities.AddRange(entities);
                 _isCacheInvalid = false;
             }
 

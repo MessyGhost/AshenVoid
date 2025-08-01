@@ -1,0 +1,64 @@
+{
+    "lifeMax": 13100,
+    "spawnDuration": 3,
+    "damage": 50,
+    "defense": 20,
+    "phase1": {
+        "phaseTransitionHealth": 0.5,
+        "movement": {
+            "frequency": 0.5,
+            "dampingRatio": 0.8,
+            "responseScale": 1.5,
+            "chaseStopDistance": 200
+        },
+        "attacks": {
+            "basicShot": {
+                "projectileId": 121,
+                "cooldown": 0.5,
+                "speed": 10,
+                "damage": 30
+            }
+        },
+        "behaviorTree": {
+            "type": "Selector",
+            "children": [
+                {
+                    "type": "Sequence",
+                    "children": [
+                        {
+                            "type": "Action",
+                            "name": "FindAndTargetPlayer"
+                        },
+                        {
+                            "type": "Action",
+                            "name": "MoveToPlayer"
+                        },
+                        {
+                            "type": "Action",
+                            "name": "TryBasicAttack"
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "abilities": [
+        {
+            "name": "Phase1Dash",
+            "type": "Dash",
+            "parameters": {
+                "DamageThreshold": 300,
+                "ChargeTime": 1.5,
+                "Speed": 25
+            }
+        },
+        {
+            "name": "TridentShot",
+            "type": "Projectile",
+            "parameters": {
+                "Cooldown": 1.5,
+                "ProjectileCount": 3
+            }
+        }
+    ]
+}

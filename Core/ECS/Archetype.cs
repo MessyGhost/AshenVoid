@@ -46,6 +46,9 @@ namespace AshenVoid.Core.ECS
         // 索引 -> 实体ID
         private readonly List<int> _indexToEntityId = new();
 
+        // 可重用的组件列表缓冲区，避免在MoveEntityTo中重复分配
+        private readonly List<IComponent> _componentBuffer = new();
+
         public IReadOnlyList<int> Entities => _indexToEntityId;
 
         public Archetype(HashSet<Type> componentTypes, string signature)
@@ -59,7 +62,7 @@ namespace AshenVoid.Core.ECS
             }
         }
 
-        public void AddEntity(int entityId, IComponent[] components)
+        public void AddEntity(int entityId, List<IComponent> components)
         {
             var index = _indexToEntityId.Count;
             _entityIdToIndex[entityId] = index;
@@ -132,19 +135,19 @@ namespace AshenVoid.Core.ECS
             if (!_entityIdToIndex.TryGetValue(entityId, out var fromIndex))
                 return;
 
-            // 1. 收集当前所有组件
-            var componentsToMove = new List<IComponent>();
+            // 1. 收集当前所有组件到可重用缓冲区
+            _componentBuffer.Clear();
             foreach (var chunk in _componentChunks.Values)
             {
-                componentsToMove.Add(chunk.GetComponent(fromIndex));
+                _componentBuffer.Add(chunk.GetComponent(fromIndex));
             }
             if (newComponent != null)
             {
-                componentsToMove.Add(newComponent);
+                _componentBuffer.Add(newComponent);
             }
 
             // 2. 添加到新 Archetype
-            newArchetype.AddEntity(entityId, componentsToMove.ToArray());
+            newArchetype.AddEntity(entityId, _componentBuffer);
 
             // 3. 从旧 Archetype 中移除
             RemoveEntity(entityId);

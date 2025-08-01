@@ -6,7 +6,7 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class AnimationSystem : CachedComponentSystem
+    public class AnimationSystem : EntityQuerySystem
     {
         public override IEnumerable<Type> RequiredComponents => new[] { typeof(AnimationComponent) };
         public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;

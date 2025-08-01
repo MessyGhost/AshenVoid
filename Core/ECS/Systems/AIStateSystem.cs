@@ -6,7 +6,7 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class AIStateSystem : CachedComponentSystem
+    public class AIStateSystem : EntityQuerySystem
     {
         public override IEnumerable<Type> RequiredComponents => new[] { typeof(AIStateComponent) };
         public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;

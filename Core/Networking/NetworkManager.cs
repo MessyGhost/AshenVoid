@@ -23,7 +23,8 @@ namespace AshenVoid.Core.Networking
         public NetworkManager(EventBus eventBus)
         {
             _eventBus = eventBus;
-            _eventBus.Subscribe<INetworkEvent>(QueueEvent);
+            // The automatic subscription is removed to decouple event publishing from network sending.
+            // _eventBus.Subscribe<INetworkEvent>(QueueEvent);
         }
 
         public void RegisterEventType<T>() where T : INetworkEvent, new()
@@ -34,7 +35,10 @@ namespace AshenVoid.Core.Networking
             _idToEventFactory[id] = () => new T(); // Register the factory function
         }
 
-        private void QueueEvent(INetworkEvent e)
+        /// <summary>
+        /// Explicitly queues a network event to be sent to clients/server.
+        /// </summary>
+        public void Send(INetworkEvent e)
         {
             _eventQueue.Enqueue(e);
         }

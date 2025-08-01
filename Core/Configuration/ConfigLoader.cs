@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Hjson;
 using Newtonsoft.Json;
 using Terraria.ModLoader;
 
@@ -51,8 +50,8 @@ namespace AshenVoid.Core.Configuration
             // Get the class name
             string bossName = type.Name;
 
-            // Final path: Content/NPCs/NightmareCorruption/Configs/NightmareCorruption.hjson
-            string assetPath = $"{basePath}/Configs/{bossName}.hjson";
+            // Final path: Content/NPCs/NightmareCorruption/Configs/NightmareCorruption.json
+            string assetPath = $"{basePath}/Configs/{bossName}.json";
 
             return Load<T>(assetPath);
         }
@@ -75,10 +74,8 @@ namespace AshenVoid.Core.Configuration
             try
             {
                 var fileBytes = _modInstance.GetFileBytes(assetPath);
-                var hjsonText = System.Text.Encoding.UTF8.GetString(fileBytes);
+                var jsonText = System.Text.Encoding.UTF8.GetString(fileBytes);
 
-                var hjsonValue = HjsonValue.Parse(hjsonText);
-                var jsonText = hjsonValue.ToString(Stringify.Plain);
                 var config = JsonConvert.DeserializeObject<T>(jsonText);
 
                 _configCache[assetPath] = config;

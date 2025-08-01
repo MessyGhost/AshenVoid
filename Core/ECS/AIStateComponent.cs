@@ -43,11 +43,15 @@ namespace AshenVoid.Core.ECS
 
             if (Main.netMode != Terraria.ID.NetmodeID.MultiplayerClient)
             {
-                eventBus.Publish(new StateChangedNetworkEvent
+                var networkEvent = new StateChangedNetworkEvent
                 {
                     EntityId = entityId,
                     StateId = _stateFactory.GetIdByType(nextState.GetType())
-                });
+                };
+                // Publish locally for server-side systems to react
+                eventBus.Publish(networkEvent);
+                // Send over the network explicitly
+                EcsSystem.Instance.NetworkManager.Send(networkEvent);
             }
         }
 

@@ -14,11 +14,4 @@ namespace AshenVoid.Core.ECS.Systems
     }
 
     public interface ISystem { }
-
-    public interface IComponentSystem : ISystem
-    {
-        IEnumerable<Type> RequiredComponents { get; }
-        SystemExecutionSide ExecutionSide { get; }
-        void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus);
-    }
 }

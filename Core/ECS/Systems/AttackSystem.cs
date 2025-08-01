@@ -9,7 +9,7 @@ using AshenVoid.Core.ECS.AI;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class AttackSystem : CachedComponentSystem
+    public class AttackSystem : EntityQuerySystem
     {
         public override IEnumerable<Type> RequiredComponents => new[] { typeof(AttackComponent) };
         public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;

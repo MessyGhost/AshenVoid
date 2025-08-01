@@ -6,17 +6,17 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class ClientStateSystem : IComponentSystem
+    public class ClientStateSystem : EntityQuerySystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(AIStateComponent) };
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;
+        public override IEnumerable<Type> RequiredComponents => new[] { typeof(AIStateComponent) };
+        public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;
 
         public ClientStateSystem()
         {
             EcsSystem.Instance.EventBus.Subscribe<StateChangedNetworkEvent>(HandleStateChange);
         }
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             // This system only reacts to network events, so no per-frame update logic is needed.
         }

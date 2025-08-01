@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class VFXSystem : CachedComponentSystem
+    public class VFXSystem : EntityQuerySystem
     {
         public override IEnumerable<Type> RequiredComponents => new[] { typeof(VFXComponent) };
         public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Client;

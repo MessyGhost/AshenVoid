@@ -6,10 +6,10 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class HealthSystem : IComponentSystem
+    public class HealthSystem : EntityQuerySystem
     {
-        public IEnumerable<Type> RequiredComponents => new[] { typeof(HealthComponent), typeof(StatSheetComponent) };
-        public SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
+        public override IEnumerable<Type> RequiredComponents => new[] { typeof(HealthComponent), typeof(StatSheetComponent) };
+        public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
         public HealthSystem()
         {
@@ -31,7 +31,7 @@ namespace AshenVoid.Core.ECS.Systems
             }
         }
 
-        public void Update(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
         {
             // The polling logic has been removed.
             // All health synchronization is now handled by the OnNpcDamaged event.

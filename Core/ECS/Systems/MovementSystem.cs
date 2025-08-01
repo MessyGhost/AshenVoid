@@ -6,7 +6,7 @@ using Terraria;
 
 namespace AshenVoid.Core.ECS.Systems
 {
-    public class MovementSystem : CachedComponentSystem
+    public class MovementSystem : EntityQuerySystem
     {
         public override IEnumerable<Type> RequiredComponents => new[] { typeof(MovementComponent) };
         public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;

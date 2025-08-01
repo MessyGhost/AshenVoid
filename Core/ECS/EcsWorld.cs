@@ -17,6 +17,9 @@ namespace AshenVoid.Core.ECS
         private readonly Dictionary<int, Archetype> _entityArchetypes = new();
         private int _nextEntityId = 0;
 
+        private static readonly List<IComponent> s_emptyComponentList = new();
+        private readonly List<int> _entityListBuffer = new(); // Reusable buffer for GetEntities
+
         public bool IsDirty { get; private set; } = true;
 
         public EcsWorld(SystemManager systemManager, EventBus eventBus)
@@ -31,7 +34,7 @@ namespace AshenVoid.Core.ECS
         {
             int entityId = _nextEntityId++;
             var emptyArchetype = _archetypes[""];
-            emptyArchetype.AddEntity(entityId, Array.Empty<IComponent>());
+            emptyArchetype.AddEntity(entityId, s_emptyComponentList);
             _entityArchetypes[entityId] = emptyArchetype;
             IsDirty = true;
             return entityId;
@@ -100,21 +103,27 @@ namespace AshenVoid.Core.ECS
             return null;
         }
 
+        // Obsolete but kept for compatibility. Creates a new HashSet.
         public IEnumerable<int> GetEntities(IEnumerable<Type> requiredComponents)
         {
-            var requiredSet = new HashSet<Type>(requiredComponents);
-            if (!requiredSet.Any())
-                return Enumerable.Empty<int>();
+            return GetEntities(new HashSet<Type>(requiredComponents));
+        }
 
-            var matchingEntities = new List<int>();
+        // Optimized version that reuses the entity list buffer.
+        public List<int> GetEntities(HashSet<Type> requiredSet)
+        {
+            _entityListBuffer.Clear();
+            if (!requiredSet.Any())
+                return _entityListBuffer;
+
             foreach (var archetype in _archetypes.Values)
             {
                 if (archetype.Matches(requiredSet))
                 {
-                    matchingEntities.AddRange(archetype.Entities);
+                    _entityListBuffer.AddRange(archetype.Entities);
                 }
             }
-            return matchingEntities;
+            return _entityListBuffer;
         }
 
         public void Update(GameTime gameTime)

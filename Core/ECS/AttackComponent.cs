@@ -6,6 +6,7 @@ namespace AshenVoid.Core.ECS
     public class AttackComponent : IComponent
     {
         private readonly Dictionary<AttackType, float> _attackCooldowns = new();
+        private readonly List<AttackType> _keys = new(); // Reusable list for keys
 
         public AttackComponent()
         {
@@ -25,8 +26,10 @@ namespace AshenVoid.Core.ECS
         public void UpdateCooldowns(float deltaTime)
         {
             // This needs to be called by a system (e.g., AttackSystem)
-            var keys = new List<AttackType>(_attackCooldowns.Keys);
-            foreach (var key in keys)
+            _keys.Clear();
+            _keys.AddRange(_attackCooldowns.Keys);
+
+            foreach (var key in _keys)
             {
                 if (_attackCooldowns[key] > 0)
                 {
