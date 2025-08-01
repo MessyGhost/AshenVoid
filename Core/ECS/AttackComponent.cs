@@ -1,35 +1,13 @@
-using AshenVoid.Core.ECS.Intents;
-using AshenVoid.Core.ECS.Interfaces;
-
 namespace AshenVoid.Core.ECS
 {
-    public class AttackComponent : IAttackComponent
+    /// <summary>
+    /// A component to hold data related to attacking.
+    /// In the new architecture, this is a pure data container.
+    /// </summary>
+    public class AttackComponent : IComponent
     {
-        public IAttackIntent CurrentIntent { get; set; }
-        public float CooldownTimer { get; set; }
-
-        public AttackComponent()
-        {
-        }
-
-        public void SetIntent(IAttackIntent intent)
-        {
-            if (IsReady())
-                CurrentIntent = intent;
-        }
-
-        public bool IsReady() => CooldownTimer <= 0;
-        public bool IsAttacking() => CurrentIntent != null;
-
-        public void Update()
-        {
-            // All logic is moved to AttackSystem.
-        }
-
-        public void Reset()
-        {
-            CurrentIntent = null;
-            CooldownTimer = 0;
-        }
+        // Attack-related data would go here, for example:
+        public float AttackCooldown { get; set; }
+        public float LastAttackTime { get; set; }
     }
 }

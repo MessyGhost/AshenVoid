@@ -25,6 +25,7 @@ namespace AshenVoid.Core.ECS
             World = new EcsWorld(SystemManager, EventBus);
 
             RegisterGlobalSystems();
+            RegisterNetworkEvents();
         }
 
         private void RegisterGlobalSystems()
@@ -36,6 +37,14 @@ namespace AshenVoid.Core.ECS
             SystemManager.RegisterSystem(new HealthSystem());
             SystemManager.RegisterSystem(new ClientInterpolationSystem());
             SystemManager.RegisterSystem(new AnimationSystem());
+        }
+
+        private void RegisterNetworkEvents()
+        {
+            // Register all network-synchronized events here.
+            // This ensures a consistent ID between server and client.
+            // Example:
+            // NetworkManager.RegisterEventType<MyNetworkEvent>(0);
         }
 
         public override void Unload()

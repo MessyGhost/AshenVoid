@@ -1,4 +1,5 @@
 using AshenVoid.Core.Events;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Terraria.ModLoader;
@@ -8,18 +9,29 @@ namespace AshenVoid.Core.Networking
     public enum MessageType : byte
     {
         SyncEvent,
-        // Other message types like SyncComponent, SpawnEntity etc. will be added later
     }
 
     public class NetworkManager
     {
         private readonly EventBus _eventBus;
-        private readonly Queue<INetworkEvent> _eventQueue = new Queue<INetworkEvent>();
+        private readonly Queue<INetworkEvent> _eventQueue = new();
+
+        private readonly Dictionary<Type, byte> _eventTypeToId = new();
+        private readonly Dictionary<byte, Type> _idToEventType = new();
+        private byte _nextEventId = 0;
 
         public NetworkManager(EventBus eventBus)
         {
             _eventBus = eventBus;
             _eventBus.Subscribe<INetworkEvent>(QueueEvent);
+        }
+
+        public void RegisterEventType<T>() where T : INetworkEvent, new()
+        {
+            var type = typeof(T);
+            var id = _nextEventId++;
+            _eventTypeToId[type] = id;
+            _idToEventType[id] = type;
         }
 
         private void QueueEvent(INetworkEvent e)
@@ -37,10 +49,12 @@ namespace AshenVoid.Core.Networking
             while (_eventQueue.Count > 0)
             {
                 var e = _eventQueue.Dequeue();
-                packet.Write((byte)MessageType.SyncEvent);
-                // We need a way to map event types to a byte ID instead of using strings.
-                packet.Write(e.GetType().AssemblyQualifiedName); 
-                e.Write(packet);
+                if (_eventTypeToId.TryGetValue(e.GetType(), out var id))
+                {
+                    packet.Write((byte)MessageType.SyncEvent);
+                    packet.Write(id);
+                    e.Write(packet);
+                }
             }
 
             packet.Send();
@@ -52,14 +66,12 @@ namespace AshenVoid.Core.Networking
             switch (msgType)
             {
                 case MessageType.SyncEvent:
-                    // Deserialize and handle the event
-                    var typeName = reader.ReadString();
-                    var type = System.Type.GetType(typeName);
-                    if (type != null && typeof(INetworkEvent).IsAssignableFrom(type))
+                    var eventId = reader.ReadByte();
+                    if (_idToEventType.TryGetValue(eventId, out var type))
                     {
-                        var e = (INetworkEvent)System.Activator.CreateInstance(type);
+                        var e = (INetworkEvent)Activator.CreateInstance(type);
                         e.Read(reader);
-                        _eventBus.Publish(e); // Publish to the client-side event bus
+                        _eventBus.Publish(e);
                     }
                     break;
             }

@@ -1,6 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
-namespace AshenVoid.Core
+namespace AshenVoid.Core.Utility
 {
     public class SecondOrderDynamics
     {

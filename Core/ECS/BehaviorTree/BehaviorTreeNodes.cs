@@ -1,5 +1,4 @@
 using AshenVoid.Core.ECS.AI;
-using AshenVoid.Core.ECS.Intents;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
@@ -103,8 +102,6 @@ namespace AshenVoid.Core.ECS.BehaviorTree
 
         public override NodeState Evaluate(Blackboard blackboard)
         {
-            // The concept of getting GameTime from the blackboard is now obsolete.
-            // This needs a redesign, but for now, we'll use Main.gameTimeCache.
             var gameTime = Main.gameTimeCache;
             if (_startTime < 0)
             {
@@ -121,37 +118,18 @@ namespace AshenVoid.Core.ECS.BehaviorTree
         }
     }
 
+    // The concept of Intent nodes is obsolete in the new architecture.
+    // Systems should react to component data changes or events.
+    // These classes are left here as placeholders but are effectively empty.
     public class SetMovementIntentNode : Node
     {
-        private readonly Func<Blackboard, IMovementIntent> _intentProvider;
-
-        public SetMovementIntentNode(Func<Blackboard, IMovementIntent> intentProvider)
-        {
-            _intentProvider = intentProvider;
-        }
-
-        public override NodeState Evaluate(Blackboard blackboard)
-        {
-            // This is now obsolete. Intents should be handled by systems or states directly.
-            // blackboard.Set(BlackboardKeys.MovementIntent, _intentProvider(blackboard));
-            return NodeState.Success;
-        }
+        public SetMovementIntentNode(object intentProvider) { } // Dummy constructor
+        public override NodeState Evaluate(Blackboard blackboard) => NodeState.Success;
     }
 
     public class SetAttackIntentNode : Node
     {
-        private readonly Func<Blackboard, IAttackIntent> _intentProvider;
-
-        public SetAttackIntentNode(Func<Blackboard, IAttackIntent> intentProvider)
-        {
-            _intentProvider = intentProvider;
-        }
-
-        public override NodeState Evaluate(Blackboard blackboard)
-        {
-            // This is now obsolete.
-            // blackboard.Set(BlackboardKeys.AttackIntent, _intentProvider(blackboard));
-            return NodeState.Success;
-        }
+        public SetAttackIntentNode(object intentProvider) { } // Dummy constructor
+        public override NodeState Evaluate(Blackboard blackboard) => NodeState.Success;
     }
 }
