@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace AshenVoid.Core.ECS
 {
@@ -21,6 +22,11 @@ namespace AshenVoid.Core.ECS
         public void AddComponent(IComponent component) => Components.Add((T)component);
         public IComponent GetComponent(int index) => Components[index];
         public Array GetComponentsAsArray() => Components.ToArray();
+
+        /// <summary>
+        /// Provides direct, allocation-free access to the underlying component data.
+        /// </summary>
+        public ReadOnlySpan<T> AsSpan() => CollectionsMarshal.AsSpan(Components);
 
         public void RemoveComponent(int index)
         {
@@ -50,6 +56,8 @@ namespace AshenVoid.Core.ECS
         private readonly List<IComponent> _componentBuffer = new();
 
         public IReadOnlyList<int> Entities => _indexToEntityId;
+        public ReadOnlySpan<int> EntityIdsAsSpan() => CollectionsMarshal.AsSpan(_indexToEntityId);
+
 
         public Archetype(HashSet<Type> componentTypes, string signature)
         {
@@ -99,10 +107,24 @@ namespace AshenVoid.Core.ECS
         {
             if (_entityIdToIndex.TryGetValue(entityId, out var index) && _componentChunks.TryGetValue(typeof(T), out var chunk))
             {
-                return ((ComponentChunk<T>)chunk).GetComponent(index) as T;
+                return ((ComponentChunk<T>)chunk).Components[index] as T;
             }
             return null;
         }
+
+        /// <summary>
+        /// Gets the entire chunk of components of a given type as a read-only span.
+        /// This is highly efficient and avoids GC allocation.
+        /// </summary>
+        public ReadOnlySpan<T> GetComponentSpan<T>() where T : IComponent
+        {
+            if (_componentChunks.TryGetValue(typeof(T), out var chunk))
+            {
+                return ((ComponentChunk<T>)chunk).AsSpan();
+            }
+            return ReadOnlySpan<T>.Empty;
+        }
+
 
         public IComponent[] GetComponents(int entityId)
         {

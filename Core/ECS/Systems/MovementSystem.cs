@@ -11,14 +11,17 @@ namespace AshenVoid.Core.ECS.Systems
         public override IEnumerable<Type> RequiredComponents => new[] { typeof(MovementComponent) };
         public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
-        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        protected override void UpdateArchetype(GameTime gameTime, Archetype archetype, EcsWorld world, EventBus eventBus)
         {
-            var movement = world.GetComponent<MovementComponent>(entityId);
-            if (movement == null) return;
+            var movements = archetype.GetComponentSpan<MovementComponent>();
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            // The logic from MovementComponent.Update is now here.
-            movement.Dynamics.Update((float)gameTime.ElapsedGameTime.TotalSeconds, movement.TargetPosition);
-            movement.Npc.Center = movement.Dynamics.Position;
+            for (int i = 0; i < movements.Length; i++)
+            {
+                var movement = movements[i];
+                movement.Dynamics.Update(deltaTime, movement.TargetPosition);
+                movement.Npc.Center = movement.Dynamics.Position;
+            }
         }
     }
 }

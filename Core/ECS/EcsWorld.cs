@@ -126,6 +126,20 @@ namespace AshenVoid.Core.ECS
             return _entityListBuffer;
         }
 
+        public IEnumerable<Archetype> GetArchetypes(HashSet<Type> requiredSet)
+        {
+            if (!requiredSet.Any())
+                yield break;
+
+            foreach (var archetype in _archetypes.Values)
+            {
+                if (archetype.Matches(requiredSet))
+                {
+                    yield return archetype;
+                }
+            }
+        }
+
         public void Update(GameTime gameTime)
         {
             _systemManager.Update(gameTime, this, _eventBus);
