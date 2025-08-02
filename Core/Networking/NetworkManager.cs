@@ -1,4 +1,5 @@
 using AshenVoid.Core.Events;
+using AshenVoid.Core.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,7 +15,8 @@ namespace AshenVoid.Core.Networking
     public class NetworkManager
     {
         private readonly EventBus _eventBus;
-        private readonly Queue<INetworkEvent> _eventQueue = new();
+        // The queue now stores serialized event data.
+        private readonly Queue<byte[]> _packetQueue = new();
 
         private readonly Dictionary<Type, byte> _eventTypeToId = new();
         private readonly Dictionary<byte, Func<INetworkEvent>> _idToEventFactory = new();
@@ -23,8 +25,6 @@ namespace AshenVoid.Core.Networking
         public NetworkManager(EventBus eventBus)
         {
             _eventBus = eventBus;
-            // The automatic subscription is removed to decouple event publishing from network sending.
-            // _eventBus.Subscribe<INetworkEvent>(QueueEvent);
         }
 
         public void RegisterEventType<T>() where T : INetworkEvent, new()
@@ -32,33 +32,39 @@ namespace AshenVoid.Core.Networking
             var type = typeof(T);
             var id = _nextEventId++;
             _eventTypeToId[type] = id;
-            _idToEventFactory[id] = () => new T(); // Register the factory function
+            _idToEventFactory[id] = () => new T();
         }
 
         /// <summary>
-        /// Explicitly queues a network event to be sent to clients/server.
+        /// Serializes a network event and queues it to be sent.
+        /// The original event object is not stored and can be safely released.
         /// </summary>
         public void Send(INetworkEvent e)
         {
-            _eventQueue.Enqueue(e);
+            if (!_eventTypeToId.TryGetValue(e.GetType(), out var id))
+                return;
+
+            using var ms = new MemoryStream();
+            using var writer = new BinaryWriter(ms);
+
+            writer.Write((byte)MessageType.SyncEvent);
+            writer.Write(id);
+            e.Write(writer);
+
+            _packetQueue.Enqueue(ms.ToArray());
         }
 
         public void SendPendingMessages()
         {
-            if (_eventQueue.Count == 0)
+            if (_packetQueue.Count == 0)
                 return;
 
             var packet = ModContent.GetInstance<AshenVoid>().GetPacket();
 
-            while (_eventQueue.Count > 0)
+            while (_packetQueue.Count > 0)
             {
-                var e = _eventQueue.Dequeue();
-                if (_eventTypeToId.TryGetValue(e.GetType(), out var id))
-                {
-                    packet.Write((byte)MessageType.SyncEvent);
-                    packet.Write(id);
-                    e.Write(packet);
-                }
+                var data = _packetQueue.Dequeue();
+                packet.Write(data);
             }
 
             packet.Send();
@@ -73,9 +79,9 @@ namespace AshenVoid.Core.Networking
                     var eventId = reader.ReadByte();
                     if (_idToEventFactory.TryGetValue(eventId, out var factory))
                     {
-                        var e = factory(); // Use the factory, no reflection
-                        e.Read(reader);
-                        _eventBus.Publish(e);
+                        var newEvent = factory();
+                        newEvent.Read(reader);
+                        _eventBus.Publish(newEvent);
                     }
                     break;
             }

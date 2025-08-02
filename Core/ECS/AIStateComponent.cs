@@ -1,6 +1,7 @@
 using AshenVoid.Core.Builders;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.Events;
+using AshenVoid.Core.Utility;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
@@ -43,15 +44,17 @@ namespace AshenVoid.Core.ECS
 
             if (Main.netMode != Terraria.ID.NetmodeID.MultiplayerClient)
             {
-                var networkEvent = new StateChangedNetworkEvent
-                {
-                    EntityId = entityId,
-                    StateId = _stateFactory.GetIdByType(nextState.GetType())
-                };
-                // Publish locally for server-side systems to react
-                eventBus.Publish(networkEvent);
-                // Send over the network explicitly
+                // Get a pooled event
+                var networkEvent = ObjectPool.Get<StateChangedNetworkEvent>();
+                networkEvent.EntityId = entityId;
+                networkEvent.StateId = _stateFactory.GetIdByType(nextState.GetType());
+
+                // Send over the network. The manager will serialize it.
                 EcsSystem.Instance.NetworkManager.Send(networkEvent);
+
+                // Publish locally for server-side systems to react.
+                // The event bus will release the event back to the pool after dispatch.
+                eventBus.Publish(networkEvent);
             }
         }
 

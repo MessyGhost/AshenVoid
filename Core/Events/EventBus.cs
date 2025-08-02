@@ -1,4 +1,5 @@
 using System;
+using AshenVoid.Core.Utility;
 using System.Collections.Generic;
 
 namespace AshenVoid.Core.Events
@@ -98,6 +99,17 @@ namespace AshenVoid.Core.Events
             }
         }
 
+        /// <summary>
+        /// Gets an event from the object pool, initializes it, and publishes it.
+        /// This is the preferred way to publish events to avoid GC allocation.
+        /// </summary>
+        public void Publish<T>(Action<T> initializer) where T : class, IEvent, new()
+        {
+            var e = ObjectPool.Get<T>();
+            initializer(e);
+            Publish(e); // Enqueue it using the existing method
+        }
+
         public void DispatchEvents()
         {
             Queue<IEvent> queueSnapshot;
@@ -120,6 +132,11 @@ namespace AshenVoid.Core.Events
                 {
                     if (!_subscribers.TryGetValue(eventType, out handlers))
                     {
+                        // If no one is listening, just release the event back to the pool
+                        if (e is not null && e.GetType().GetConstructor(Type.EmptyTypes) != null)
+                        {
+                            ObjectPool.Release(e);
+                        }
                         continue;
                     }
                     _isDispatching = true;
@@ -137,6 +154,15 @@ namespace AshenVoid.Core.Events
                         Terraria.ModLoader.ModContent.GetInstance<AshenVoid>().Logger.Error($"Error executing event handler for {eventType.Name}", ex);
                     }
                 }
+
+                // Release the event back to the pool after all handlers have processed it.
+                // We check if it's a reference type and has a parameterless constructor,
+                // which are the constraints for our pooling system.
+                if (e is not null && e.GetType().GetConstructor(Type.EmptyTypes) != null)
+                {
+                    ObjectPool.Release(e);
+                }
+
 
                 lock (_lock)
                 {

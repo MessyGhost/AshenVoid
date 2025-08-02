@@ -66,9 +66,12 @@ namespace AshenVoid.Core.Builders
 
             BuildEntity(world, EntityId);
 
-            // Publish the sync event to all clients
-            var syncEvent = new EntityIdSyncEvent(NPC.whoAmI, EntityId);
-            EcsSystem.Instance.EventBus.Publish(syncEvent);
+            // Publish the sync event to all clients using the object-pooled method
+            EcsSystem.Instance.EventBus.Publish<EntityIdSyncEvent>(e =>
+            {
+                e.NpcWhoAmI = NPC.whoAmI;
+                e.EntityId = EntityId;
+            });
         }
 
         public override void OnKill()
