@@ -67,7 +67,7 @@ namespace AshenVoid.Content.NPCs.NightmareCorruption
         {
             world.AddComponent(entityId, new StatSheetComponent(NPC, _config));
             this.AiFactory = new AIBehaviorFactory(_config);
-            world.AddComponent(entityId, new HealthComponent(NPC.lifeMax, NPC.lifeMax));
+            world.AddComponent(entityId, new HealthComponent { CurrentHealth = NPC.lifeMax, MaxHealth = NPC.lifeMax });
             world.AddComponent(entityId, new MovementComponent(NPC, _config.Phase1.Movement));
             world.AddComponent(entityId, new AnimationComponent(NPC));
             world.AddComponent(entityId, new AttackComponent());

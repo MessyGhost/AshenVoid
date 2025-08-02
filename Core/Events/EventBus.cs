@@ -91,23 +91,16 @@ namespace AshenVoid.Core.Events
             }
         }
 
-        public void Publish<T>(T e) where T : IEvent
+        /// <summary>
+        /// Publishes an event. The lifecycle of the event is managed by the caller.
+        /// The EventBus will NOT create or release the event.
+        /// </summary>
+        public void Publish(IEvent e)
         {
             lock (_lock)
             {
                 _eventQueue.Enqueue(e);
             }
-        }
-
-        /// <summary>
-        /// Gets an event from the object pool, initializes it, and publishes it.
-        /// This is the preferred way to publish events to avoid GC allocation.
-        /// </summary>
-        public void Publish<T>(Action<T> initializer) where T : class, IEvent, new()
-        {
-            var e = ObjectPool.Get<T>();
-            initializer(e);
-            Publish(e); // Enqueue it using the existing method
         }
 
         public void DispatchEvents()
@@ -132,17 +125,11 @@ namespace AshenVoid.Core.Events
                 {
                     if (!_subscribers.TryGetValue(eventType, out handlers))
                     {
-                        // If no one is listening, just release the event back to the pool
-                        if (e is not null && e.GetType().GetConstructor(Type.EmptyTypes) != null)
-                        {
-                            ObjectPool.Release(e);
-                        }
                         continue;
                     }
                     _isDispatching = true;
                 }
 
-                // No snapshotting here, iterate over the original list
                 foreach (var handlerWrapper in handlers)
                 {
                     try
@@ -155,19 +142,9 @@ namespace AshenVoid.Core.Events
                     }
                 }
 
-                // Release the event back to the pool after all handlers have processed it.
-                // We check if it's a reference type and has a parameterless constructor,
-                // which are the constraints for our pooling system.
-                if (e is not null && e.GetType().GetConstructor(Type.EmptyTypes) != null)
-                {
-                    ObjectPool.Release(e);
-                }
-
-
                 lock (_lock)
                 {
                     _isDispatching = false;
-                    // Process any modifications that were queued during dispatch
                     foreach (var modification in _pendingModifications)
                     {
                         modification();

@@ -1,6 +1,7 @@
 using AshenVoid.Core.ECS;
 using AshenVoid.Core.ECS.FSM;
 using AshenVoid.Core.Events;
+using AshenVoid.Core.Utility;
 using AshenVoid.Content.NPCs.NightmareCorruption; // Added using for AIBehaviorFactory
 using Terraria;
 using Terraria.DataStructures;
@@ -66,12 +67,13 @@ namespace AshenVoid.Core.Builders
 
             BuildEntity(world, EntityId);
 
-            // Publish the sync event to all clients using the object-pooled method
-            EcsSystem.Instance.EventBus.Publish<EntityIdSyncEvent>(e =>
-            {
-                e.NpcWhoAmI = NPC.whoAmI;
-                e.EntityId = EntityId;
-            });
+            // Publish the sync event to all clients
+            var syncEvent = ObjectPool.Get<EntityIdSyncEvent>();
+            syncEvent.NpcWhoAmI = NPC.whoAmI;
+            syncEvent.EntityId = EntityId;
+
+            // The NetworkManager will own and release the event.
+            EcsSystem.Instance.NetworkManager.Send(syncEvent);
         }
 
         public override void OnKill()

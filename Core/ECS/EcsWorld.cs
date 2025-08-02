@@ -13,7 +13,7 @@ namespace AshenVoid.Core.ECS
         private readonly SystemManager _systemManager;
         private readonly EventBus _eventBus;
 
-        private readonly Dictionary<string, Archetype> _archetypes = new();
+        private readonly Dictionary<ArchetypeSignature, Archetype> _archetypes = new();
         private readonly Dictionary<int, Archetype> _entityArchetypes = new();
         private int _nextEntityId = 0;
 
@@ -33,7 +33,7 @@ namespace AshenVoid.Core.ECS
         public int CreateEntity()
         {
             int entityId = _nextEntityId++;
-            var emptyArchetype = _archetypes[""];
+            var emptyArchetype = FindOrCreateArchetype(new HashSet<Type>());
             emptyArchetype.AddEntity(entityId, s_emptyComponentList);
             _entityArchetypes[entityId] = emptyArchetype;
             IsDirty = true;
@@ -67,7 +67,7 @@ namespace AshenVoid.Core.ECS
 
         private Archetype FindOrCreateArchetype(HashSet<Type> componentTypes)
         {
-            var signature = GenerateArchetypeSignature(componentTypes);
+            var signature = new ArchetypeSignature(componentTypes);
             if (_archetypes.TryGetValue(signature, out var archetype))
             {
                 return archetype;
@@ -76,22 +76,6 @@ namespace AshenVoid.Core.ECS
             var newArchetype = new Archetype(componentTypes, signature);
             _archetypes[signature] = newArchetype;
             return newArchetype;
-        }
-
-        private string GenerateArchetypeSignature(HashSet<Type> componentTypes)
-        {
-            if (componentTypes == null || componentTypes.Count == 0)
-                return "";
-
-            var typeNames = componentTypes.Select(t => t.FullName).ToList();
-            typeNames.Sort(StringComparer.Ordinal);
-
-            var sb = new StringBuilder();
-            foreach (var name in typeNames)
-            {
-                sb.Append(name).Append(';');
-            }
-            return sb.ToString();
         }
 
         public T GetComponent<T>(int entityId) where T : class, IComponent
@@ -103,22 +87,36 @@ namespace AshenVoid.Core.ECS
             return null;
         }
 
-        // Obsolete but kept for compatibility. Creates a new HashSet.
-        public IEnumerable<int> GetEntities(IEnumerable<Type> requiredComponents)
+        public bool TryGetComponent<T>(int entityId, out T component) where T : struct, IComponent
         {
-            return GetEntities(new HashSet<Type>(requiredComponents));
+            if (_entityArchetypes.TryGetValue(entityId, out var archetype))
+            {
+                return archetype.TryGetComponent(entityId, out component);
+            }
+            component = default;
+            return false;
         }
 
-        // Optimized version that reuses the entity list buffer.
+        public void SetComponent<T>(int entityId, T component) where T : IComponent
+        {
+            if (_entityArchetypes.TryGetValue(entityId, out var archetype))
+            {
+                archetype.SetComponent(entityId, component);
+            }
+        }
+
+        // This method is now less efficient and should be phased out.
         public List<int> GetEntities(HashSet<Type> requiredSet)
         {
             _entityListBuffer.Clear();
             if (!requiredSet.Any())
                 return _entityListBuffer;
 
+            var requiredSignature = new ArchetypeSignature(requiredSet);
+
             foreach (var archetype in _archetypes.Values)
             {
-                if (archetype.Matches(requiredSet))
+                if (archetype.Matches(requiredSignature))
                 {
                     _entityListBuffer.AddRange(archetype.Entities);
                 }
@@ -131,9 +129,10 @@ namespace AshenVoid.Core.ECS
             if (!requiredSet.Any())
                 yield break;
 
+            var requiredSignature = new ArchetypeSignature(requiredSet);
             foreach (var archetype in _archetypes.Values)
             {
-                if (archetype.Matches(requiredSet))
+                if (archetype.Matches(requiredSignature))
                 {
                     yield return archetype;
                 }

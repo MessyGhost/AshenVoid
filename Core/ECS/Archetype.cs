@@ -9,6 +9,7 @@ namespace AshenVoid.Core.ECS
     {
         void AddComponent(IComponent component);
         void RemoveComponent(int index);
+        void SetComponent(int index, IComponent component);
         void MoveComponent(int fromIndex, IComponentChunk toChunk);
         IComponent GetComponent(int index);
         Array GetComponentsAsArray();
@@ -21,12 +22,15 @@ namespace AshenVoid.Core.ECS
 
         public void AddComponent(IComponent component) => Components.Add((T)component);
         public IComponent GetComponent(int index) => Components[index];
+        public void SetComponent(int index, IComponent component) => Components[index] = (T)component;
         public Array GetComponentsAsArray() => Components.ToArray();
 
         /// <summary>
         /// Provides direct, allocation-free access to the underlying component data.
         /// </summary>
         public ReadOnlySpan<T> AsSpan() => CollectionsMarshal.AsSpan(Components);
+        public Span<T> AsMutableSpan() => CollectionsMarshal.AsSpan(Components);
+
 
         public void RemoveComponent(int index)
         {
@@ -43,7 +47,7 @@ namespace AshenVoid.Core.ECS
 
     public class Archetype
     {
-        public readonly string Signature;
+        public readonly ArchetypeSignature Signature;
         public readonly HashSet<Type> ComponentTypes;
         private readonly Dictionary<Type, IComponentChunk> _componentChunks = new();
 
@@ -59,7 +63,7 @@ namespace AshenVoid.Core.ECS
         public ReadOnlySpan<int> EntityIdsAsSpan() => CollectionsMarshal.AsSpan(_indexToEntityId);
 
 
-        public Archetype(HashSet<Type> componentTypes, string signature)
+        public Archetype(HashSet<Type> componentTypes, ArchetypeSignature signature)
         {
             ComponentTypes = componentTypes;
             Signature = signature;
@@ -112,6 +116,25 @@ namespace AshenVoid.Core.ECS
             return null;
         }
 
+        public bool TryGetComponent<T>(int entityId, out T component) where T : struct, IComponent
+        {
+            if (_entityIdToIndex.TryGetValue(entityId, out var index) && _componentChunks.TryGetValue(typeof(T), out var chunk))
+            {
+                component = ((ComponentChunk<T>)chunk).Components[index];
+                return true;
+            }
+            component = default;
+            return false;
+        }
+
+        public void SetComponent<T>(int entityId, T component) where T : IComponent
+        {
+            if (_entityIdToIndex.TryGetValue(entityId, out var index) && _componentChunks.TryGetValue(typeof(T), out var chunk))
+            {
+                chunk.SetComponent(index, component);
+            }
+        }
+
         /// <summary>
         /// Gets the entire chunk of components of a given type as a read-only span.
         /// This is highly efficient and avoids GC allocation.
@@ -123,6 +146,19 @@ namespace AshenVoid.Core.ECS
                 return ((ComponentChunk<T>)chunk).AsSpan();
             }
             return ReadOnlySpan<T>.Empty;
+        }
+
+        /// <summary>
+        /// Gets the entire chunk of components of a given type as a mutable span.
+        /// Use with caution. Modifying structs in the span directly modifies the data.
+        /// </summary>
+        public Span<T> GetComponentSpanMutable<T>() where T : IComponent
+        {
+            if (_componentChunks.TryGetValue(typeof(T), out var chunk))
+            {
+                return ((ComponentChunk<T>)chunk).AsMutableSpan();
+            }
+            return Span<T>.Empty;
         }
 
 
@@ -175,9 +211,9 @@ namespace AshenVoid.Core.ECS
             RemoveEntity(entityId);
         }
 
-        public bool Matches(HashSet<Type> requiredComponents)
+        public bool Matches(ArchetypeSignature requiredSignature)
         {
-            return requiredComponents.IsSubsetOf(ComponentTypes);
+            return Signature.Matches(requiredSignature);
         }
     }
 }

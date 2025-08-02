@@ -21,12 +21,12 @@ namespace AshenVoid.Core.ECS.Systems
             if (EcsSystem.NpcWhoAmIToEntityId.TryGetValue(e.NPC.whoAmI, out int entityId))
             {
                 var world = EcsSystem.Instance.World;
-                var health = world.GetComponent<HealthComponent>(entityId);
-
-                if (health != null)
+                if (world.TryGetComponent(entityId, out HealthComponent health))
                 {
                     // The single source of truth for health updates is now this event.
                     health.CurrentHealth = e.NPC.life;
+                    // Since HealthComponent is a struct, we must write it back.
+                    world.SetComponent(entityId, health);
                 }
             }
         }

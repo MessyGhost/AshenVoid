@@ -11,6 +11,7 @@ namespace AshenVoid.Core.ECS.Systems
     {
         private readonly List<int> _cachedEntities = new();
         private readonly HashSet<Type> _requiredComponentsSet;
+        private readonly ArchetypeSignature _requiredSignature;
         private bool _isCacheInvalid = true;
         private readonly bool _archetypeUpdateOverridden;
 
@@ -20,6 +21,7 @@ namespace AshenVoid.Core.ECS.Systems
         protected EntityQuerySystem()
         {
             _requiredComponentsSet = new HashSet<Type>(RequiredComponents);
+            _requiredSignature = new ArchetypeSignature(_requiredComponentsSet);
 
             // Check if the derived class has overridden the new UpdateArchetype method.
             var methodInfo = GetType().GetMethod(nameof(UpdateArchetype), BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
