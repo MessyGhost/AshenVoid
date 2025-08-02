@@ -9,15 +9,21 @@ using AshenVoid.Core.ECS.AI;
 
 namespace AshenVoid.Core.ECS.Systems
 {
+    [Parallelizable]
     public class AttackSystem : EntityQuerySystem
     {
         public override IEnumerable<Type> RequiredComponents => new[] { typeof(AttackComponent) };
         public override SystemExecutionSide ExecutionSide => SystemExecutionSide.Server;
 
-        public override void UpdateEntity(GameTime gameTime, int entityId, EcsWorld world, EventBus eventBus)
+        protected override void UpdateArchetype(GameTime gameTime, Archetype archetype, EcsWorld world, EventBus eventBus)
         {
-            var attack = world.GetComponent<AttackComponent>(entityId);
-            attack?.UpdateCooldowns((float)gameTime.ElapsedGameTime.TotalSeconds);
+            var attacks = archetype.GetComponentSpanMutable<AttackComponent>();
+            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            for (int i = 0; i < attacks.Length; i++)
+            {
+                attacks[i].UpdateCooldowns(deltaTime);
+            }
         }
 
         public AttackSystem()
